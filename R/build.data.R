@@ -1,4 +1,4 @@
-#' Build a data set for the spatial partial ID camera trap model
+#' Format encounter data for SPIM
 #' @param input a data frame with columns ID, trap, occ, and type.  Each capture event has its own row with individual ID, capture
 #' occasion, trap number, and capture type (B, L, or R)
 #' @param K the integer number of capture occasions

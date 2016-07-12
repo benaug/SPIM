@@ -1,26 +1,5 @@
-#' Run MCMC algorithm for "heuristic estimator" with both left and right data set
-#' @param data a list produced by sim2side or in the same format
-#' @param niter
-#' @param  nburn
-#' @param nthin
-#' @param M
-#' @param inits
-#' @return  a list with output
-#' @author Ben Augustine, Andy Royle
-#' @description This function runs the MCMC algorithm for the naive independence estimator when there are 3 data sets (both, left, and right).
-#' The data list should have the following elements:
-#' 1.  both, a n_both x 3 x K x J both side data array.  If n_both=0 as in an all single camera study, the first dimension is 0 and the data
-#' set should still have 4 dimensions, 0 x 3 x K x J.
-#' 2.  left, a n_left x 3 x K x J left side data array.
-#' 3.  right, a n_right x 3 x K x J left side data array.
-#' 4. X a matrix with the X and Y trap locations in the first two columns and the number of cameras (1 or 2) at each trap in the third.
-#' 5. either buff or vertices.  buff is the fixed buffer for the traps to produce the state space.  It is applied to the minimum and maximum
-#' X and Y locations, producing a square or rectangular state space.  vertices is a matrix with the X and Y coordinates of a polygonal state
-#' space.
-#' @export
-
 mcmc.2side.ind3 <-
-  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2)){
+  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
     ###
     library(abind)
     both<-data$both
@@ -339,6 +318,9 @@ mcmc.2side.ind3 <-
         idx=idx+1
       }
     }  # end of MCMC algorithm
-
-    list(out=out, sLxout=sLxout, sLyout=sLyout,sRxout=sRxout, sRyout=sRyout, zLout=zLout,zRout=zRout)
+    if(keepACs==TRUE){
+      list(out=out, sLxout=sLxout, sLyout=sLyout,sRxout=sRxout, sRyout=sRyout, zLout=zLout,zRout=zRout)
+    }else{
+      list(out=out)
+    }
   }

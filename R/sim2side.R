@@ -26,6 +26,7 @@ cellprobs<- function(lamd){
 #' @param X the J x 3 matrix of trap locations and number of cameras at each trap. columns are X, Y, #cams (1 or 2)
 #' @param buff the distance to buffer the trapping array in the X and Y dimensions to produce the state space
 #' @param obstype observation type, either "bernoulli" or "poisson"
+#' @param tf an optional J x K matrix of dynamic trap operation indicating when and where 0, 1, or 2 cams were deployed
 #' @return a list containing the both, left, and right data sets, the both plus left only and both plus right
 #' only data sets (stored in y.obs), the activity centers, the trap object, and several other data objects and summaries.
 #' @description This function simulates data from a camera trap SCR study where some or all identities are partial.  The trap
@@ -37,18 +38,37 @@ cellprobs<- function(lamd){
 #' @export
 
 sim2side <-
-  function(N=120,lam01=0.1,lam02=0.2,sigma=0.50,K=10,X=X,buff=3,obstype="bernoulli"){
+  function(N=50,lam01=0.1,lam02=0.2,sigma=0.50,K=10,X=X,buff=3,obstype="bernoulli",tf=NA){
     library(abind)
+    J<- nrow(X)
     #Check for user errors (add more later)
     if(ncol(X)!=3){
       stop("X must have 3 columns, X, Y, # cameras")
+    }
+    if(!is.null(dim(tf))){
+      if(!all(dim(tf)==c(J,K))){
+        stop("tf must be of dimension J x K")
+      }
+      if(!all(tf==1|tf==2|tf==0)){
+        stop("elements of tf must be 0, 1, or 2")
+      }
+      twos=which(apply(tf,1,function(x){any(x==2)}))
+      if(!all(twos%in%which(X[,3]==2))){
+        stop("trap object X must have a 2 in 3rd column if tf indicates it had 2 cams operational at some point during survey")
+      }
+      if(any(twos%in%which(X[,3]==1))){
+        stop("trap object must have a 1 in 3rd column if tf indicates it never had 2 cams operational")
+      }
+      usetf=TRUE
+    }else{
+      usetf=FALSE
+      tf=matrix(rep(X[,3],K),ncol=K)
     }
     #######Capture process######################
     # simulate a population of activity centers
     s<- cbind(runif(N, min(X[,1])-buff,max(X[,1])+buff), runif(N,min(X[,2])-buff,max(X[,2])+buff))
     D<- e2dist(s,X)
     lamd<- abind(lam01*exp(-D*D/(2*sigma*sigma)),lam02*exp(-D*D/(2*sigma*sigma)),along=3)
-    J<- nrow(X)
 
     # Initialize the encounter history data for left and right sides
     left <-right <- both <-array(0,dim=c(N,K,J))
@@ -58,9 +78,9 @@ sim2side <-
         for(j in 1:J){
           for(k in 1:K){
             #P(A or B)=P(A)+P(B)-P(A and B)
-            left[i,k,j]=rbinom(1,1,(X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2)) #single side p. two chances for capture with 2 cameras
-            right[i,k,j]=rbinom(1,1,(X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2)) #single side p
-            both[i,k,j]=rbinom(1,1,pd[i,j,2])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
+            left[i,k,j]=rbinom(1,1,(tf[j,k]==1)*pd[i,j,1]+(tf[j,k]==2)*(2*pd[i,j,1]-pd[i,j,1]^2)) #single side p. two chances for capture with 2 cameras
+            right[i,k,j]=rbinom(1,1,(tf[j,k]==1)*pd[i,j,1]+(tf[j,k]==2)*(2*pd[i,j,1]-pd[i,j,1]^2)) #single side p
+            both[i,k,j]=rbinom(1,1,pd[i,j,2])*(tf[j,k]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
           }
         }
       }
@@ -68,9 +88,9 @@ sim2side <-
       for(i in 1:N){
         for(j in 1:J){
           for(k in 1:K){
-            left[i,k,j]=rpois(1,X[j,3]*lamd[i,j,1]) #single side lambda multiplied by number of traps at site
-            right[i,k,j]=rpois(1,X[j,3]*lamd[i,j,1]) #single side lambda multiplied by number of traps at site
-            both[i,k,j]=rpois(1,lamd[i,j,2])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
+            left[i,k,j]=rpois(1,tf[j,k]*lamd[i,j,1]) #single side lambda multiplied by number of traps at site
+            right[i,k,j]=rpois(1,tf[j,k]*lamd[i,j,1]) #single side lambda multiplied by number of traps at site
+            both[i,k,j]=rpois(1,lamd[i,j,2])*(tf[j,k]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
           }
         }
       }
@@ -269,6 +289,10 @@ sim2side <-
     dim(BLRR)
     dim(BLRL)
     y.obs=list(BLRL=BLRL,BLRR=BLRR)
-    out<-list(left=left,right=right,both=both,y.obs=y.obs,s=s,X=X,IDknown=IDknown,n=n,nside=nside,Srecap=Srecap,ID_L=ID_L,ID_R=ID_R, K=K,buff=buff,obstype=obstype)
+    if(usetf==TRUE){
+      out<-list(left=left,right=right,both=both,y.obs=y.obs,s=s,X=X,tf=tf,IDknown=IDknown,n=n,nside=nside,Srecap=Srecap,ID_L=ID_L,ID_R=ID_R, K=K,buff=buff,obstype=obstype)
+    }else{
+      out<-list(left=left,right=right,both=both,y.obs=y.obs,s=s,X=X,IDknown=IDknown,n=n,nside=nside,Srecap=Srecap,ID_L=ID_L,ID_R=ID_R, K=K,buff=buff,obstype=obstype)
+    }
     return(out)
   }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/build.data.R
 \name{build.data}
 \alias{build.data}
-\title{Build a data set for the spatial partial ID camera trap model}
+\title{Format encounter data for SPIM}
 \usage{
 build.data(input, K, X, IDknown = NA, buff = NA, vertices = NA,
   model = "2side")

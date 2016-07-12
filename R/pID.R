@@ -1,4 +1,4 @@
-#' Plot trapping array and realized capture results of simulated data set
+#' Produce the posteriors for P(ID_L_i = ID_R_j) from the posteriors of ID_L and ID_R
 #' @param data a list produced by sim2side or in the same format
 #' @param ID_Lout the M x niter posterior of ID_L
 #' @param ID_Rout the M x niter posterior of ID_R

@@ -31,52 +31,109 @@
 #'sim2side.plot(data)
 #'}
 
-sim2side.plot=function(data,offset=0.15,cexX=1.5,cexB=3,cexS=3,cex0=1,cexT=1,main="",plotACs=TRUE){
-  if("grid"%in%names(data)){
-    grid=data$grid
-    X=as.matrix(data$X)
-    s=data$s[,2:3]
-    grid2=xtabs(grid$cov~grid$x+grid$y)
-    image(x=as.numeric(rownames(grid2)),y=as.numeric(colnames(grid2)),z=grid2,xlab="X",ylab="Y",main=main)
-    points(X[X[,3]==1,1:2],pch=4,cex=cexX,lwd=2)
-    points(X[X[,3]==2,1]-offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
-    points(X[X[,3]==2,1]+offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
-  }else{
-    if("vertices"%in%names(data)){stop("This function only works for rectangular continuous state spaces or discrete state spaces")}
-    X=as.matrix(data$X)
-    s=data$s
-    xlim=range(X[,1])+c(-buff,buff)
-    ylim=range(X[,2])+c(-buff,buff)
-    plot(X[X[,3]==1,1:2],xlim=xlim,ylim=ylim,pch=4,cex=cexX,lwd=2,xlab="X",ylab="Y",yaxt="n",main=main)
-    points(X[X[,3]==2,1]-offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
-    points(X[X[,3]==2,1]+offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
+sim2side.plot=function(data,offset=0.15,cexX=1.5,cexB=3,cexS=3,cex0=1,cexT=1,main="",plotACs=TRUE,plottimes=1){
+  if(any(plottimes!=1)&!("tf"%in%names(data))){
+    stop("data must have element 'tf' if plottimes!=1")
   }
+  if(all(plottimes==1)){#If static grid
+    if("grid"%in%names(data)){ #if discrete state space
+      grid=data$grid
+      X=as.matrix(data$X)
+      s=data$s[,2:3]
+      grid2=xtabs(grid$cov~grid$x+grid$y)
+      image(x=as.numeric(rownames(grid2)),y=as.numeric(colnames(grid2)),z=grid2,xlab="X",ylab="Y",main=main)
+      points(X[X[,3]==1,1:2],pch=4,cex=cexX,lwd=2)
+      points(X[X[,3]==2,1]-offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
+      points(X[X[,3]==2,1]+offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
+    }else{ # continuous state space
+      if("vertices"%in%names(data)){stop("This function only works for rectangular continuous state spaces or discrete state spaces")}
+      X=as.matrix(data$X)
+      s=data$s
+      xlim=range(X[,1])+c(-buff,buff)
+      ylim=range(X[,2])+c(-buff,buff)
+      plot(X[X[,3]==1,1:2],xlim=xlim,ylim=ylim,pch=4,cex=cexX,lwd=2,xlab="X",ylab="Y",yaxt="n",main=main)
+      points(X[X[,3]==2,1]-offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
+      points(X[X[,3]==2,1]+offset,X[X[,3]==2,2],pch=4,cex=cexX,lwd=2)
+    }
 
-  if(plotACs==TRUE){
-    points(s[data$IDknown,],col=rgb(69,139,0,200,maxColorValue = 255),pch=20,cex=cexB)
-    singles=setdiff(unique(c(data$ID_L,data$ID_R)),1:nrow(data$both))
-    if(length(data$IDknown)>0){
-      B=max(data$IDknown)
-    }else{
-      B=0
+    if(plotACs==TRUE){
+      points(s[data$IDknown,],col=rgb(69,139,0,200,maxColorValue = 255),pch=20,cex=cexB)
+      singles=setdiff(unique(c(data$ID_L,data$ID_R)),1:nrow(data$both))
+      if(length(data$IDknown)>0){
+        B=max(data$IDknown)
+      }else{
+        B=0
+      }
+      nocaps=setdiff((max(B)+1):N,singles)
+      points(s[nocaps,],col="black",pch=20,cex=cex0)
+      points(s[singles,],col=rgb(255,195,15,200,maxColorValue = 255),pch=20,cex=cexS)
+      lefts=setdiff(data$ID_L,data$ID_R)
+      rights=setdiff(data$ID_R,data$ID_L)
+      LRs=setdiff(base::intersect(data$ID_R,data$ID_L),1:nrow(data$both))
+      if(length(lefts)>0){
+        text(x=s[lefts,1],y=s[lefts,2],rep("L",length(lefts)),cex=cexT,font=2)
+      }
+      if(length(rights)>0){
+        text(x=s[rights,1],y=s[rights,2],rep("R",length(rights)),cex=cexT,font=2)
+      }
+      if(length(LRs)){
+        text(x=s[LRs,1],y=s[LRs,2],rep("LR",length(LRs)),cex=cexT,font=2)
+      }
+      if(B>0){
+        text(x=s[1:B,1],y=s[1:B,2],rep("B",length(data$IDknown)),cex=cexT,font=2)
+      }
     }
-    nocaps=setdiff((max(B)+1):N,singles)
-    points(s[nocaps,],col="black",pch=20,cex=cex0)
-    points(s[singles,],col=rgb(255,195,15,200,maxColorValue = 255),pch=20,cex=cexS)
-    lefts=setdiff(data$ID_L,data$ID_R)
-    rights=setdiff(data$ID_R,data$ID_L)
-    LRs=setdiff(base::intersect(data$ID_R,data$ID_L),1:nrow(data$both))
-    if(length(lefts)>0){
-      text(x=s[lefts,1],y=s[lefts,2],rep("L",length(lefts)),cex=cexT,font=2)
+  }else{#If dynamic grid
+    for(i in 1:length(plottimes)){
+      if("grid"%in%names(data)){ #if discrete state space
+        grid=data$grid
+        X=as.matrix(data$X)
+        s=data$s[,2:3]
+        grid2=xtabs(grid$cov~grid$x+grid$y)
+        image(x=as.numeric(rownames(grid2)),y=as.numeric(colnames(grid2)),z=grid2,xlab="X",ylab="Y",main=paste("k =",plottimes[i]))
+        points(X[tf[,plottimes[i]]==1,1:2],pch=4,cex=cexX,lwd=2)
+        points(X[tf[,plottimes[i]]==2,1]-offset,X[tf[,plottimes[i]]==2,2],pch=4,cex=cexX,lwd=2)
+        points(X[tf[,plottimes[i]]==2,1]+offset,X[tf[,plottimes[i]]==2,2],pch=4,cex=cexX,lwd=2)
+      }else{ # continuous state space
+        if("vertices"%in%names(data)){stop("This function only works for rectangular continuous state spaces or discrete state spaces")}
+        X=as.matrix(data$X)
+        s=data$s
+        xlim=range(X[,1])+c(-buff,buff)
+        ylim=range(X[,2])+c(-buff,buff)
+        plot(X[tf[,plottimes[i]]==1,1:2],xlim=xlim,ylim=ylim,pch=4,cex=cexX,lwd=2,xlab="X",ylab="Y",yaxt="n",main=paste("k =",plottimes[i]))
+        points(X[tf[,plottimes[i]]==2,1]-offset,X[tf[,plottimes[i]]==2,2],pch=4,cex=cexX,lwd=2)
+        points(X[tf[,plottimes[i]]==2,1]+offset,X[tf[,plottimes[i]]==2,2],pch=4,cex=cexX,lwd=2)
+      }
+
+      if(plotACs==TRUE){
+        points(s[data$IDknown,],col=rgb(69,139,0,200,maxColorValue = 255),pch=20,cex=cexB)
+        singles=setdiff(unique(c(data$ID_L,data$ID_R)),1:nrow(data$both))
+        if(length(data$IDknown)>0){
+          B=max(data$IDknown)
+        }else{
+          B=0
+        }
+        nocaps=setdiff((max(B)+1):N,singles)
+        points(s[nocaps,],col="black",pch=20,cex=cex0)
+        points(s[singles,],col=rgb(255,195,15,200,maxColorValue = 255),pch=20,cex=cexS)
+        lefts=setdiff(data$ID_L,data$ID_R)
+        rights=setdiff(data$ID_R,data$ID_L)
+        LRs=setdiff(base::intersect(data$ID_R,data$ID_L),1:nrow(data$both))
+        if(length(lefts)>0){
+          text(x=s[lefts,1],y=s[lefts,2],rep("L",length(lefts)),cex=cexT,font=2)
+        }
+        if(length(rights)>0){
+          text(x=s[rights,1],y=s[rights,2],rep("R",length(rights)),cex=cexT,font=2)
+        }
+        if(length(LRs)){
+          text(x=s[LRs,1],y=s[LRs,2],rep("LR",length(LRs)),cex=cexT,font=2)
+        }
+        if(B>0){
+          text(x=s[1:B,1],y=s[1:B,2],rep("B",length(data$IDknown)),cex=cexT,font=2)
+        }
+      }
+      Sys.sleep(2)
     }
-    if(length(rights)>0){
-      text(x=s[rights,1],y=s[rights,2],rep("R",length(rights)),cex=cexT,font=2)
-    }
-    if(length(LRs)){
-      text(x=s[LRs,1],y=s[LRs,2],rep("LR",length(LRs)),cex=cexT,font=2)
-    }
-    if(B>0){
-      text(x=s[1:B,1],y=s[1:B,2],rep("B",length(data$IDknown)),cex=cexT,font=2)
-    }
+
   }
 }

@@ -5,7 +5,7 @@
 \title{Plot trapping array and realized capture results of simulated data set}
 \usage{
 sim2side.plot(data, offset = 0.15, cexX = 1.5, cexB = 3, cexS = 3,
-  cex0 = 1, cexT = 1, main = "", plotACs = TRUE)
+  cex0 = 1, cexT = 1, main = "", plotACs = TRUE, plottimes = 1)
 }
 \arguments{
 \item{data}{a list produced by sim2side or in the same format}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/pID.R
 \name{pID}
 \alias{pID}
-\title{Plot trapping array and realized capture results of simulated data set}
+\title{Produce the posteriors for P(ID_L_i = ID_R_j) from the posteriors of ID_L and ID_R}
 \usage{
 pID(data, ID_Lout, ID_Rout, swapped = FALSE)
 }

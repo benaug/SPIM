@@ -17,18 +17,6 @@ cellprobsSCR<- function(lamd){
   pmat
 }
 
-#' Simulate data from camera trap SCR study
-#' @param N a vector indicating
-#' @param lam0
-#' @param b offset for trap-specific behavioral response
-#' @param sigma
-#' @param K
-#' @param X
-#' @param buff
-#' @param obstype
-#' @return a list containing
-#' @author Ben Augustine
-
 simSCRhet <-
   function(N=120,lam0=0.2,sigma=0.70,sig.lam0=0,sig.sigma=0,sig.a0=0,beta=1,K=10,X=X,buff=3,compensate="Perfect",obstype="bernoulli"){
     #######Capture process######################

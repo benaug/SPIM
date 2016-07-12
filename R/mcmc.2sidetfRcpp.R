@@ -1,30 +1,3 @@
-#' Spatial partial identity MCMC algorithm with 1-D trap operation file using Rcpp.
-#' @param data a list produced by sim2side or in the same format
-#' @param niter number of MCMC iterations to run
-#' @param  nburn number of MCMC iterations to discard as burn in
-#' @param nthin MCMC thinning parameter. Record output on every nthin iterations.  nthin=1 corresponds to no thinning
-#' @param M The size of the augmented superpopulation
-#' @param inits a list of user-supplied initial values.  inits=list(psi=psi,lam01=lam01,lam02=lam02,sigma=sigma)
-#' @param  swap number of IDs to swap on each MCMC iteration
-#' @param  swap.tol the search radius within which to search for partial ID activity centers to match with
-#' @param proppars a list of tuning parameters for the proposal distributions
-#' @return  a list with the posteriors for the SCR parameters (out), s, z, ID_L and ID_R
-#' @author Ben Augustine, Andy Royle
-#' @description This function runs the MCMC algorithm for the spatial partial identity model.  The data list should have the following elements:
-#' 1.  both, a n_both x 3 x K x J both side data array.  If n_both=0 as in an all single camera study, the first dimension is 0 and the data
-#' set should still have 4 dimensions, 0 x 3 x K x J.
-#' 2.  left, a n_left x 3 x K x J left side data array.
-#' 3.  right, a n_right x 3 x K x J left side data array.
-#' 4.  IDknown a vector listing the index of complete identity individuals.  It is assumed individuals are sorted such that the complete identity
-#' individuals are listed first.  So if there are 7 complete identity individuals, IDknown=1:7.
-#' 5. X a matrix with the X and Y trap locations in the first two columns and the number of cameras (1 or 2) at each trap in the third.
-#' 6. either buff or vertices.  buff is the fixed buffer for the traps to produce the state space.  It is applied to the minimum and maximum
-#' X and Y locations, producing a square or rectangular state space.  vertices is a matrix with the X and Y coordinates of a polygonal state
-#' space.
-#' 7.  tf, a trap operation vector of length J with the number of occasions each trap was operational.  I currently don't know the implications
-#' of ignoring capture order and using the 1-D trap file, but it doesn't seem to matter for estimating density with random trap failure and it's faster.
-#' @export
-
 mcmc.2sidetfRcpp <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,swap=10,swap.tol=1,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=FALSE){
     ###
@@ -59,6 +32,7 @@ mcmc.2sidetfRcpp <-
       buff<- data$buff
       xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)
       ylim<- c(min(X[,2]),max(X[,2]))+c(-buff, buff)
+      vertices=rbind(xlim,ylim)
       useverts=FALSE
     }else{
       stop("user must supply either 'buff' or 'vertices' in data object")

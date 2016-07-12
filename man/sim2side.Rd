@@ -4,8 +4,8 @@
 \alias{sim2side}
 \title{Simulate data from camera trap SCR study with partial identity}
 \usage{
-sim2side(N = 120, lam01 = 0.1, lam02 = 0.2, sigma = 0.5, K = 10,
-  X = X, buff = 3, obstype = "bernoulli")
+sim2side(N = 50, lam01 = 0.1, lam02 = 0.2, sigma = 0.5, K = 10,
+  X = X, buff = 3, obstype = "bernoulli", tf = NA)
 }
 \arguments{
 \item{N}{a vector indicating the number of individuals to simulate}
@@ -23,6 +23,8 @@ sim2side(N = 120, lam01 = 0.1, lam02 = 0.2, sigma = 0.5, K = 10,
 \item{buff}{the distance to buffer the trapping array in the X and Y dimensions to produce the state space}
 
 \item{obstype}{observation type, either "bernoulli" or "poisson"}
+
+\item{tf}{an optional J x K matrix of dynamic trap operation indicating when and where 0, 1, or 2 cams were deployed}
 }
 \value{
 a list containing the both, left, and right data sets, the both plus left only and both plus right

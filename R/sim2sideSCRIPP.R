@@ -1,15 +1,15 @@
-# Simulate data from camera trap SCR study with inhomogenous density in discrete space and one categorical covariate with 2 levels
-# @param N a vector indicating the number of individuals to simulate
-# @param lam0 the detection function hazard rate
-# @param sigma the spatial scale parameter
-# @param K the number of capture occasions
-# @param X the K x 2 matrix of trap locations
-# @param grid the data frame holding the state space points and covariate values. Should have columns labeled x, y, and cov with cov==1 or 2
-# @return a list containing the capture history, activity centers, trap object, and several other data objects and summaries.
-# @description This function simulates data from a camera trap SCR study with inhomogenous density for two categorical covariates.
-# Binomial observation model.  Will generalize later.
-# @author Ben Augustine
-# @export
+#' Simulate data from camera trap SCR study with inhomogenous density in discrete space and one categorical covariate with 2 levels
+#' @param N a vector indicating the number of individuals to simulate
+#' @param lam0 the detection function hazard rate
+#' @param sigma the spatial scale parameter
+#' @param K the number of capture occasions
+#' @param X the K x 2 matrix of trap locations
+#' @param grid the data frame holding the state space points and covariate values. Should have columns labeled x, y, and cov with cov==1 or 2
+#' @return a list containing the capture history, activity centers, trap object, and several other data objects and summaries.
+#' @description This function simulates data from a camera trap SCR study with inhomogenous density for two categorical covariates.
+#' Binomial observation model.  Will generalize later.
+#' @author Ben Augustine
+#' @export
 
 sim2sideSCRIPP <- function(N=120,lam01=0.1,lam02=0.2,sigma=0.50,K=10,X=X,grid,Dparms,plot=TRUE,obstype="bernoulli"){
     library(abind)

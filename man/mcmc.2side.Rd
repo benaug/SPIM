@@ -6,7 +6,8 @@
 \usage{
 mcmc.2side(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
   inits = inits, swap = 10, swap.tol = 1, proppars = list(lam01 = 0.05,
-  lam02 = 0.05, sigma = 0.1, sx = 0.2, sy = 0.2))
+  lam02 = 0.05, sigma = 0.1, sx = 0.2, sy = 0.2), keepACs = TRUE,
+  Rcpp = TRUE)
 }
 \arguments{
 \item{data}{a list produced by sim2side or in the same format}
@@ -26,6 +27,10 @@ mcmc.2side(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
 \item{swap.tol}{the search radius within which to search for partial ID activity centers to match with}
 
 \item{proppars}{a list of tuning parameters for the proposal distributions}
+
+\item{keepACs}{a logical indicating whether or not to keep the posteriors for z, s, ID_L, and ID_R}
+
+\item{Rcpp}{a logical indicating whether or not to use Rcpp}
 }
 \value{
 a list with the posteriors for the SCR parameters (out), s, z, ID_L and ID_R

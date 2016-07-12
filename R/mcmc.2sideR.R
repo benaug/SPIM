@@ -1,10 +1,8 @@
-mcmc.2sidetf <-
+mcmc.2sideR <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,swap=10,swap.tol=1,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
-    ###
     library(abind)
     both<-data$both
     left<-data$left
-    right<-data$right
     right<-data$right
     if(dim(right)[1]>dim(left)[1]){
       storeL=left[,2,,]
@@ -23,7 +21,6 @@ mcmc.2sidetf <-
     Nfixed=length(IDknown)
     nleft<-dim(left)[1]-Nfixed
     nright<-dim(right)[1]-Nfixed
-    nright<-dim(right)[1]-Nfixed
     if("vertices"%in%names(data)){
       vertices=data$vertices
       useverts=TRUE
@@ -31,19 +28,13 @@ mcmc.2sidetf <-
       buff<- data$buff
       xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)
       ylim<- c(min(X[,2]),max(X[,2]))+c(-buff, buff)
+      vertices=rbind(xlim,ylim)
       useverts=FALSE
     }else{
       stop("user must supply either 'buff' or 'vertices' in data object")
     }
-    #trap history
-    tf=t(data$tf)
-    tfnew=abind(tf,tf,along=0)
-    for(i in 3:M){
-      tfnew=abind(tfnew,tf,along=1)
-    }
-    tf=tfnew
-    #Figure out what needs to be updated
     lam02<- inits$lam02
+    #Figure out what needs to be updated
     uplam01=uplam02=upIDs=TRUE
     if(lam01==0){
       uplam01=FALSE
@@ -60,21 +51,13 @@ mcmc.2sidetf <-
     psi<- inits$psi
     lam01<- inits$lam01
     sigma<- inits$sigma
-    if(uplam02){
-      lam02<- inits$lam02
-    }else{
-      lam02=0
-      if(!is.na(inits$lam02)){
-        warning("User specified init for lam02 with no double traps. Setting to NA.")
-      }
-    }
 
     #augment both data
     both<- abind(both,array(0, dim=c( M-dim(both)[1],3,K, J)), along=1)
     left<- abind(left,array(0, dim=c( M-dim(left)[1],3, K, J)), along=1)
     right<-abind(right,array(0,dim=c( M-dim(right)[1],3,K,J)), along=1)
 
-    #sort to minimize distance between initial matches. Skip if no single sides. Need to fix if only lefts or only rights >Nfixed
+    #sort to minimize distance between initial matches. Skip if no single sides.
     if(nleft>0|nright>0){
       IDs<- LRmatch(M=M,left=left, nleft=nleft, right=right, nright=nright, X, Nfixed=Nfixed)
       #Add unused augmented indivuals back in
@@ -94,51 +77,75 @@ mcmc.2sidetf <-
 
     #Optimize starting locations given where they are trapped.
     s<- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
-    if(useverts==TRUE){
-      inside=rep(NA,nrow(s))
-      for(i in 1:nrow(s)){
-        inside[i]=inout(s[i,],vertices)
-      }
-      idx=which(inside==FALSE)
-      if(length(idx)>0){
-        for(i in 1:length(idx)){
-          while(inside[idx[i]]==FALSE){
-            s[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
-            inside[idx[i]]=inout(s[idx[i],],vertices)
-          }
-        }
-      }
-    }
     idx=which(rowSums(tmpdata)>0) #switch for those actually caught
     for(i in idx){
       trps<- X[tmpdata[i,]>0,1:2]
       trps<-matrix(trps,ncol=2,byrow=FALSE)
       s[i,]<- c(mean(trps[,1]),mean(trps[,2]))
     }
-
+    if(useverts==TRUE){
+      inside=rep(NA,nrow(s))
+      for(i in 1:nrow(s)){
+        inside[i]=Rcpp::inout(s[i,],vertices)
+      }
+      idx=which(inside==FALSE)
+      if(length(idx)>0){
+        for(i in 1:length(idx)){
+          while(inside[idx[i]]==FALSE){
+            s[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+            inside[idx[i]]=Rcpp::inout(s[idx[i],],vertices)
+          }
+        }
+      }
+    }
     known.vector<- c( rep(1,Nfixed), rep(0, M-Nfixed) )
 
     #Bernoulli Likelihood function
-    func<- function(lamd1,lamd2,y.both,y.left,y.right,tf,z){
+    func<- function(lamd1,lamd2,y.both,y.left,y.right,K,z,X){
       #convert lamd to pd (gaussian hazard model)
       pd1=1-exp(-lamd1)
       pd2=1-exp(-lamd2)
-      ones=tf==1
-      twos=tf==2
-      part_both <- dbinom(y.both*twos,tf==2,pd2*twos,log=TRUE)
-      pd1b=2*pd1-pd1*pd1
-      part_left <-  dbinom(y.left*ones,ones,pd1*ones,log=TRUE)+dbinom(y.left*twos,twos,pd1b*twos,log=TRUE)
-      part_right <-  dbinom(y.right*ones,ones,pd1*ones,log=TRUE)+dbinom(y.right*twos,twos,pd1b*twos,log=TRUE)
-      v<- part_both+part_left+part_right
       #If data is M x K or 2 x K
-      if(length(dim(y.both))==3){
-        v[z==0,,]<- 0
+      if(is.matrix(y.both)){
+        #If data is 2 x K.  For updating left and right IDs
+        if(dim(y.both)[1]==2){
+          #only part left or right change
+          #part_both <- dbinom(y.both,K,pd2,log=TRUE)
+          #part_both[,X[,3]==1]=0 #cancel out contributions from single traps
+          trapno=matrix(rep(X[,3],2),nrow=2,byrow=TRUE) #trap number multiplier for left and right captures.
+          ones=trapno==1
+          twos=trapno==2
+          part_left <-  dbinom(y.left,K,ones*pd1+twos*(2*pd1-pd1*pd1),log=TRUE)
+          part_right <-  dbinom(y.right,K,ones*pd1+twos*(2*pd1-pd1*pd1),log=TRUE)
+          v<- part_left+part_right
+          #v[z==0,]<- 0   #These guys won't happen
+          #If data is M x K
+        }else{
+          #currently both component is all NA for single traps, then switched to 0 on next line.
+          #Don't really need to calculate in this case, but works fine.
+          part_both <- dbinom(y.both,K,pd2,log=TRUE)
+          part_both[,X[,3]==1]=0 #cancel out contributions from single traps
+          trapno=matrix(rep(X[,3],M),nrow=M,byrow=TRUE) #trap number multiplier for left and right captures
+          ones=trapno==1
+          twos=trapno==2
+          part_left <-  dbinom(y.left,K,ones*pd1+twos*(2*pd1-pd1*pd1),log=TRUE)
+          part_right <-  dbinom(y.right,K,ones*pd1+twos*(2*pd1-pd1*pd1),log=TRUE)
+          v<- part_both+part_left+part_right
+          v[z==0,]<- 0
+        }
       }else{
+        #If data is 1 x K
+        part_both <- dbinom(y.both,K,pd2,log=TRUE)
+        part_both[X[,3]==1]=0 #cancel out contributions from single traps
+        ones=X[,3]==1
+        twos=X[,3]==2
+        part_left <-  dbinom(y.left,K,ones*pd1+twos*(2*pd1-pd1*pd1),log=TRUE)
+        part_right <-  dbinom(y.right,K,ones*pd1+twos*(2*pd1-pd1*pd1),log=TRUE)
+        v<- part_both+part_left+part_right
         v<- v*z
       }
       v
     }
-
     # some objects to hold the MCMC simulation output
     nstore=(niter-nburn)/nthin
     if(nburn%%nthin!=0){
@@ -148,29 +155,24 @@ mcmc.2sidetf <-
     dimnames(out)<-list(NULL,c("lam01","lam02","sigma","N"))
     sxout<- syout<- zout<- ID_Lout<- ID_Rout<-matrix(NA,nrow=nstore,ncol=M)
     idx=1 #for storing output not recorded every iteration
-    #3D data when using trap file. Need to know when double traps go to single traps
-    y.both<- apply(both[,1,,], c(1,2,3), sum)
-    y.left<- apply(left[order(ID_L),2,,], c(1,2,3), sum)
-    y.right<- apply(right[order(ID_R),3,,], c(1,2,3), sum)
+
+    y.both<- apply(both[,1,,], c(1,3), sum)
+    y.left<- apply(left[order(ID_L),2,,], c(1,3), sum)
+    y.right<- apply(right[order(ID_R),3,,], c(1,3), sum)
     D<- e2dist(s, X)
-    Dnew=abind(D,D,along=0)
-    for(k in 3:K){
-      Dnew=abind(Dnew,D,along=1)
-    }
-    D=aperm(Dnew,c(2,1,3))
     lamd1<- lam01*exp(-D*D/(2*sigma*sigma))
     lamd2<- lam02*exp(-D*D/(2*sigma*sigma))
     zero.guys<- apply(y.both+y.left + y.right ,1,sum) == 0
-    lik.curr<-  sum( func(lamd1,lamd2,y.both, y.left,y.right,tf,z) )
+    lik.curr<-  sum( func(lamd1,lamd2,y.both, y.left,y.right,K,z,X) )
 
     for(i in 1:niter){
       #Update lam01
       if(uplam01){
-        lik.curr<-  sum( func(lamd1,lamd2,y.both, y.left,y.right,tf,z) )
+        lik.curr<-  sum( func(lamd1,lamd2,y.both, y.left,y.right,K,z,X) )
         lam01.cand<- rnorm(1,lam01,proppars$lam01)
         if(lam01.cand > 0){
           lamd1.cand<- lam01.cand*exp(-D*D/(2*sigma*sigma))
-          lik.new<-  sum( func(lamd1.cand,lamd2,y.both,y.left,y.right,tf,z) )
+          lik.new<-  sum( func(lamd1.cand,lamd2,y.both,y.left,y.right,K,z,X) )
           if(runif(1) < exp(lik.new -lik.curr)){
             lam01<- lam01.cand
             lamd1=lamd1.cand
@@ -183,7 +185,7 @@ mcmc.2sidetf <-
         lam02.cand<- rnorm(1,lam02,proppars$lam02)
         if(lam02.cand > 0){
           lamd2.cand<- lam02.cand*exp(-D*D/(2*sigma*sigma))
-          lik.new<-  sum( func(lamd1,lamd2.cand,y.both,y.left,y.right,tf,z) )
+          lik.new<-  sum( func(lamd1,lamd2.cand,y.both,y.left,y.right,K,z,X) )
           if(runif(1) < exp(lik.new -lik.curr)){
             lam02<- lam02.cand
             lamd2=lamd2.cand
@@ -196,7 +198,7 @@ mcmc.2sidetf <-
       if(sigma.cand > 0){
         lamd1.cand<- lam01*exp(-D*D/(2*sigma.cand*sigma.cand))
         lamd2.cand<- lam02*exp(-D*D/(2*sigma.cand*sigma.cand))
-        lik.new<-  sum( func(lamd1.cand,lamd2.cand,y.both,y.left,y.right,tf,z) )
+        lik.new<-  sum( func(lamd1.cand,lamd2.cand,y.both,y.left,y.right,K,z,X) )
         if(runif(1) < exp(lik.new -lik.curr)){
           sigma<- sigma.cand
           lamd1=lamd1.cand
@@ -204,11 +206,10 @@ mcmc.2sidetf <-
           lik.curr<- lik.new
         }
       }
-      #
+
       ## Update latent ID variables
       ## Candidate: swap IDs of one guy with some other guy. The two guys to be swapped are
       ## chosen randomly from the z=1 guys
-
       if(any(z[!zero.guys]==0)){
         cat("some z = 0!",fill=TRUE)
         browser()
@@ -235,6 +236,7 @@ mcmc.2sidetf <-
           dv<-  sqrt( (s[s.swap.out,1]- s[INcands,1])^2 + (s[s.swap.out,2] - s[INcands,2])^2 )
           ## This is a list of both side activity centers that could be assinged to the right side guy
           ## under consideration based on how far away they are.  swap.tol is the spatial tolerance
+          # if no one around, code swaps guy 1 with guy 1 (no swap, but does calculations)
           possible<- INcands[dv < swap.tol]
           jump.probability<- 1/length(possible)  # h(theta*|theta)
           # this is a particular value of s to swap for guy1.id
@@ -258,10 +260,10 @@ mcmc.2sidetf <-
           newID[guy2]<- s.swap.out
 
           ## recompute 'data' and compute likelihood components for swapped guys only
-          y.left.tmp<- apply( left[order(newID),2,,], c(1,2,3), sum)#Only y.left changed
+          y.left.tmp<- apply( left[order(newID),2,,], c(1,3), sum)#Only y.left changed
           swapped=c(s.swap.out,s.swap.in)
-          llswappre<- sum(func(lamd1[swapped,,],lamd2[swapped,,],y.both[swapped,,],y.left[swapped,,],y.right[swapped,,],tf[swapped,,],z[swapped]))
-          llswappost<- sum( func(lamd1[swapped,,],lamd2[swapped,,],y.both[swapped,,],y.left.tmp[swapped,,],y.right[swapped,,],tf[swapped,,],z[swapped]))
+          llswappre<- sum(func(lamd1[swapped,],lamd2[swapped,],y.both[swapped,],y.left[swapped,],y.right[swapped,],K,z[swapped],X))
+          llswappost<- sum( func(lamd1[swapped,],lamd2[swapped,],y.both[swapped,],y.left.tmp[swapped,],y.right[swapped,],K,z[swapped],X))
           lldiff=llswappost-llswappre
           #MH step
           if(runif(1)<exp(lldiff)*(jump.back/jump.probability) ){
@@ -270,11 +272,11 @@ mcmc.2sidetf <-
             ID_L<-newID #update data order
             map[c(guy1,guy2),2]=c(s.swap.in,s.swap.out)
             zero.guys<- apply(y.both+y.left + y.right ,1,sum) == 0
-            if( sum(y.both[guy1,,] + y.left.tmp[guy1,,] )>0 & z[guy1]==0){
+            if( sum(y.both[guy1,] + y.left.tmp[guy1,] )>0 & z[guy1]==0){
               cat("error on guy1",fill=TRUE)
               browser()
             }
-            if( sum(y.both[guy2,,] + y.left.tmp[guy2,,] )>0 & z[guy2]==0){
+            if( sum(y.both[guy2,] + y.left.tmp[guy2,] )>0 & z[guy2]==0){
               cat("error on guy2",fill=TRUE)
               browser()
             }
@@ -326,10 +328,10 @@ mcmc.2sidetf <-
           newID[guy2]<- s.swap.out
 
           ## recompute 'data' and compute likelihood components for swapped guys only
-          y.right.tmp<- apply( right[order(newID),3,,], c(1,2,3), sum) #Only y.right changed
+          y.right.tmp<- apply( right[order(newID),3,,], c(1,3), sum) #Only y.right changed
           swapped=c(s.swap.out,s.swap.in)
-          llswappre<- sum(func(lamd1[swapped,,],lamd2[swapped,,],y.both[swapped,,],y.left[swapped,,],y.right[swapped,,],tf[swapped,,],z[swapped]))
-          llswappost<- sum( func(lamd1[swapped,,],lamd2[swapped,,],y.both[swapped,,],y.left[swapped,,],y.right.tmp[swapped,,],tf[swapped,,],z[swapped]))
+          llswappre<- sum(func(lamd1[swapped,],lamd2[swapped,],y.both[swapped,],y.left[swapped,],y.right[swapped,],K,z[swapped],X))
+          llswappost<- sum( func(lamd1[swapped,],lamd2[swapped,],y.both[swapped,],y.left[swapped,],y.right.tmp[swapped,],K,z[swapped],X))
           lldiff=llswappost-llswappre
           #MH step
           if(runif(1)<exp(lldiff)*(jump.back/jump.probability) ){
@@ -338,11 +340,11 @@ mcmc.2sidetf <-
             ID_R<-newID #update data order
             map[c(guy1,guy2),2]=c(s.swap.in,s.swap.out)
             zero.guys<- apply(y.both+y.left + y.right ,1,sum) == 0
-            if( sum(y.both[guy1,,] + y.right.tmp[guy1,,] )>0 & z[guy1]==0){
+            if( sum(y.both[guy1,] + y.right.tmp[guy1,] )>0 & z[guy1]==0){
               cat("error on guy1",fill=TRUE)
               browser()
             }
-            if( sum(y.both[guy2,,] + y.right.tmp[guy2,,] )>0 & z[guy2]==0){
+            if( sum(y.both[guy2,] + y.right.tmp[guy2,] )>0 & z[guy2]==0){
               cat("error on guy2",fill=TRUE)
               browser()
             }
@@ -362,15 +364,16 @@ mcmc.2sidetf <-
       twos=trapno==2
       pd1=1-exp(-lamd1)
       pd2=1-exp(-lamd2)
-      pd1b=(2*pd1-pd1*pd1)
-      pd1traps=pd1*(tf==1)+pd1b*(tf==2)
-      pd2traps=pd2*(tf==2)
-      pbar1=apply(1-pd1traps,1,prod)^2
-      pbar2=apply(1-pd2traps,1,prod)
-      prob0=pbar1*pbar2
+      pd1traps=ones*pd1+twos*(2*pd1-pd1*pd1)
+      pd2traps=pd2
+      pd2traps[,X[,3]==1]=0
+      pbar1=(1-pd1traps)^(2*K) #can be a left or a right
+      pbar2=(1-pd2traps)^K
+      pbar0=pbar1*pbar2
+      prob0<- exp(rowSums(log(pbar0)))
       fc<- prob0*psi/(prob0*psi + 1-psi)
       z[zero.guys & known.vector==0]<- rbinom(sum(zero.guys & (known.vector ==0) ), 1, fc[zero.guys & (known.vector==0) ])
-      lik.curr<-  sum( func(lamd1,lamd2,y.both, y.left,y.right,tf,z) )
+      lik.curr<-  sum( func(lamd1,lamd2,y.both, y.left,y.right,K,z,X) )
       psi <- rbeta(1, 1 + sum(z), 1 + M - sum(z))
 
       ## Now we have to update the activity centers
@@ -383,19 +386,18 @@ mcmc.2sidetf <-
         }
         if (inbox) {
           dtmp <- sqrt((Scand[1] - X[, 1])^2 + (Scand[2] - X[, 2])^2)
-          dtmp=matrix(rep(dtmp,K),ncol=J,nrow=K,byrow=T)
-          lamd1.thisj<- lam01*exp(-D[j,,]*D[j,,]/(2*sigma*sigma))
-          lamd2.thisj<- lam02*exp(-D[j,,]*D[j,,]/(2*sigma*sigma))
+          lamd1.thisj<- lam01*exp(-D[j,]*D[j,]/(2*sigma*sigma))
+          lamd2.thisj<- lam02*exp(-D[j,]*D[j,]/(2*sigma*sigma))
           lamd1.cand<- lam01*exp(-dtmp*dtmp/(2*sigma*sigma))
           lamd2.cand<- lam02*exp(-dtmp*dtmp/(2*sigma*sigma))
-          llS<- sum(func(lamd1.thisj,lamd2.thisj,y.both[j,,],y.left[j,,],y.right[j,,],tf[j,,],z[j]))
-          llcand<- sum(func(lamd1.cand,lamd2.cand,y.both[j,,],y.left[j,,],y.right[j,,],tf[j,,],z[j]))
+          llS<- sum(func(lamd1.thisj,lamd2.thisj,y.both[j,],y.left[j,],y.right[j,],K,z[j],X))
+          llcand<- sum(func(lamd1.cand,lamd2.cand,y.both[j,],y.left[j,],y.right[j,],K,z[j],X))
 
           if (runif(1) < exp(llcand - llS)) {
             s[j, ] <- Scand
-            D[j,, ] <- dtmp
-            lamd1[j,, ] <- lamd1.cand
-            lamd2[j,,] <- lamd2.cand
+            D[j, ] <- dtmp
+            lamd1[j, ] <- lamd1.cand
+            lamd2[j, ] <- lamd2.cand
           }
         }
       }

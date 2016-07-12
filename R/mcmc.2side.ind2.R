@@ -1,24 +1,5 @@
-#' Run MCMC algorithm for "heuristic estimator". For left and right data set (no both captures)
-#' @param data a list produced by sim2side or in the same format
-#' @param niter number of MCMC iterations to run
-#' @param  nburn number of MCMC iterations to discard as burn in
-#' @param nthin MCMC thinning parameter. Record output on every nthin iterations.  nthin=1 corresponds to no thinning
-#' @param M The size of the augmented superpopulation
-#' @param inits a list of user-supplied initial values.  inits=list(psi=psi,lam01=lam01,sigma=sigma)
-#' @param proppars a list of tuning parameters for the proposal distributions
-#' @return  a list with the posteriors for the SCR parameters (out), s, z
-#' @author Ben Augustine, Andy Royle
-#' @description This function fits the naive independence estimator when there are no both side captures.  The data list should have the following elements:
-#' 1.  left, a n_left x 3 x K x J left side data array.
-#' 2.  right, a n_right x 3 x K x J left side data array.
-#' 3. X a matrix with the X and Y trap locations in the first two columns and the number of cameras (1 or 2) at each trap in the third.
-#' 4. either buff or vertices.  buff is the fixed buffer for the traps to produce the state space.  It is applied to the minimum and maximum
-#' X and Y locations, producing a square or rectangular state space.  vertices is a matrix with the X and Y coordinates of a polygonal state
-#' space.
-#' @export
-
 mcmc.2side.ind2 <-
-  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam01=0.05,sigma=0.1,sx=0.2,sy=0.2)){
+  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam01=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
     ###
     library(abind)
     left<-data$left
@@ -256,5 +237,9 @@ mcmc.2side.ind2 <-
       }
     }  # end of MCMC algorithm
 
-    list(out=out, sLxout=sLxout, sLyout=sLyout,sRxout=sRxout, sRyout=sRyout, zLout=zLout,zRout=zRout)
+    if(keepACs==TRUE){
+      list(out=out, sLxout=sLxout, sLyout=sLyout,sRxout=sRxout, sRyout=sRyout, zLout=zLout,zRout=zRout)
+    }else{
+      list(out=out)
+    }
   }

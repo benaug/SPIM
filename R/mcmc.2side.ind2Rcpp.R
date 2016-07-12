@@ -1,20 +1,3 @@
-#' Run MCMC algorithm for "heuristic estimator". For left and right data set (no both captures) in Rcpp
-#' @param data a list produced by sim2side or in the same format
-#' @param niter
-#' @param  nburn
-#' @param nthin
-#' @param M
-#' @param inits
-#' @return  a list with output
-#' @author Ben Augustine, Andy Royle
-#' @description This function fits the naive independence estimator when there are no both side captures.  The data list should have the following elements:
-#' 1.  left, a n_left x 3 x K x J left side data array.
-#' 2.  right, a n_right x 3 x K x J left side data array.
-#' 3. X a matrix with the X and Y trap locations in the first two columns and the number of cameras (1 or 2) at each trap in the third.
-#' 4. either buff or vertices.  buff is the fixed buffer for the traps to produce the state space.  It is applied to the minimum and maximum
-#' X and Y locations, producing a square or rectangular state space.  vertices is a matrix with the X and Y coordinates of a polygonal state
-#' space.
-#' @export
 mcmc.2side.ind2Rcpp <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam01=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=FALSE){
     library(abind)

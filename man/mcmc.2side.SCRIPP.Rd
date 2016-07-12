@@ -7,7 +7,7 @@
 mcmc.2side.SCRIPP(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
   cellArea = cellArea, inits = inits, swap = 10, swap.tol = 1,
   proppars = list(lam01 = 0.05, lam02 = 0.05, sigma = 0.1, sx = 0.2, sy =
-  0.2))
+  0.2), keepACs = TRUE, Rcpp = TRUE)
 }
 \arguments{
 \item{data}{a list produced by sim2side or in the same format}
