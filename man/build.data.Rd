@@ -40,6 +40,12 @@ trap=c(1,2,3,3,2,1)
 type=c("B","L","B","R","R","L")
 input=data.frame(ID=ID,trap=trap,occ=occ,type=type)
 data=build.data(input,X=X,K=5,IDknown=1:2,buff=2,model="2side")
+
+#Less trivial example from single camera trap study
+data(singlecamInput)
+singlecamInput$input
+data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,IDknown=NA,buff=singlecamInput$buff,model="2side")
+str(data)
 }
 }
 \author{

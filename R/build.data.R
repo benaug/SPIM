@@ -22,6 +22,12 @@
 #' type=c("B","L","B","R","R","L")
 #' input=data.frame(ID=ID,trap=trap,occ=occ,type=type)
 #' data=build.data(input,X=X,K=5,IDknown=1:2,buff=2,model="2side")
+#'
+#' #Less trivial example from single camera trap study
+#' data(singlecamInput)
+#' singlecamInput$input
+#' data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,IDknown=NA,buff=singlecamInput$buff,model="2side")
+#' str(data)
 #'}
 
 build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
@@ -63,9 +69,10 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
       }
     }
     #Make data sets
-    both=array(0,dim=c(nB,3,K,J))
-    left=array(0,dim=c(nL,3,K,J))
-    right=array(0,dim=c(nR,3,K,J))
+    maxID=max(c(B[,1]),L[,1],R[,1])
+    both=array(0,dim=c(maxID,3,K,J))
+    left=array(0,dim=c(maxID,3,K,J))
+    right=array(0,dim=c(maxID,3,K,J))
     if(nB>0){
       for(i in 1:nB){
         both[B[i,1],1,B[i,3],B[i,2]]=1
