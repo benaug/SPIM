@@ -9,7 +9,6 @@ cellprobsSCR<- function(lamd){
   # For gaussian hazard model convert lamda(s,x) to p(s,x)
   N<- dim(lamd)[1]
   J<- dim(lamd)[2] # traps
-  # just 2 outcomes: left captures and right captures
   pmat<- matrix(NA,nrow=N,ncol=J)
   for(j in 1:J){
     pmat[,j]<- 1-exp(-lamd[,j])

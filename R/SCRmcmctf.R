@@ -28,8 +28,23 @@ if("vertices"%in%names(data)){
 }else{
   stop("user must supply either 'buff' or 'vertices' in data object")
 }
-#augment data
-y<- abind(y,array(0, dim=c( M-dim(y)[1],K, J)), along=1)
+#Augment data and make initial complete data set
+if(length(dim(y))==3){
+  idx=which(rowSums(y)==0)
+  if(length(idx)>0){
+    y=y[-idx,,]
+  }
+  y<- abind(y,array(0, dim=c( M-dim(y)[1],K, J)), along=1)
+  y2D=apply(y,c(1,3),sum)
+}else if(length(dim(y)==2)){
+  if(length(idx)>0){
+    idx=which(rowSums(y)==0)
+    y=y[-idx,]
+  }
+  y2D=y<- abind(y,array(0, dim=c( M-dim(y)[1],K)), along=1)
+}else{
+  stop("y must be either 2D or 3D")
+}
 known.vector=c(rep(1,data$n),rep(0,M-data$n))
 
 #trap history

@@ -137,7 +137,7 @@ mcmc.2sidetfRcpp <-
     zero.guys<- apply(y.both+y.left + y.right ,1,sum) == 0
 
     #Run MCMC
-    store=SCRRcpp::MCMCtf( lam01, lam02,  sigma,y.both,  y.left,  y.right,  z,  X, tf,K,D, Nfixed,known.vector,
+    store=SPIM::MCMCtf( lam01, lam02,  sigma,y.both,  y.left,  y.right,  z,  X, tf,K,D, Nfixed,known.vector,
                            ID_L,  ID_R, swap, swap.tol,aperm(left[,2,,],c(2,3,1)),aperm(right[,3,,],c(2,3,1)),
                            s,psi,xlim,ylim,useverts,vertices,proppars$lam01,proppars$lam02,proppars$sigma,proppars$sx,
                            proppars$sy,niter,nburn,nthin,updates)

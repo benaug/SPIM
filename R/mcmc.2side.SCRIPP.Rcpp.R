@@ -116,7 +116,7 @@ mcmc.2side.SCRIPP.Rcpp <-
     D<- e2dist(s[,2:3], X)
 
 
-    store=SCRRcpp::MCMC2( lam01, lam02,  sigma,beta0,beta1,y.both,  y.left,  y.right,  z,  X, K,D, Nfixed,known.vector,
+    store=SPIM::MCMC2( lam01, lam02,  sigma,beta0,beta1,y.both,  y.left,  y.right,  z,  X, K,D, Nfixed,known.vector,
                           ID_L,  ID_R, swap, swap.tol,aperm(left[,2,,],c(2,3,1)),aperm(right[,3,,],c(2,3,1)),
                           as.matrix(s[,2:3]),s[,1],psi,grid,cellArea,EN,proppars$lam01,proppars$lam02,proppars$sigma,proppars$beta0,
                           proppars$beta1,proppars$sx,proppars$sy,niter,nburn,nthin,updates)

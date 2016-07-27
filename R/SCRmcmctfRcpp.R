@@ -25,8 +25,23 @@ if("vertices"%in%names(data)){
   ylim<- c(min(X[,2]),max(X[,2]))+c(-buff, buff)
   vertices=rbind(xlim,ylim)
 }
-#augment data
-y<- abind(y,array(0, dim=c( M-dim(y)[1],K, J)), along=1)
+#Augment data and make initial complete data set
+if(length(dim(y))==3){
+  idx=which(rowSums(y)==0)
+  if(length(idx)>0){
+    y=y[-idx,,]
+  }
+  y<- abind(y,array(0, dim=c( M-dim(y)[1],K, J)), along=1)
+  y2D=apply(y,c(1,3),sum)
+}else if(length(dim(y)==2)){
+  if(length(idx)>0){
+    idx=which(rowSums(y)==0)
+    y=y[-idx,]
+  }
+  y2D=y<- abind(y,array(0, dim=c( M-dim(y)[1],K)), along=1)
+}else{
+  stop("y must be either 2D or 3D")
+}
 known.vector=c(rep(1,data$n),rep(0,M-data$n))
 
 #Make initial complete data set
@@ -89,7 +104,7 @@ D<- e2dist(s, X)
 lamd<- lam0*exp(-D*D/(2*sigma*sigma))
 
 #Run MCMC
-store=SCRRcpp::MCMC1tf( lam0,  sigma,y2D, z,  X, Ktf,D,known.vector,s,psi,xlim,ylim,useverts,vertices,proppars$lam0,proppars$sigma,proppars$sx,
+store=SPIM::MCMC1tf( lam0,  sigma,y2D, z,  X, Ktf,D,known.vector,s,psi,xlim,ylim,useverts,vertices,proppars$lam0,proppars$sigma,proppars$sx,
                         proppars$sy,niter,nburn,nthin)
 if(keepACs){
   list(out=store[[1]], sxout=store[[2]], syout=store[[3]], zout=store[[4]])
