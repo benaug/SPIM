@@ -19,18 +19,18 @@
 #' @export
 
 mcmc.SCR <-
-function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE,Rcpp=TRUE){
+function(data,niter=2400,nburn=1200, nthin=5, K=NA,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE,Rcpp=TRUE){
   if(Rcpp==TRUE){ #Do we use Rcpp?
     if("tf"%in%names(data)){ #Do we have a trap operation file?
-      out2=SCRmcmctfRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
+      out2=SCRmcmctfRcpp(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
     }else{#No trap file
-      out2=SCRmcmcRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
+      out2=SCRmcmcRcpp(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
     }
   }else{#Don't use Rcpp
     if("tf"%in%names(data)){ #Do we have a trap operation file?
-      out2=SCRmcmctf(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
+      out2=SCRmcmctf(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
     }else{#No trap file
-      out2=SCRmcmc(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
+      out2=SCRmcmc(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
     }
   }
   if(keepACs==TRUE){

@@ -1,13 +1,11 @@
 SCRmcmctfRcpp <-
-function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
+function(data,niter=2400,nburn=1200, nthin=5, M = 200,K=NA, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
 ###
 library(abind)
 y<-data$y
 X<-as.matrix(data$X)
 J<-nrow(X)
-K<- dim(y)[2]
 n<- data$n
-
 
 ##pull out initial values
 psi<- inits$psi
@@ -31,14 +29,18 @@ if(length(dim(y))==3){
   if(length(idx)>0){
     y=y[-idx,,]
   }
+  K<- dim(y)[2]
   y<- abind(y,array(0, dim=c( M-dim(y)[1],K, J)), along=1)
   y2D=apply(y,c(1,3),sum)
 }else if(length(dim(y)==2)){
+  if(is.na(K)){
+    stop("if y is 2D, must supply K")
+  }
   if(length(idx)>0){
     idx=which(rowSums(y)==0)
     y=y[-idx,]
   }
-  y2D=y<- abind(y,array(0, dim=c( M-dim(y)[1],K)), along=1)
+  y2D=y<- abind(y,array(0, dim=c( M-dim(y)[1],J)), along=1)
 }else{
   stop("y must be either 2D or 3D")
 }
