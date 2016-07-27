@@ -39,6 +39,7 @@ if(length(dim(y))==3){
   if(is.na(K)){
     stop("if y is 2D, must supply K")
   }
+  idx=which(rowSums(y)==0)
   if(length(idx)>0){
     idx=which(rowSums(y)==0)
     y=y[-idx,]

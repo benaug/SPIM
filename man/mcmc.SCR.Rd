@@ -4,7 +4,7 @@
 \alias{mcmc.SCR}
 \title{Run MCMC algorithm for basic SCR model.}
 \usage{
-mcmc.SCR(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
+mcmc.SCR(data, niter = 2400, nburn = 1200, nthin = 5, K = NA, M = 200,
   inits = inits, proppars = list(lam0 = 0.05, sigma = 0.1, sx = 0.2, sy =
   0.2), keepACs = TRUE, Rcpp = TRUE)
 }
