@@ -52,8 +52,7 @@ simSCR <-
           }
         }
       }else{
-        if((-lam0b)>lam0){stop("-b must be > lam0")}
-        lamdb=(lam0+lam0b)*exp(-D*D/(2*sigma*sigma))
+        lamdb=lam0b*exp(-D*D/(2*sigma*sigma))
         pdb=cellprobsSCR(lamdb)
         state=matrix(0,nrow=N,ncol=J) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
         for(i in 1:N){
@@ -75,8 +74,7 @@ simSCR <-
           }
         }
       }else{
-        if((-lam0b)>lam0){stop("-b must be > lam0")}
-        lamdb=(lam0+lam0b)*exp(-D*D/(2*sigma*sigma))
+        lamdb=lam0b*exp(-D*D/(2*sigma*sigma))
         state=matrix(0,nrow=N,ncol=J) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
         for(i in 1:N){
           for(j in 1:J){

@@ -33,7 +33,7 @@ cellprobsSCR<- function(lamd){
 #' @export
 
 simSCR2DNA <-
-  function(N=120,lam01=0.2,lam01b=0,lam02=0.2,sigma=0.50,K1=10,K2=10,X1=X1,X2=X2,buff=3){
+  function(N=120,lam01=0.2,lam01b=0,lam02=0.2,sigma=0.50,K1=10,K2=10,X1=X1,X2=X2,buff=2){
     #######Capture process######################
     # # simulate a population of activity centers
     s<- cbind(runif(N, min(c(X1[,1],X2[,1]))-buff,max(c(X1[,1],X2[,1]))+buff), runif(N,min(c(X1[,2]),X2[,2])-buff,max(c(X1[,2]),X2[,2])+buff))
@@ -55,8 +55,7 @@ simSCR2DNA <-
         }
       }
     }else{
-      if((-lam01b)>lam01){stop("-b must be > lam0")}
-      lamd1b=(lam01+lam01b)*exp(-D1*D1/(2*sigma*sigma))
+      lamd1b=lam01b*exp(-D1*D1/(2*sigma*sigma))
       pd1b=cellprobsSCR(lamd1b)
       state=matrix(0,nrow=N,ncol=J1) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
       for(i in 1:N){

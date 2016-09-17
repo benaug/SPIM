@@ -48,7 +48,6 @@ if(length(dim(y))==3){
 known.vector=c(rep(1,data$n),rep(0,M-data$n))
 
 #Make initial complete data set
-y2D=apply(y,c(1,3),sum)
 z=1*(apply(y2D,1,sum)>0)
 z[sample(which(z==0),sum(z==0)/2)]=1 #switch some uncaptured z's to 1.  half is arbitrary. smarter way?
 
