@@ -1,10 +1,21 @@
 SCR2DNAMbmcmc <-
-function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,proppars=list(lam01=0.05,lam01b=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
+function(data,niter=2400,nburn=1200, nthin=5, M = 200, sharesig=FALSE,inits=inits,proppars=list(lam01=0.05,lam01b=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
 ###
-library(abind)
-y1<-data$y1
-y2<-data$y2
-X1<-as.matrix(data$X1)
+  if(sharesig==FALSE){
+    if(length(proppars$sigma)!=2|length(inits$sigma)!=2){
+      stop("must supply 2 starting values and proppars if sharesig=FALSE")
+    }
+  }else{
+    if(length(proppars$sigma)!=1|length(inits$sigma)!=1){
+      stop("must supply only 1 starting value and proppars if sharesig=TRUE")
+    }
+    inits$sigma=rep(inits$sigma,2)
+  }
+
+  library(abind)
+  y1<-data$y1
+  y2<-data$y2
+  X1<-as.matrix(data$X1)
 X2<-as.matrix(data$X2)
 J1<-nrow(X1)
 J2<-nrow(X2)
@@ -133,27 +144,32 @@ nstore=(niter-nburn)/nthin
 if(nburn%%nthin!=0){
   nstore=nstore+1
 }
-out<-matrix(NA,nrow=nstore,ncol=5)
-dimnames(out)<-list(NULL,c("lam01","lam01b","lam02","sigma","N"))
+if(sharesig==TRUE){
+  out<-matrix(NA,nrow=nstore,ncol=5)
+  dimnames(out)<-list(NULL,c("lam01","lam01b","lam02","sigma","N"))
+}else{
+  out<-matrix(NA,nrow=nstore,ncol=6)
+  dimnames(out)<-list(NULL,c("lam01","lam01b","lam02","sigma1","sigma2","N"))
+}
 sxout<- syout<- zout<-matrix(NA,nrow=nstore,ncol=M)
 idx=1 #for storing output not recorded every iteration
 
 D1<- e2dist(s, X1)
 D2<- e2dist(s, X2)
-lamd1<- lam01*exp(-D1*D1/(2*sigma*sigma))
+lamd1<- lam01*exp(-D1*D1/(2*sigma[1]*sigma[1]))
 lamd1=do.call(abind, c(list(replicate(K1,lamd1))))
 lamd1=aperm(lamd1,c(1,3,2))
-lamd1b<- lam01b*exp(-D1*D1/(2*sigma*sigma))
+lamd1b<- lam01b*exp(-D1*D1/(2*sigma[1]*sigma[1]))
 lamd1b=do.call(abind, c(list(replicate(K1,lamd1b))))
 lamd1b=aperm(lamd1b,c(1,3,2))
-lamd2<- lam02*exp(-D2*D2/(2*sigma*sigma))
+lamd2<- lam02*exp(-D2*D2/(2*sigma[2]*sigma[2]))
 
 for(i in 1:niter){
   #Update lam01
   lik.curr<-  sum( func(lamd1,lamd1b,lamd2,y1,y22D,state,K2,z) )
   lam01.cand<- rnorm(1,lam01,proppars$lam01)
   if(lam01.cand > 0){
-    lamd1.cand<- lam01.cand*exp(-D1*D1/(2*sigma*sigma))
+    lamd1.cand<- lam01.cand*exp(-D1*D1/(2*sigma[1]*sigma[1]))
     lamd1.cand=do.call(abind, c(list(replicate(K1,lamd1.cand))))
     lamd1.cand=aperm(lamd1.cand,c(1,3,2))
     lik.new<-  sum( func(lamd1.cand,lamd1b,lamd2,y1,y22D,state,K2,z) )
@@ -166,7 +182,7 @@ for(i in 1:niter){
   #Update lam01b
   lam01b.cand<- rnorm(1,lam01b,proppars$lam01b)
   if(lam01b.cand > 0){
-    lamd1b.cand<- lam01b.cand*exp(-D1*D1/(2*sigma*sigma))
+    lamd1b.cand<- lam01b.cand*exp(-D1*D1/(2*sigma[1]*sigma[1]))
     lamd1b.cand=do.call(abind, c(list(replicate(K1,lamd1b.cand))))
     lamd1b.cand=aperm(lamd1b.cand,c(1,3,2))
     lik.new<-  sum( func(lamd1,lamd1b.cand,lamd2,y1,y22D,state,K2,z) )
@@ -179,7 +195,7 @@ for(i in 1:niter){
   #Update lam02
   lam02.cand<- rnorm(1,lam02,proppars$lam02)
   if(lam02.cand > 0){
-    lamd2.cand<- lam02.cand*exp(-D2*D2/(2*sigma*sigma))
+    lamd2.cand<- lam02.cand*exp(-D2*D2/(2*sigma[2]*sigma[2]))
     lik.new<-  sum( func(lamd1,lamd1b,lamd2.cand,y1,y22D,state,K2,z) )
     if(runif(1) < exp(lik.new -lik.curr)){
       lam02<- lam02.cand
@@ -188,22 +204,53 @@ for(i in 1:niter){
     }
   }
   #Update sigma
-  sigma.cand<- rnorm(1,sigma,proppars$sigma)
-  if(sigma.cand > 0){
-    lamd1.cand<- lam01*exp(-D1*D1/(2*sigma.cand*sigma.cand))
-    lamd1.cand=do.call(abind, c(list(replicate(K1,lamd1.cand))))
-    lamd1.cand=aperm(lamd1.cand,c(1,3,2))
-    lamd1b.cand<- lam01b*exp(-D1*D1/(2*sigma.cand*sigma.cand))
-    lamd1b.cand=do.call(abind, c(list(replicate(K1,lamd1b.cand))))
-    lamd1b.cand=aperm(lamd1b.cand,c(1,3,2))
-    lamd2.cand<- lam02*exp(-D2*D2/(2*sigma.cand*sigma.cand))
-    lik.new<-   sum( func(lamd1.cand,lamd1b.cand,lamd2.cand,y1,y22D,state,K2,z) )
-    if(runif(1) < exp(lik.new -lik.curr)){
-      sigma<- sigma.cand
-      lamd1=lamd1.cand
-      lamd1b=lamd1b.cand
-      lamd2=lamd2.cand
-      lik.curr<- lik.new
+  if(sharesig==TRUE){
+    sigma.cand<- rnorm(1,sigma,proppars$sigma)
+    if(sigma.cand > 0){
+      lamd1.cand<- lam01*exp(-D1*D1/(2*sigma.cand*sigma.cand))
+      lamd1.cand=do.call(abind, c(list(replicate(K1,lamd1.cand))))
+      lamd1.cand=aperm(lamd1.cand,c(1,3,2))
+      lamd1b.cand<- lam01b*exp(-D1*D1/(2*sigma.cand*sigma.cand))
+      lamd1b.cand=do.call(abind, c(list(replicate(K1,lamd1b.cand))))
+      lamd1b.cand=aperm(lamd1b.cand,c(1,3,2))
+      lamd2.cand<- lam02*exp(-D2*D2/(2*sigma.cand*sigma.cand))
+      lik.new<-   sum( func(lamd1.cand,lamd1b.cand,lamd2.cand,y1,y22D,state,K2,z) )
+      if(runif(1) < exp(lik.new -lik.curr)){
+        sigma<- rep(sigma.cand,2)
+        lamd1=lamd1.cand
+        lamd1b=lamd1b.cand
+        lamd2=lamd2.cand
+        lik.curr<- lik.new
+      }
+    }
+  }else{
+    #update sigma 1
+    sigma.cand<- rnorm(1,sigma[1],proppars$sigma[1])
+    if(sigma.cand > 0){
+      lamd1.cand<- lam01*exp(-D1*D1/(2*sigma.cand*sigma.cand))
+      lamd1.cand=do.call(abind, c(list(replicate(K1,lamd1.cand))))
+      lamd1.cand=aperm(lamd1.cand,c(1,3,2))
+      lamd1b.cand<- lam01b*exp(-D1*D1/(2*sigma.cand*sigma.cand))
+      lamd1b.cand=do.call(abind, c(list(replicate(K1,lamd1b.cand))))
+      lamd1b.cand=aperm(lamd1b.cand,c(1,3,2))
+      lik.new<-   sum( func(lamd1.cand,lamd1b.cand,lamd2,y1,y22D,state,K2,z) )
+      if(runif(1) < exp(lik.new -lik.curr)){
+        sigma[1]<- sigma.cand
+        lamd1=lamd1.cand
+        lamd1b=lamd1b.cand
+        lik.curr<- lik.new
+      }
+    }
+    #update sigma 2
+    sigma.cand<- rnorm(1,sigma[2],proppars$sigma[2])
+    if(sigma.cand > 0){
+      lamd2.cand<- lam02*exp(-D2*D2/(2*sigma.cand*sigma.cand))
+      lik.new<-   sum( func(lamd1,lamd1b,lamd2.cand,y1,y22D,state,K2,z) )
+      if(runif(1) < exp(lik.new -lik.curr)){
+        sigma[2]<- sigma.cand
+        lamd2=lamd2.cand
+        lik.curr<- lik.new
+      }
     }
   }
   #Update psi gibbs
@@ -229,14 +276,14 @@ for(i in 1:niter){
     if (inbox) {
       d1tmp <- sqrt((Scand[1] - X1[, 1])^2 + (Scand[2] - X1[, 2])^2)
       lamd1.thisj<- lamd1[j,,]
-      lamd1.cand<- lam01*exp(-d1tmp*d1tmp/(2*sigma*sigma))
+      lamd1.cand<- lam01*exp(-d1tmp*d1tmp/(2*sigma[1]*sigma[1]))
       lamd1.cand=t(do.call(rbind, c(list(replicate(K1,lamd1.cand)))))
       lamd1b.thisj<- lamd1b[j,,]
-      lamd1b.cand<- lam01b*exp(-d1tmp*d1tmp/(2*sigma*sigma))
+      lamd1b.cand<- lam01b*exp(-d1tmp*d1tmp/(2*sigma[1]*sigma[1]))
       lamd1b.cand=t(do.call(rbind, c(list(replicate(K1,lamd1b.cand)))))
       d2tmp <- sqrt((Scand[1] - X2[, 1])^2 + (Scand[2] - X2[, 2])^2)
-      lamd2.thisj<- lam02*exp(-D2[j,]*D2[j,]/(2*sigma*sigma))
-      lamd2.cand<- lam02*exp(-d2tmp*d2tmp/(2*sigma*sigma))
+      lamd2.thisj<- lam02*exp(-D2[j,]*D2[j,]/(2*sigma[2]*sigma[2]))
+      lamd2.cand<- lam02*exp(-d2tmp*d2tmp/(2*sigma[2]*sigma[2]))
       llS<- sum(func(lamd1.thisj,lamd1b.thisj,lamd2.thisj,y1[j,,],y22D[j,],state[j,,],K2,z[j]))
       llcand<- sum(func(lamd1.cand,lamd1b.cand,lamd2.cand,y1[j,,],y22D[j,],state[j,,],K2,z[j]))
       if (runif(1) < exp(llcand - llS)) {
@@ -254,7 +301,11 @@ for(i in 1:niter){
     sxout[idx,]<- s[,1]
     syout[idx,]<- s[,2]
     zout[idx,]<- z
-    out[idx,]<- c(lam01,lam01b,lam02,sigma ,sum(z))
+    if(sharesig==TRUE){
+      out[idx,]<- c(lam01,lam01b,lam02,sigma[1],sum(z))
+    }else{
+      out[idx,]<- c(lam01,lam01b,lam02,sigma,sum(z))
+    }
     idx=idx+1
   }
 }  # end of MCMC algorithm
