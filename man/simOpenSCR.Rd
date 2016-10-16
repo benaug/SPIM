@@ -4,9 +4,9 @@
 \alias{simOpenSCR}
 \title{Simulate data from a Open population SCR study.  Update help file later.  Add polygon SS later.}
 \usage{
-simOpenSCR(N = c(40, 60, 80), gamma = NULL, lam0 = rep(0.2, 3),
-  sigma = rep(0.5, 3), K = rep(10, 3), X = X, t = 3, M = M,
-  sigma_t = NULL, buff = 3, obstype = "bernoulli")
+simOpenSCR(N = c(40, 60, 80), gamma = NULL, phi = rep(0.8, 2),
+  lam0 = rep(0.2, 3), sigma = rep(0.5, 3), K = rep(10, 3), X = X,
+  t = 3, M = M, sigma_t = NULL, buff = 3, obstype = "bernoulli")
 }
 \arguments{
 \item{N}{a vector indicating the number of individuals to simulate}
