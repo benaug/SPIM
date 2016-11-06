@@ -1,46 +1,33 @@
-e2dist<-function (x, y)
-{
-  i <- sort(rep(1:nrow(y), nrow(x)))
-  dvec <- sqrt((x[, 1] - y[i, 1])^2 + (x[, 2] - y[i, 2])^2)
-  matrix(dvec, nrow = nrow(x), ncol = nrow(y), byrow = F)
-}
-
-cellprobsSCR<- function(lamd){
-  # For gaussian hazard model convert lamda(s,x) to p(s,x)
-  N<- dim(lamd)[1]
-  J<- dim(lamd)[2] # traps
-  pmat<- matrix(NA,nrow=N,ncol=J)
-  for(j in 1:J){
-    pmat[,j]<- 1-exp(-lamd[,j])
-  }
-  pmat
-}
-
-
 #' Simulate data from a SCR study with DNA collected from scat and hair snares (update help later)
 #' @param N a vector indicating the number of individuals to simulate
-#' @param lam0 the detection function hazard rate
-#' @param sigma the spatial scale parameter
-#' @param K the number of capture occasions
-#' @param X the K x 2 matrix of trap locations
+#' @param lam01 the hair snare detection function hazard rate
+#' @param lam0b the hair snare detection function hazard rate after capture at a trap
+#' @param lam02 the scat detection function hazard rate
+#' @param sigma a vector of spatial scale parameters for the hair snare and scat detection functions (in that order)
+#' @param K1 the number of hair snare capture occasions
+#' @param K2 the number of scat capture occasions
+#' @param X1 the K1 x 2 matrix of hair snare locations
+#' @param X2 the K2 x 2 matrix of scat collection locations (descretized transects)
 #' @param buff the distance to buffer the trapping array in the X and Y dimensions to produce the state space
-#' @param obstype observation type, either "bernoulli" or "poisson"
-#' @return a list containing the capture history, activity centers, trap object, and several other data objects and summaries.
-#' @description This function simulates data from a camera trap SCR study. The extent of the state space is controlled by "buff", which buffers the
+#' @return a list containing the capture histories (y1 for hair snares, y2 for scat collection), activity centers, trap objects, and several other data objects and summaries.
+#' @description This function simulates data from a joint hair snare and scat collection SCR study. The extent of the state space is controlled by "buff", which buffers the
 #' minimum and maximum X and Y extents.  Therefore, it probably only makes sense for square or rectangular grids.  Functionality
 #' for user-provided polygonal state spaces will be added in the future.
 #' @author Ben Augustine
 #' @export
 
 simSCR2DNA <-
-  function(N=120,lam01=0.2,lam01b=0,lam02=0.2,sigma=0.50,K1=10,K2=10,X1=X1,X2=X2,buff=2){
+  function(N=120,lam01=0.2,lam01b=0,lam02=0.2,sigma=c(0.5,0.5),K1=10,K2=10,X1=X1,X2=X2,buff=2){
+    if(length(sigma)!=2){
+      stop("sigma vector must be of length 2")
+    }
     #######Capture process######################
     # # simulate a population of activity centers
     s<- cbind(runif(N, min(c(X1[,1],X2[,1]))-buff,max(c(X1[,1],X2[,1]))+buff), runif(N,min(c(X1[,2]),X2[,2])-buff,max(c(X1[,2]),X2[,2])+buff))
     D1<- e2dist(s,X1)
     D2<- e2dist(s,X2)
-    lamd1<- lam01*exp(-D1*D1/(2*sigma*sigma))
-    lamd2<- lam02*exp(-D2*D2/(2*sigma*sigma))
+    lamd1<- lam01*exp(-D1*D1/(2*sigma[1]*sigma[1]))
+    lamd2<- lam02*exp(-D2*D2/(2*sigma[2]*sigma[2]))
     J1<- nrow(X1)
     J2<- nrow(X2)
     # Simulate hair encounter history
@@ -55,7 +42,7 @@ simSCR2DNA <-
         }
       }
     }else{
-      lamd1b=lam01b*exp(-D1*D1/(2*sigma*sigma))
+      lamd1b=lam01b*exp(-D1*D1/(2*sigma[1]*sigma[1]))
       pd1b=cellprobsSCR(lamd1b)
       state=matrix(0,nrow=N,ncol=J1) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
       for(i in 1:N){

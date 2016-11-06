@@ -29,6 +29,12 @@ simOpenSCR <-
     if(length(N)==t&!is.null(gamma)){
       stop("Do not provide gamma if length(N)=t")
     }
+    if(length(K)!=t){
+      stop("Must supply a K for each year")
+    }
+    if(length(X)!=t){
+      stop("Must supply a X (trap locations) for each year")
+    }
     storeparms=list(N=N,gamma=gamma,lam0=lam0,sigma=sigma,phi=phi)
 
     J=unlist(lapply(X,nrow))
