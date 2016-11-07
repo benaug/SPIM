@@ -386,591 +386,6 @@ List updateDfun3D(NumericVector lam0, NumericVector sigma, arma::cube lamd, arma
 }
 
 
-//Update psi,z, gamma and phi
-//[[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadillo.h>
-using namespace Rcpp;
-using namespace arma;
-#include <RcppArmadilloExtensions/sample.h>
-// [[Rcpp::export]]
-List upZ(IntegerMatrix z, IntegerMatrix a,IntegerMatrix knownmatrix,IntegerVector Xidx,
-         arma::cube y, arma::cube pd, IntegerVector K,NumericMatrix Ez,
-         NumericVector gamma,NumericVector gammaprime, NumericVector phi, double psi,IntegerVector N,int maxJ,
-         NumericVector propz, double propgamma) {
-  RNGScope scope;
-  //Preallocate
-  int M = z.nrow();
-  int t = z.ncol();
-  NumericVector z1curr(M);
-  NumericVector z1cand(M);
-  NumericVector z1tmp(M);
-  NumericVector a1tmp(M);
-  NumericVector gammaprimecand(t);
-  arma::cube ll_y_curr(M,maxJ,t);
-  NumericMatrix ll_z(M,t);
-  NumericVector rand;
-  NumericMatrix Ezcand(M,t);
-  NumericMatrix ll_z_cand(M,t);
-  arma::cube ll_y_cand(M,maxJ,t);
-  double llysum=0;
-  double llycandsum=0;
-  double llzsum=0;
-  double llzcandsum=0;
-  int sumz;
-  int sumz1tmp=0;
-  int suma1tmp=0;
-  int suma=0;
-  LogicalVector warn(M,FALSE);
-  //Preallocate z[,2+]
-  NumericVector pr_zt(M);
-  IntegerVector at_cand(M);
-  NumericVector zt_cand(M);
-  double prop_probs;
-  double back_probs;
-  int navail=0;
-  int idx=0;
-  //Preallocate phi and gamma
-  int survive=0;
-  int dead=0;
-  bool gamma_cand_ok=TRUE;
-  double gamma_cand=0;
-  NumericVector gamma_prime_cand(t-1);
-  //Fixed or year-specific stuff
-  NumericVector gammacand(t);
-  NumericVector phicand(t);
-  NumericVector gammause(t);
-  NumericVector phiuse(t);
-  for(int i=0; i<t; i++) {
-    if(gamma.size()==1){
-      gammause(i)=gamma(0);
-    }else{
-      gammause(i)=gamma(i);
-    }
-  }
-  for(int i=0; i<t; i++) {
-    if(phi.size()==1){
-      phiuse(i)=phi(0);
-    }else{
-      phiuse(i)=phi(i);
-    }
-  }
-  ////////////////////Z1 stuff////////////////////
-  //Figure out who can be updated
-  LogicalVector upz(M);
-  IntegerVector latecaps(M,0);
-  if(t==2){
-    for(int i=0; i<M; i++){
-      upz(i)=(knownmatrix(i,0)==0);
-    }
-  }else{
-    for(int i=0; i<M; i++){
-      for(int j=2; j<t; j++){
-        latecaps(i)+=z(i,j);
-      }
-      upz(i)=(!((z(i,0)==0)&(z(i,1)==0)&(latecaps(i)>0)))&(knownmatrix(i,0)==0);
-    }
-  }
-  IntegerVector allon(t);
-  IntegerVector alloff(t);
-  for(int i=0; i<t; i++){
-    allon(i)=1;
-    alloff(i)=0;
-  }
-  //Calculate ll.z. Can move outside MCMC later.
-  //z1
-  for(int i=0; i<M; i++){
-    ll_z(i,0)= z(i,0)*log(psi)+(1-z(i,0))*log(1-psi);
-  }
-  //z2+
-  for(int l=1; l<t; l++){
-    for(int i=0; i<M; i++){
-      ll_z(i,l)= z(i,l)*log(Ez(i,l-1))+(1-z(i,l))*log(1-Ez(i,l-1));
-      if(ll_z(i,l)!=ll_z(i,l)){//Turn NaNs to 0s
-        ll_z(i,l)=0;
-      }
-    }
-  }
-  //same for ll.y
-  for(int i=0; i<M; i++){
-    for(int j=0; j<Xidx(0); j++){
-      for(int l=0; l<t; l++){
-        ll_y_curr(i,j,l) =z(i,l)*(y(i,j,l)*log(pd(i,j,l))+(K(l)-y(i,j,l))*log(1-pd(i,j,l)));
-        ll_y_cand(i,j,l) =ll_y_curr(i,j,l);
-      }
-    }
-  }
-
-  //update z[,1]
-  N(0)=0;
-  for(int i=0; i<M; i++){
-    if(upz(i)){
-      z1curr = z(_,0);
-      z1cand = 1-z1curr;
-      gammaprimecand = gammaprime;
-      z1tmp = z1curr;
-      z1tmp(i) = z1cand(i);
-      a1tmp = a(_,0);
-      a1tmp(i) = 1-z1cand(i);
-      sumz1tmp=0;
-      suma1tmp=0;
-      for(int i2=0; i2<M; i2++){
-        sumz1tmp+=z1tmp(i2);
-        suma1tmp+=a1tmp(i2);
-      }
-      gammaprimecand(0)=sumz1tmp*gammause(0)/suma1tmp;
-      if(gammaprimecand(1) > 1) { // E(Recruits) must be < nAvailable
-        warn(i)=TRUE;
-      }
-      if(warn(i)==FALSE){
-        Ezcand=clone(Ez);
-        ll_z_cand=clone(ll_z);
-        ll_z_cand(i,0) = z1cand(i)*log(psi)+(1-z1cand(i))*log(1-psi);
-        for(int i2=0; i2<M; i2++){//update Ezcand and ll_z_cand for everyone due to gammaprimecand update
-          Ezcand(i2,0)=z(i2,0)*phiuse(0) + a(i2,0)*gammaprimecand(0);
-          ll_z_cand(i2,1) = z(i2,1)*log(Ezcand(i2,0))+(1-z(i2,1))*log(1-Ezcand(i2,0));
-        }
-        //Now update for focal individual
-        Ezcand(i,0) = z1cand(i)*phiuse(0) + (1-z1cand(i))*gammaprimecand(0);
-        ll_z_cand(i,1) = z(i,1)*log(Ezcand(i,0))+(1-z(i,1))*log(1-Ezcand(i,0));
-        //sum z ll
-        llzcandsum=ll_z_cand(i,0);//add ll.z[i,1] for focal guy
-        llzsum=ll_z(i,0);
-        //then add ll.z[,2] for all guys
-        for(int i2=0; i2<M; i2++){
-          if(ll_z_cand(i2,1)==ll_z_cand(i2,1)){
-            llzcandsum+=ll_z_cand(i2,1);
-          }
-          if(ll_z(i2,1)==ll_z(i2,1)){
-            llzsum+=ll_z(i2,1);
-          }
-        }
-        //sum y ll
-        llycandsum=0;
-        llysum=0;
-        for(int j=0; j<Xidx(0); j++){
-          ll_y_cand(i,j,0) =z1cand(i)*(y(i,j,0)*log(pd(i,j,0))+(K(0)-y(i,j,0))*log(1-pd(i,j,0)));
-          if(ll_y_cand(i,j,0)==ll_y_cand(i,j,0)){
-            llycandsum+=ll_y_cand(i,j,0);
-          }
-          ll_y_curr(i,j,0) =z(i,0)*(y(i,j,0)*log(pd(i,j,0))+(K(0)-y(i,j,0))*log(1-pd(i,j,0)));
-          if(ll_y_curr(i,j,0)==ll_y_curr(i,j,0)){
-            llysum+=ll_y_curr(i,j,0);
-          }
-        }
-        rand=Rcpp::runif(1);
-        if(rand(0) < exp((llycandsum+ llzcandsum)-(llysum+llzsum ))) {
-          ll_y_curr.subcube(i,0,0,i,maxJ-1,0) = ll_y_cand.subcube(i,0,0,i,maxJ-1,0);
-          Ez =clone(Ezcand);//cloning whole thing prob not most efficient. need first 2 dim
-          ll_z = clone(ll_z_cand);//same here
-          z(i,0) = z1cand(i);
-          sumz=0;
-          for(int j=0; j<t; j++){
-            sumz+= z(i,j);
-          }
-          gammaprime(0) = gammaprimecand(0);
-          if(z1cand(i)==1){
-            a(i,_)=alloff;//if caught occ 1, never available to recruit
-          }else if (sumz==0){  //if never caught, turn availability all on
-            a(i,_)=allon;
-          }else {  //if not caught on occ1, but caught later, available to recruit in occ2
-            a(i,0)=1;
-          }
-        }
-      }
-    }
-    N(0)+=z(i,0);
-  }
-  // Finally, need to update gamma.prime[,2:t], Ez[,2:t-1], and ll.z[,3:t]
-  // for z1 guys now caught in first year, previously not captured (all a turned off) and guys now never caught
-  // but previously only captured on occasion 1 (all a turned on)
-  // But only if t>2
-if(t>2){
-  for(int l=2; l<t; l++){
-    suma=0;
-    for(int i=0; i<M; i++){
-      suma+=a(i,l-1);
-    }
-    gammaprime(l-1)=(N(l-1)*gammause(l-1)) / suma;
-    for(int i=0; i<M; i++){
-      Ez(i,l-1)=z(i,l-1)*phiuse(l-1) + a(i,l-1)*gammaprime(l-1);
-      ll_z(i,l)=z(i,l)*log(Ez(i,l-1))+(1-z(i,l))*log(1-Ez(i,l-1));
-      if(ll_z(i,l)!=ll_z(i,l)){//Turn NaNs to 0s
-        ll_z(i,l)=0;
-      }
-    }
-  }
-}
-//update z[,2+]
-for(int l=1; l<t; l++){
-  //figure out who can be updated with upz
-  //always remove dead guys
-  if(t==2){
-    for(int i=0; i<M; i++){
-      upz(i)=(knownmatrix(i,l)==0)&(!( (z(i,l-1)==0) & (a(i,l-1)==0)));
-    }
-  }else if(t==3){
-    if(l==1){
-      for(int i=0; i<M; i++){
-        upz(i)=(!((z(i,l-1)==1)&(z(i,l+1)==1)))&(knownmatrix(i,l)==0)&(!( (z(i,l-1)==0) & (a(i,l-1)==0)));  //remove guys that are on before and after l
-      }
-    }else{
-      for(int i=0; i<M; i++){
-        upz(i)=(knownmatrix(i,l)==0)&(!( (z(i,l-1)==0) & (a(i,l-1)==0)));
-      }
-    }
-  }else{//t>3
-    if(l==(t-1)){ //can update anyone on last occasion unless they're dead
-      for(int i=0; i<M; i++){
-        upz(i)=(knownmatrix(i,l)==0)&(!( (z(i,l-1)==0) & (a(i,l-1)==0)));
-      }
-    }else if(l==(t-2)){ //second to last occasion
-      for(int i=0; i<M; i++){
-        upz(i)=(!((z(i,l-1)==1)&(z(i,l+1)==1)))&(knownmatrix(i,l)==0)&(!( (z(i,l-1)==0) & (a(i,l-1)==0)));  //remove guys that are on before and after l
-      }
-    }else{//l between 2 and t-2
-      for(int i=0; i<M; i++){
-        latecaps(i)=0;
-        for(int j=(l+2); j<t; j++){
-          latecaps(i)+=z(i,j);
-        }
-        upz(i)=(!((z(i,l-1)==1)&(z(i,l+1)==1)))&(knownmatrix(i,l)==0)&(!((z(i,l)==0)&(z(i,l+1)==0)&(latecaps(i)>0)))&(!( (z(i,l-1)==0) & (a(i,l-1)==0))); //remove guys that are on before and after l or 0,0,1
-      }
-    }
-  }
-  //Can we swap?
-  navail=0;
-  for(int i=0; i<M; i++){
-    navail+=upz(i);
-  }
-  int propzuse=0;
-  //How many to swap?
-  if(navail < propz(l-1)) {
-    propzuse=navail;
-  }else{
-    propzuse=propz(l-1);
-  }
-  //get upz2
-  IntegerVector upz2(navail,0);
-  idx=0;
-  for(int i=0; i<M; i++){
-    if(upz(i)){
-      upz2(idx)=i;
-      idx+=1;
-    }
-  }
-  if(navail>0){//if so, proceed with swapping
-    //Who to swap? structure size varies
-    IntegerVector swapzidx(propzuse,0);
-    IntegerVector choose=Rcpp::seq(0,(navail-1));
-    swapzidx=Rcpp::RcppArmadillo::sample(choose,propzuse,FALSE);
-    IntegerVector swapz(propzuse,0);
-    for(int i=0; i<propzuse; i++){
-      swapz(i)=upz2(swapzidx(i));
-    }
-    for(int i=0; i<M; i++){
-      pr_zt(i)=z(i,l);
-      zt_cand(i)=z(i,l);
-    }
-    for(int i=0; i<propzuse; i++){
-      pr_zt(swapz(i))=Ez(swapz(i),l-1);
-      rand=Rcpp::rbinom(1,1,pr_zt(swapz(i)));
-      zt_cand(swapz(i))=rand(0);
-    }
-    at_cand=1*((a(_,l-1)==1)&(zt_cand==0)); //who was available on last occasion and not proposed to be captured?
-    prop_probs=0;
-    back_probs=0;
-    ll_z_cand=clone(ll_z);
-    //These are different ll sums. Only for updated individuals
-    llycandsum=0;
-    llysum=0;
-    llzcandsum=0;
-    llzsum=0;
-    for(int i=0; i<propzuse; i++){
-      prop_probs+=zt_cand(swapz(i))*log(pr_zt(swapz(i)))+(1-zt_cand(swapz(i)))*log(1-pr_zt(swapz(i)));
-      back_probs+=z(swapz(i),l)*log(pr_zt(swapz(i)))+(1-z(swapz(i),l))*log(1-pr_zt(swapz(i)));
-      for(int j=0; j<Xidx(l); j++){
-        ll_y_cand(swapz(i),j,l)=zt_cand(swapz(i))*(y(swapz(i),j,l)*log(pd(swapz(i),j,l))+(K(0)-y(swapz(i),j,l))*log(1-pd(swapz(i),j,l)));
-        //Add up y likelihood contributions curr and cand for swapped guys
-        if(ll_y_cand(swapz(i),j,l)==ll_y_cand(swapz(i),j,l)){
-          llycandsum+=ll_y_cand(swapz(i),j,l);
-        }
-        if(ll_y_curr(swapz(i),j,l)==ll_y_curr(swapz(i),j,l)){
-          llysum+=ll_y_curr(swapz(i),j,l);
-        }
-      }
-      //Add up the z likelihood contributions curr and cand for swapped guys
-      ll_z_cand(swapz(i),l) = zt_cand(swapz(i))*log(Ezcand(swapz(i),l-1))+(1-zt_cand(swapz(i)))*log(1-Ezcand(swapz(i),l-1));
-      if(ll_z(swapz(i),l)!=ll_z(swapz(i),l)){//Turn NaNs to 0s
-        ll_z(swapz(i),l)=0;
-      }
-      llzcandsum+=ll_z_cand(swapz(i),l);//prior.z.cand
-      llzsum+=ll_z(swapz(i),l);//prior.z
-    }
-    //If we make this change to z[,l] and a[,l], how does it change ll.z[,l+1]?
-    if(l<(t-1)){ //extra stuff if this is true
-      sumz1tmp=0;
-      suma1tmp=0;
-      for(int i=0; i<M; i++){
-        sumz1tmp+=zt_cand(i);
-        suma1tmp+=at_cand(i);
-      }
-      gammaprimecand(l) = sumz1tmp*gammause(l) / suma1tmp;
-      if(gammaprimecand(l) <= 1){ //is gamma prime permissible?
-        for(int i=0; i<M; i++){
-          //Add on contributions to z ll from l+1 for cand and curr
-          Ezcand(i,l) = zt_cand(i)*phiuse(l) + at_cand(i)*gammaprimecand(l);
-          ll_z_cand(i,l+1) = z(i,l+1)*log(Ezcand(i,l))+(1-z(i,l+1))*log(1-Ezcand(i,l));
-          if(ll_z(i,l+1)==ll_z(i,l+1)){
-            llzsum+=ll_z(i,l+1);//prior.z
-          }
-          if(ll_z_cand(i,l+1)==ll_z_cand(i,l+1)){
-            llzcandsum+=ll_z_cand(i,l+1);//prior.z.cand
-          }
-        }
-        rand=Rcpp::runif(1);
-        if(rand(0) < exp(( llycandsum+llzcandsum+back_probs)-( llysum+llzsum+prop_probs) )) {
-          for(int i=0; i<propzuse; i++){
-            for(int j=0; j<Xidx(l); j++){
-              ll_y_curr(swapz(i),j,l) = ll_y_cand(swapz(i),j,l);
-            }
-          }
-          ll_z(_,l)=ll_z_cand(_,l);
-          z(_,l)=zt_cand;
-          a(_,l)=at_cand;
-          //Now update t<l stuff
-          ll_z(_,l+1)=ll_z_cand(_,l+1);
-          Ez(_,l)=Ezcand(_,l);
-          gammaprime(l)=gammaprimecand(l);
-          if(t>3){//more houskeeping if t>3. if t=3 you can update a[,3] but it doesn't matter. can't recruit after survey is over
-            // for the same reason, you don't need to update if (l+1)==t and t>3. I exclude those below so a is updated
-            // for the last occasion and my sanity check works.
-            // turn off availability for (l+1):t if you enter population but weren't there before
-            LogicalVector fix1(swapz.size());
-            bool fix3=FALSE;
-            for(int i=0; i<propzuse; i++){
-              suma=0;
-              for(int l2=l; l2<t; l2++){
-                suma+=a(swapz(i),l2);
-              }
-              if((zt_cand(swapz(i))==1)&(suma>0)){
-                fix1(i)=TRUE;
-                for(int l2=l; l2<t; l2++){
-                  a(swapz(i),l2)=0;
-                }
-                fix3=TRUE;
-              }else{
-                fix1(i)=FALSE;
-              }
-            }
-            // turn on availability for (l+1):t if you leave the population
-            LogicalVector fix2(M,swapz.size());
-            for(int i=0; i<propzuse; i++){
-              suma=0;
-              for(int l2=0; l2<t; l2++){
-                suma+=a(swapz(i),l2);
-              }
-              sumz=0;
-              for(int l2=0; l2<t; l2++){
-                sumz+=z(swapz(i),l2);
-              }
-              if((sumz==0)&(suma!=t)){
-                fix2(i)=TRUE;
-                for(int l2=l; l2<t; l2++){
-                  a(swapz(i),l2)=1;
-                }
-                fix3=TRUE;
-              }else{
-                fix2(i)=FALSE;
-              }
-            }
-            // If we updated anything here,a[,(l+1):t] has changed and
-            // we have to recalculate gamma.prime[,(l+1):(t-1)], Ez.cand[,(l+1):(t-1)], and ll.z.cand[,(l+2):t]
-            if(((l+1)!=(t-1))){//t-1 instead of t for Rcpp
-              if(fix3){
-                for(int l2=l+1; l2<(t-1); l2++){
-                  sumz1tmp=0;
-                  suma1tmp=0;
-                  for(int i=0; i<M; i++){
-                    sumz1tmp+=z(i,l2);
-                    suma1tmp+=a(i,l2);
-                  }
-                  gammaprime(l2) = sumz1tmp*gammause(l2) / suma1tmp;
-                  Ez(_,l2)=z(_,l2)*phiuse(l2) + a(_,l2)*gammaprime(l2);
-                  for(int i=0; i<M; i++){
-                    //Add on contributions to z ll from l+1 for cand and curr
-                    Ez(i,l2) = z(i,l2)*phiuse(l2) + a(i,l2)*gammaprime(l2);
-                    ll_z(i,l2+1) = z(i,l2+1)*log(Ez(i,l2))+(1-z(i,l2+1))*log(1-Ez(i,l2));
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }else{//if l==t don't need to consider next time step
-      rand=Rcpp::runif(1);
-      if(rand(0) < exp(( llycandsum+llzcandsum+back_probs)-( llysum+llzsum+prop_probs) )) {
-        for(int i=0; i<propzuse; i++){
-          for(int j=0; j<Xidx(l); j++){
-            ll_y_curr(swapz(i),j,l) = ll_y_cand(swapz(i),j,l);
-          }
-        }
-        ll_z(_,l)=ll_z_cand(_,l);
-        z(_,l)=zt_cand;
-        a(_,l)=at_cand;
-      }
-    }
-    N(l)=0;
-    for(int i=0; i<M; i++){
-      N(l)+=z(i,l);
-    }
-    //Update psi
-    rand=Rcpp::rbeta(1, 1+N(0), 1+M-N(1));
-    psi=rand(0);
-    for(int i=0; i<M; i++){
-      ll_z(i,0)= z(i,0)*log(psi)+(1-z(i,0))*log(1-psi);
-    }
-
-  }
-}
-//Update phi
-if(phi.size()==(t-1)){//if time-specific survival
-  for(int l=1; l<t; l++){
-    survive=0;
-    dead=0;
-    for(int i=0; i<M; i++){
-      survive+=(z(i,l-1)==1)&(z(i,l)==1);
-      dead+=(z(i,l-1)==1)&(z(i,l)==0);
-    }
-    rand=Rcpp::rbeta(1, 1+survive, 1+dead);
-    phi(l-1)=rand(0);
-    phiuse(l-1)=rand(0);
-  }
-}else{
-  survive=0;
-  dead=0;
-  for(int l=1; l<t; l++){
-    for(int i=0; i<M; i++){
-      survive+=(z(i,l-1)==1)&(z(i,l)==1);
-      dead+=(z(i,l-1)==1)&(z(i,l)==0);
-    }
-  }
-  rand=Rcpp::rbeta(1, 1+survive, 1+dead);
-  phi(0)=rand(0);
-  for(int l=1; l<(t+1); l++){
-    phiuse(l-1)=rand(0);
-  }
-}
-//  Update gamma
-// NOTE: Must update ll.z, Ez, etc...
-if(gamma.size()==1){
-  rand=Rcpp::rnorm(1, gamma(0), propgamma);
-  gamma_cand=rand(0);
-  gamma_cand_ok=TRUE;
-  for(int l=1; l<t; l++){
-    suma=0;
-    for(int i=0; i<M; i++){
-      suma+=a(i,l-1);
-    }
-    gamma_prime_cand(l-1)=(N(l-1)*gamma_cand) / suma;
-    if(gamma_prime_cand(l-1) > 1){  //Note don't break loop b/c ll.z needs updating because phi changed
-      gamma_cand_ok=FALSE;
-    }
-    llzsum=0;
-    for(int i=0; i<M; i++){
-      Ez(i,l-1)=z(i,l-1)*phiuse(l-1) + a(i,l-1)*gammaprime(l-1);
-      ll_z(i,l)= z(i,l)*log(Ez(i,l-1))+(1-z(i,l))*log(1-Ez(i,l-1));
-      if(ll_z(i,l)!=ll_z(i,l)){//Turn NaNs to 0s
-        ll_z(i,l)=0;
-      }
-      llzsum+=ll_z(i,l);
-    }
-  }
-  if((gamma_cand>0)&(gamma_cand_ok)){
-    llzcandsum=0;
-    for(int l=1; l<t; l++){
-      for(int i=0; i<M; i++){
-        Ezcand(i,l-1)=z(i,l-1)*phiuse(l-1) + a(i,l-1)*gamma_prime_cand(l-1);
-        ll_z_cand(i,l)= z(i,l)*log(Ezcand(i,l-1))+(1-z(i,l))*log(1-Ezcand(i,l-1));
-        if(ll_z_cand(i,l)!=ll_z_cand(i,l)){//Turn NaNs to 0s
-          ll_z_cand(i,l)=0;
-        }
-        llzcandsum+=ll_z_cand(i,l);
-      }
-    }
-    rand=Rcpp::runif(1);
-    if(rand(0) < exp(llzcandsum - llzsum)){
-      gamma(0)=gamma_cand;
-      for(int l=1; l<t; l++){
-        gammaprime(l-1)=gamma_prime_cand(l-1);
-        gammause(l-1)=gamma_prime_cand(l-1);
-      }
-      Ez=clone(Ezcand);
-      ll_z=clone(ll_z_cand);
-    }
-  }
-}else{
-  for(int l=1; l<t; l++){
-    rand=Rcpp::rnorm(1, gamma(l-1), propgamma);
-    gamma_cand=rand(0);
-    gamma_cand_ok=TRUE;
-    suma=0;
-    for(int i=0; i<M; i++){
-      suma+=a(i,l-1);
-    }
-    gamma_prime_cand(l-1)=(N(l-1)*gamma_cand) / suma;
-    if(gamma_prime_cand(l-1) > 1){  //Note don't break loop b/c ll.z needs updating because phi changed
-      gamma_cand_ok=FALSE;
-    }
-    llzsum=0;
-    for(int i=0; i<M; i++){
-      Ez(i,l-1)=z(i,l-1)*phiuse(l-1) + a(i,l-1)*gammaprime(l-1);
-      ll_z(i,l)= z(i,l)*log(Ez(i,l-1))+(1-z(i,l))*log(1-Ez(i,l-1));
-      if(ll_z(i,l)!=ll_z(i,l)){//Turn NaNs to 0s
-        ll_z(i,l)=0;
-      }
-      llzsum+=ll_z(i,l);
-    }
-    if((gamma_cand>0)&(gamma_cand_ok)){
-      llzcandsum=0;
-      for(int i=0; i<M; i++){
-        Ezcand(i,l-1)=z(i,l-1)*phiuse(l-1) + a(i,l-1)*gamma_prime_cand(l-1);
-        ll_z_cand(i,l)= z(i,l)*log(Ezcand(i,l-1))+(1-z(i,l))*log(1-Ezcand(i,l-1));
-        if(ll_z_cand(i,l)!=ll_z_cand(i,l)){//Turn NaNs to 0s
-          ll_z_cand(i,l)=0;
-        }
-        llzcandsum+=ll_z_cand(i,l);
-      }
-      rand=Rcpp::runif(1);
-      if(rand(0) < exp(llzcandsum - llzsum)){
-        gamma(l-1)=gamma_cand;
-        gammaprime(l-1)=gamma_prime_cand(l-1);
-        gammause(l-1)=gamma_prime_cand(l-1);
-        for(int i=0; i<M; i++){
-          Ez(i,l-1)=Ezcand(i,l-1);
-          ll_z(i,l-1)=ll_z_cand(i,l-1);
-        }
-      }
-    }
-  }
-}
-
-
-List to_return(12);
-to_return[0] = ll_z;
-to_return[1] = Ez;
-to_return[2] = gammaprime;
-to_return[3] = z;
-to_return[4] = a;
-to_return[5] = N;
-to_return[6] = psi;
-to_return[7] = phi;
-to_return[8] = gamma;
-to_return[9] = gammause;
-to_return[10] = gammaprime;
-to_return[11] = phiuse;
-return to_return;
-}
 
 //Full open pop MCMC sampler
 //[[Rcpp::depends(RcppArmadillo)]]
@@ -1020,8 +435,10 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
     }
   }
   //Preallocate Z update
-  NumericVector z1curr(M);
   NumericVector z1cand(M);
+  NumericVector a1cand(M);
+  IntegerMatrix zcand(M,t);
+  IntegerMatrix acand(M,t);
   NumericVector z1tmp(M);
   NumericVector a1tmp(M);
   NumericVector gammaprimecand(t);
@@ -1045,12 +462,12 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
     allon(i)=1;
     alloff(i)=0;
   }
+  NumericVector Ntmp(t);
+
   //Preallocate z[,2+]
   NumericVector pr_zt(M);
   IntegerVector at_cand(M);
   NumericVector zt_cand(M);
-  double prop_probs;
-  double back_probs;
   int navail=0;
   int idx=0;
   //Preallocate phi and gamma
@@ -1138,7 +555,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
     }
   }
 
-//Here we go!
+  //Here we go!
   for(int iter=0; iter<niter; iter++){
     /////////////////Detection function update///////////////////////
     //Need to resum the ll_y on each iter
@@ -1182,7 +599,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
           pd=pdcand;
           ll_y_curr=ll_y_cand;
           llysum=llycandsum;
-          likcurr2D=likcand2D;
+          likcurr2D=clone(likcand2D);
         }
       }
     }else{//year-specific lambdas
@@ -1197,7 +614,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
             for(int j=0; j<Xidx(l); j++){
               lamdcand(i,j,l)=lam0cand(l)*exp(-D(i,j,l)*D(i,j,l)/(2*sigmause(l)*sigmause(l)));
               pdcand(i,j,l)=1-exp(-lamdcand(i,j,l));
-              ll_y_cand(i,j,l)=z(i,l)*(y(i,j,l)*log(pdcand(i,j,l))+(K[l]-y(i,j,l))*log(1-pdcand(i,j,l)));
+              ll_y_cand(i,j,l)=z(i,l)*(y(i,j,l)*log(pdcand(i,j,l))+(K(l)-y(i,j,l))*log(1-pdcand(i,j,l)));
               if(ll_y_cand(i,j,l)==ll_y_cand(i,j,l)){
                 likcand2D(l)+=ll_y_cand(i,j,l);
               }
@@ -1216,11 +633,11 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
       }
     }
     //fill lam0use
-    for(int i=0; i<t; i++) {
+    for(int l=0; l<t; l++) {
       if(lam0.size()==1){
-        lam0use(i)=lam0(0);
+        lam0use(l)=lam0(0);
       }else{
-        lam0use(i)=lam0(i);
+        lam0use(l)=lam0(l);
       }
     }
     // Update sigma
@@ -1236,7 +653,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
             for(int j=0; j<Xidx(l); j++){
               lamdcand(i,j,l)=lam0use(l)*exp(-D(i,j,l)*D(i,j,l)/(2*sigmacand(0)*sigmacand(0)));
               pdcand(i,j,l)=1-exp(-lamdcand(i,j,l));
-              ll_y_cand(i,j,l)=z(i,l)*(y(i,j,l)*log(pdcand(i,j,l))+(K[l]-y(i,j,l))*log(1-pdcand(i,j,l)));
+              ll_y_cand(i,j,l)=z(i,l)*(y(i,j,l)*log(pdcand(i,j,l))+(K(l)-y(i,j,l))*log(1-pdcand(i,j,l)));
               if(ll_y_cand(i,j,l)==ll_y_cand(i,j,l)){
                 likcand2D(l)+=ll_y_cand(i,j,l);
               }
@@ -1251,7 +668,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
           pd=pdcand;
           ll_y_curr=ll_y_cand;
           llysum=llycandsum;
-          likcurr2D=likcand2D;
+          likcurr2D=clone(likcand2D);
         }
       }
     }else{//year-specific sigmas
@@ -1292,7 +709,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         sigmause(l)=sigma(l);
       }
     }
-    ////////////////////Z1 stuff////////////////////
+    //////////////////Z1 stuff////////////////////
     // Figure out who can be updated
     if(t==2){
       for(int i=0; i<M; i++){
@@ -1309,122 +726,146 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
     //update z[,1]
     N(0)=0;
     for(int i=0; i<M; i++){
-      ll_z(i,0)= z(i,0)*log(psi)+(1-z(i,0))*log(1-psi);
-    }
-    //z2+
-    for(int l=1; l<t; l++){
-      for(int i=0; i<M; i++){
-        ll_z(i,l)= z(i,l)*log(Ez(i,l-1))+(1-z(i,l))*log(1-Ez(i,l-1));
-        if(ll_z(i,l)!=ll_z(i,l)){//Turn NaNs to 0s
-          ll_z(i,l)=0;
-        }
-      }
-    }
-    //same for ll.y
-    for(int i=0; i<M; i++){
-      for(int j=0; j<Xidx(0); j++){
-        for(int l=0; l<t; l++){
-          ll_y_curr(i,j,l) =z(i,l)*(y(i,j,l)*log(pd(i,j,l))+(K(l)-y(i,j,l))*log(1-pd(i,j,l)));
-          ll_y_cand(i,j,l) =ll_y_curr(i,j,l);
-        }
-      }
-    }
-    for(int i=0; i<M; i++){
       if(upz(i)){
-        z1curr = z(_,0);
-        z1cand = 1-z1curr;
         gammaprimecand = clone(gammaprime);
-        z1tmp = z1curr;
-        z1tmp(i) = z1cand(i);
-        a1tmp = a(_,0);
-        a1tmp(i) = 1-z1cand(i);
+        zcand=clone(z);
         sumz1tmp=0;
         suma1tmp=0;
-        for(int i2=0; i2<M; i2++){
-          sumz1tmp+=z1tmp(i2);
-          suma1tmp+=a1tmp(i2);
+        for(int l=0; l<t; l++){
+          sumz1tmp+=z1tmp(l);
+          suma1tmp+=a1tmp(l);
         }
-        gammaprimecand(0)=sumz1tmp*gammause(0)/suma1tmp;
-        if(gammaprimecand(0) > 1) { // E(Recruits) must be < nAvailable
-          warn(i)=TRUE;
-        }
-        if(warn(i)==FALSE){
-          Ezcand=clone(Ez);
-          ll_z_cand=clone(ll_z);
-          ll_z_cand(i,0) = z1cand(i)*log(psi)+(1-z1cand(i))*log(1-psi);
-          for(int i2=0; i2<M; i2++){//update Ezcand and ll_z_cand for everyone due to gammaprimecand update
-            Ezcand(i2,0)=z(i2,0)*phiuse(0) + a(i2,0)*gammaprimecand(0);
-            ll_z_cand(i2,1) = z(i2,1)*log(Ezcand(i2,0))+(1-z(i2,1))*log(1-Ezcand(i2,0));
+        if((((zcand(i,0)==1)&(suma1tmp==t))|((sumz1tmp==1)&(suma1tmp==0)))&(t>2)){//Are we turning on a guy that was never on before? or turning off a guy that was only on on z1?
+          acand=clone(a);
+          suma=0;
+          sumz=0;
+          for(int l=0; l<t; l++){
+            suma+= a(i,l);
+            sumz+= a(i,l);
           }
-          //Now update for focal individual
-          Ezcand(i,0) = z1cand(i)*phiuse(0) + (1-z1cand(i))*gammaprimecand(0);
-          ll_z_cand(i,1) = z(i,1)*log(Ezcand(i,0))+(1-z(i,1))*log(1-Ezcand(i,0));
-          //sum z ll
-          llzcandsum=ll_z_cand(i,0);//add ll.z[i,1] for focal guy
-          llzsum=ll_z(i,0);
-          //then add ll.z[,2] for all guys
+          if((zcand(i,0)==1)&(a(i,0)==t)){
+            acand(i,_)=alloff;//if caught occ 1, never available to recruit
+          }else if (sumz==0){  //if never caught, turn availability all on
+            acand(i,_)=allon;
+          }else{  //if not caught on occ1, but caught later, available to recruit in occ2
+            acand(i,0)=1;
+          }
+          Ntmp=clone(N);
+          Ntmp(0)=sumz;
+          gammaprimecand(0)=sumz1tmp*gammause(0)/suma1tmp;
+          for(int l=1; l<t; l++){
+            suma=0;
+            for(int i2=0; i<M; i2++){
+              suma+= a(i2,l-1);
+            }
+            gammaprimecand(l-1)=(Ntmp(l-1)*gammause(l-1))/suma;
+            if(gammaprimecand(l-1) > 1) { // E(Recruits) must be < nAvailable
+              warn(i)=TRUE;
+            }
+          }
+          if(warn(i)==FALSE){
+            Ezcand=clone(Ez);
+            ll_z_cand=clone(ll_z);
+            for(int l=1; l<t; l++){
+              for(int i2=0; i2<M; i2++){
+                Ezcand(i2,l-1)=zcand(i2,l-1)*phiuse(l-1) + acand(i2,l-1)*gammaprimecand(l-1);
+                ll_z_cand(i2,1) = z(i2,l)*log(Ezcand(i2,l-1))+(1-z(i2,l))*log(1-Ezcand(i2,l-1));
+              }
+            }
+            //sum z ll
+            llzcandsum=ll_z_cand(i,0);//add ll.z[i,1] for focal guy
+            llzsum=ll_z(i,0);
+            //then add ll.z[,2+] for all guys
+            for(int l=2; l<t; l++){
+              for(int i2=0; i2<M; i2++){
+                llzcandsum+=ll_z_cand(i2,l);
+                llzsum+=ll_z(i2,l);
+              }
+            }
+            //sum y ll across j dimension for each i and l=0
+            llysum=0;
+            llycandsum=0;
+            for(int j=0; j<Xidx(0); j++){
+              ll_y_cand(i,j,0) =z1cand(i)*(y(i,j,0)*log(pd(i,j,0))+(K(0)-y(i,j,0))*log(1-pd(i,j,0)));
+              if(ll_y_cand(i,j,0)==ll_y_cand(i,j,0)){
+                llycandsum+=ll_y_cand(i,j,0);
+              }
+              if(ll_y_curr(i,j,0)==ll_y_curr(i,j,0)){
+                llysum+=ll_y_curr(i,j,0);
+              }
+            }
+            rand=Rcpp::runif(1);
+            if(rand(0) < exp((llycandsum+ llzcandsum)-(llysum+llzsum ))) {
+              ll_y_curr.subcube(i,0,0,i,J-1,0) = ll_y_cand.subcube(i,0,0,i,J-1,0);
+              Ez =clone(Ezcand);//cloning whole thing prob not most efficient. need first 2 dim
+              ll_z = clone(ll_z_cand);//same here
+              z(i,0) = z1cand(i);
+              a=clone(acand);
+            }
+          }
+        }else{
+          z1cand = z(_,0);
+          z1cand(i)=1-z(i,0);
+          a1cand = a(_,0);
+          a1cand(i)=1-a(i,0);
+          sumz1tmp=0;
+          suma1tmp=0;
           for(int i2=0; i2<M; i2++){
-            if(ll_z_cand(i2,1)==ll_z_cand(i2,1)){
-              llzcandsum+=ll_z_cand(i2,1);
-            }
-            if(ll_z(i2,1)==ll_z(i2,1)){
-              llzsum+=ll_z(i2,1);
-            }
+            sumz1tmp+=z1cand(i2);
+            suma1tmp+=a1cand(i2);
           }
-          //sum y ll across j dimension for each i and l=0
-          llysum=0;
-          llycandsum=0;
-          for(int j=0; j<Xidx(0); j++){
-            ll_y_cand(i,j,0) =z1cand(i)*(y(i,j,0)*log(pd(i,j,0))+(K(0)-y(i,j,0))*log(1-pd(i,j,0)));
-            if(ll_y_cand(i,j,0)==ll_y_cand(i,j,0)){
-              llycandsum+=ll_y_cand(i,j,0);
-            }
-            if(ll_y_curr(i,j,0)==ll_y_curr(i,j,0)){
-              llysum+=ll_y_curr(i,j,0);
-            }
+          gammaprimecand(0)=sumz1tmp*gammause(0)/suma1tmp;
+          if(gammaprimecand(0) > 1) { // E(Recruits) must be < nAvailable
+            warn(i)=TRUE;
           }
-          rand=Rcpp::runif(1);
-          if(rand(0) < exp((llycandsum+ llzcandsum)-(llysum+llzsum ))) {
-            ll_y_curr.subcube(i,0,0,i,J-1,0) = ll_y_cand.subcube(i,0,0,i,J-1,0);
-            Ez =clone(Ezcand);//cloning whole thing prob not most efficient. need first 2 dim
-            ll_z = clone(ll_z_cand);//same here
-            z(i,0) = z1cand(i);
-            sumz=0;
-            for(int j=0; j<t; j++){
-              sumz+= z(i,j);
+          if(warn(i)==FALSE){
+            Ezcand=clone(Ez);
+            ll_z_cand=clone(ll_z);
+            ll_z_cand(i,0) = z1cand(i)*log(psi)+(1-z1cand(i))*log(1-psi);
+            for(int i2=0; i2<M; i2++){//update Ez_[,1] and ll_z_cand[,2]
+              Ezcand(i2,0)=z(i2,0)*phiuse(0) + a(i2,0)*gammaprimecand(0);
+              ll_z_cand(i2,1) = z(i2,1)*log(Ezcand(i2,0))+(1-z(i2,1))*log(1-Ezcand(i2,0));
             }
-            gammaprime(0) = gammaprimecand(0);
-            if(z1cand(i)==1){
-              a(i,_)=alloff;//if caught occ 1, never available to recruit
-            }else if (sumz==0){  //if never caught, turn availability all on
-              a(i,_)=allon;
-            }else {  //if not caught on occ1, but caught later, available to recruit in occ2
-              a(i,0)=1;
+            //Now update these for focal individual
+            Ezcand(i,0) = z1cand(i)*phiuse(0) + (1-z1cand(i))*gammaprimecand(0);
+            ll_z_cand(i,1) = z(i,1)*log(Ezcand(i,0))+(1-z(i,1))*log(1-Ezcand(i,0));
+            //sum z ll
+            llzcandsum=ll_z_cand(i,0);//add ll.z[i,1] for focal guy
+            llzsum=ll_z(i,0);
+            //then add ll.z[,2] for all guys
+            for(int i2=0; i2<M; i2++){
+              if(ll_z_cand(i2,1)==ll_z_cand(i2,1)){
+                llzcandsum+=ll_z_cand(i2,1);
+              }
+              if(ll_z(i2,1)==ll_z(i2,1)){
+                llzsum+=ll_z(i2,1);
+              }
+            }
+            //sum y ll across j dimension for each i and l=0
+            llysum=0;
+            llycandsum=0;
+            for(int j=0; j<Xidx(0); j++){
+              ll_y_cand(i,j,0) =z1cand(i)*(y(i,j,0)*log(pd(i,j,0))+(K(0)-y(i,j,0))*log(1-pd(i,j,0)));
+              if(ll_y_cand(i,j,0)==ll_y_cand(i,j,0)){
+                llycandsum+=ll_y_cand(i,j,0);
+              }
+              if(ll_y_curr(i,j,0)==ll_y_curr(i,j,0)){
+                llysum+=ll_y_curr(i,j,0);
+              }
+            }
+            rand=Rcpp::runif(1);
+            if(rand(0) < exp((llycandsum+ llzcandsum)-(llysum+llzsum ))) {
+              ll_y_curr.subcube(i,0,0,i,J-1,0) = ll_y_cand.subcube(i,0,0,i,J-1,0);
+              Ez=clone(Ezcand);//cloning whole thing prob not most efficient. need first 1 col
+              ll_z = clone(ll_z_cand);//same here
+              z(i,0) = z1cand(i);
+              a(i,0)=a1cand(i);
+              gammaprime(0) = gammaprimecand(0);
             }
           }
         }
       }
       N(0)+=z(i,0);
-    }
-    // Finally, need to update gamma.prime[,2:t], Ez[,2:t-1], and ll.z[,3:t]
-    // for z1 guys now caught in first year, previously not captured (all a turned off) and guys now never caught
-    // but previously only captured on occasion 1 (all a turned on)
-    // But only if t>2
-    if(t>2){
-      for(int l=2; l<t; l++){
-        suma=0;
-        for(int i=0; i<M; i++){
-          suma+=a(i,l-1);
-        }
-        gammaprime(l-1)=(N(l-1)*gammause(l-1)) / suma;
-        for(int i=0; i<M; i++){
-          Ez(i,l-1)=z(i,l-1)*phiuse(l-1) + a(i,l-1)*gammaprime(l-1);
-          ll_z(i,l)=z(i,l)*log(Ez(i,l-1))+(1-z(i,l))*log(1-Ez(i,l-1));
-          if(ll_z(i,l)!=ll_z(i,l)){//Turn NaNs to 0s
-            ll_z(i,l)=0;
-          }
-        }
-      }
     }
     //update z[,2+]
     for(int l=1; l<t; l++){
@@ -1493,27 +934,22 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         for(int i=0; i<propzuse; i++){
           swapz(i)=upz2(swapzidx(i));
         }
-        for(int i=0; i<M; i++){
-          pr_zt(i)=z(i,l);
-          zt_cand(i)=z(i,l);
-        }
+        //Update swapz 1 at a time
         for(int i=0; i<propzuse; i++){
-          pr_zt(swapz(i))=Ez(swapz(i),l-1);
-          rand=Rcpp::rbinom(1,1,pr_zt(swapz(i)));
-          zt_cand(swapz(i))=rand(0);
-        }
-        at_cand=1*((a(_,l-1)==1)&(zt_cand==0)); //who was available on last occasion and not proposed to be captured?
-        prop_probs=0;
-        back_probs=0;
-        ll_z_cand=clone(ll_z);
-        //sum ll across j for each l and chosen i
-        llycandsum=0;
-        llysum=0;
-        llzcandsum=0;
-        llzsum=0;
-        for(int i=0; i<propzuse; i++){
-          prop_probs+=zt_cand(swapz(i))*log(pr_zt(swapz(i)))+(1-zt_cand(swapz(i)))*log(1-pr_zt(swapz(i)));
-          back_probs+=z(swapz(i),l)*log(pr_zt(swapz(i)))+(1-z(swapz(i),l))*log(1-pr_zt(swapz(i)));
+          for(int i2=0; i2<M; i2++){
+            pr_zt(i2)=z(i2,l);
+            zt_cand(i2)=z(i2,l);
+          }
+          // pr_zt(swapz(i))=Ez(swapz(i),l-1);
+          // rand=Rcpp::rbinom(1,1,pr_zt(swapz(i)));
+          zt_cand(swapz(i))=1-z(swapz(i),l);
+          at_cand=1*((a(_,l-1)==1)&(zt_cand==0)); //who was available on last occasion and not proposed to be captured?
+          ll_z_cand=clone(ll_z);
+          //sum ll across j for each l and chosen i
+          llycandsum=0;
+          llysum=0;
+          llzcandsum=0;
+          llzsum=0;
           for(int j=0; j<Xidx(l); j++){
             ll_y_cand(swapz(i),j,l)=zt_cand(swapz(i))*(y(swapz(i),j,l)*log(pd(swapz(i),j,l))+(K(0)-y(swapz(i),j,l))*log(1-pd(swapz(i),j,l)));
             //Add up y likelihood contributions curr and cand for swapped guys
@@ -1531,130 +967,117 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
           }
           llzcandsum+=ll_z_cand(swapz(i),l);//prior.z.cand
           llzsum+=ll_z(swapz(i),l);//prior.z
-        }
-        //If we make this change to z[,l] and a[,l], how does it change ll.z[,l+1]?
-        if(l<(t-1)){ //extra stuff if this is true
-          sumz1tmp=0;
-          suma1tmp=0;
-          for(int i=0; i<M; i++){
-            sumz1tmp+=zt_cand(i);
-            suma1tmp+=at_cand(i);
+          //If we make this change to z[,l] and a[,l], how does it change ll.z[,l+1]?
+          bool fix1=FALSE;
+          bool fix2=FALSE;
+          sumz=0;
+          for(int l2=0; l2<t; l2++){
+            sumz+=z(swapz(i),l2);
           }
-          gammaprimecand(l) = sumz1tmp*gammause(l) / suma1tmp;
-          if(gammaprimecand(l) <= 1){ //is gamma prime permissible?
-            for(int i=0; i<M; i++){
-              //Add on contributions to z ll from l+1 for cand and curr
-              Ezcand(i,l) = zt_cand(i)*phiuse(l) + at_cand(i)*gammaprimecand(l);
-              ll_z_cand(i,l+1) = z(i,l+1)*log(Ezcand(i,l))+(1-z(i,l+1))*log(1-Ezcand(i,l));
-              if(ll_z(i,l+1)==ll_z(i,l+1)){
-                llzsum+=ll_z(i,l+1);//prior.z
-              }
-              if(ll_z_cand(i,l+1)==ll_z_cand(i,l+1)){
-                llzcandsum+=ll_z_cand(i,l+1);//prior.z.cand
-              }else{
-                ll_z_cand(i,l+1)=0;
+          if((zt_cand(swapz(i))==1)&(sumz==0)){
+            fix1=TRUE;
+          }
+          if((sumz==1)&(zt_cand(swapz(i))==0)&(z(i,l)==1)){
+            fix2=TRUE;
+          }
+          if((fix1|fix2)&(t>3)&(l<(t))){
+            acand=clone(a);
+            acand(_,l)=at_cand;
+            zcand=clone(z);
+            zcand(_,l)=zt_cand;
+            if(fix1){
+              for(int l2=l; l2<t; l2++){
+                acand(swapz(i),l2)=0; //all l:t off
               }
             }
-            rand=Rcpp::runif(1);
-            if(rand(0) < exp(( llycandsum+llzcandsum+back_probs)-( llysum+llzsum+prop_probs) )) {
-              for(int i=0; i<propzuse; i++){
-                for(int j=0; j<Xidx(l); j++){
-                  ll_y_curr(swapz(i),j,l) = ll_y_cand(swapz(i),j,l);
-                }
+            if(fix2){
+              for(int l2=l; l2<t; l2++){
+                acand(swapz(i),l2)=1; //all on 1:(l-1) are already on
               }
-              ll_z(_,l)=ll_z_cand(_,l);
-              z(_,l)=zt_cand;
-              a(_,l)=at_cand;
-              //Now update t<l stuff
-              ll_z(_,l+1)=ll_z_cand(_,l+1);
-              Ez(_,l)=Ezcand(_,l);
-              gammaprime(l)=gammaprimecand(l);
-              if(t>3){//more houskeeping if t>3. if t=3 you can update a[,3] but it doesn't matter. can't recruit after survey is over
-                // for the same reason, you don't need to update if (l+1)==t and t>3. I exclude those below so a is updated
-                // for the last occasion and my sanity check works.
-                // turn off availability for (l+1):t if you enter population but weren't there before
-                LogicalVector fix1(swapz.size());
-                bool fix3=FALSE;
-                for(int i=0; i<propzuse; i++){
-                  suma=0;
-                  for(int l2=l; l2<t; l2++){
-                    suma+=a(swapz(i),l2);
-                  }
-                  if((zt_cand(swapz(i))==1)&(suma>0)){
-                    fix1(i)=TRUE;
-                    for(int l2=l; l2<t; l2++){
-                      a(swapz(i),l2)=0;
-                    }
-                    fix3=TRUE;
-                  }else{
-                    fix1(i)=FALSE;
-                  }
-                }
-                // turn on availability for (l+1):t if you leave the population
-                LogicalVector fix2(M,swapz.size());
-                for(int i=0; i<propzuse; i++){
-                  suma=0;
-                  for(int l2=0; l2<t; l2++){
-                    suma+=a(swapz(i),l2);
-                  }
-                  sumz=0;
-                  for(int l2=0; l2<t; l2++){
-                    sumz+=z(swapz(i),l2);
-                  }
-                  if((sumz==0)&(suma!=t)){
-                    fix2(i)=TRUE;
-                    for(int l2=l; l2<t; l2++){
-                      a(swapz(i),l2)=1;
-                    }
-                    fix3=TRUE;
-                  }else{
-                    fix2(i)=FALSE;
-                  }
-                }
-                // If we updated anything here,a[,(l+1):t] has changed and
-                // we have to recalculate gamma.prime[,(l+1):(t-1)], Ez.cand[,(l+1):(t-1)], and ll.z.cand[,(l+2):t]
-                if(((l+1)!=(t-1))){//t-1 instead of t for Rcpp
-                  if(fix3){
-                    for(int l2=l+1; l2<(t-1); l2++){
-                      sumz1tmp=0;
-                      suma1tmp=0;
-                      for(int i=0; i<M; i++){
-                        sumz1tmp+=z(i,l2);
-                        suma1tmp+=a(i,l2);
-                      }
-                      gammaprime(l2) = sumz1tmp*gammause(l2) / suma1tmp;
-                      Ez(_,l2)=z(_,l2)*phiuse(l2) + a(_,l2)*gammaprime(l2);
-                      for(int i=0; i<M; i++){
-                        //Add on contributions to z ll from l+1 for cand and curr
-                        Ez(i,l2) = z(i,l2)*phiuse(l2) + a(i,l2)*gammaprime(l2);
-                        ll_z(i,l2+1) = z(i,l2+1)*log(Ez(i,l2))+(1-z(i,l2+1))*log(1-Ez(i,l2));
-                      }
+            }
+            sumz=0;
+            for(int i2=0; i2<M; i2++){
+              sumz+=zt_cand(i2);
+            }
+            Ntmp=clone(N);
+            Ntmp(l)=sumz;
+            for(int l2=l; l2<(t-1); l2++){
+              suma=0;
+              for(int i2=0; i2<M; i2++){
+                suma+=acand(i2,l2);
+              }
+              for(int l2=l; l2<(t-1); l2++){
+                gammaprimecand(l2)=(Ntmp(l2)*gammause(l2)) / suma;
+                if(gammaprimecand(l2) < 1){ //Is this a valid probability?
+                  for(int i2=0; i2<M; i2++){
+                    //Add on contributions to z ll from l+1 for cand and curr
+                    Ezcand(i2,l2) = zcand(i2,l2)*phiuse(l2) + acand(i2,l2)*gammaprimecand(l2);
+                    ll_z_cand(i2,l2+1) = z(i2,l2+1)*log(Ezcand(i2,l2))+(1-z(i2,l2+1))*log(1-Ezcand(i2,l2));
+                    llzsum+=ll_z(i2,l2+1);//prior.z
+                    if(ll_z_cand(i2,l2+1)==ll_z_cand(i2,l2+1)){
+                      llzcandsum+=ll_z_cand(i2,l2+1);//prior.z.cand
+                    }else{
+                      ll_z_cand(i2,l2+1)=0; //Turn NaN to 0
                     }
                   }
                 }
               }
             }
+          }else{
+            if(l<(t-1)){
+              sumz=0;
+              suma=0;
+              for(int i2=0; i2<M; i2++){
+                sumz+=zt_cand(i2);
+                suma+=at_cand(i2);
+              }
+              gammaprimecand(l)=sumz*gammause(l)/suma;
+              if(gammaprimecand(l) < 1){
+                for(int i2=0; i2<M; i2++){
+                  Ezcand(i2,l)=zt_cand(i2)*phiuse(l) + at_cand(i2)*gammaprimecand(l);
+                  ll_z_cand(i2,l+1) = z(i2,l+1)*log(Ezcand(i2,l))+(1-z(i2,l+1))*log(1-Ezcand(i2,l));
+                  llzsum+=ll_z(i2,l+1);//prior.z
+                  if(ll_z_cand(i2,l+1)==ll_z_cand(i2,l+1)){
+                    llzcandsum+=ll_z_cand(i2,l+1);//prior.z.cand
+                  }else{
+                    ll_z_cand(i2,l+1)=0; //Turn NaN to 0
+                  }
+                }
+              }
+            }
           }
-        }else{//if l==t don't need to consider next time step
           rand=Rcpp::runif(1);
-          if(rand(0) < exp(( llycandsum+llzcandsum+back_probs)-( llysum+llzsum+prop_probs) )) {
-            for(int i=0; i<propzuse; i++){
-              for(int j=0; j<Xidx(l); j++){
-                ll_y_curr(swapz(i),j,l) = ll_y_cand(swapz(i),j,l);
-              }
+          if(rand(0) < exp(( llycandsum+llzcandsum)-( llysum+llzsum) )) {
+            for(int j=0; j<Xidx(l); j++){
+              ll_y_curr(swapz(i),j,l) = ll_y_cand(swapz(i),j,l);
             }
             ll_z(_,l)=ll_z_cand(_,l);
-            z(_,l)=zt_cand;
-            a(_,l)=at_cand;
+            if((fix1|fix2)&(t>3)&(l<(t-1))){
+              z=clone(zcand);
+              a=clone(acand);
+              for(int l2=l; l2<(t-1); l2++){
+                ll_z(_,l2+1)=ll_z_cand(_,l2+1);
+                Ez(_,l2)=Ezcand(_,l2);
+                gammaprime(l2)=gammaprimecand(l2);
+              }
+            }else{
+              z(_,l)=zt_cand;
+              a(_,l)=at_cand;
+              if(l<(t-1)){
+                ll_z(_,l+1)=ll_z_cand(_,l+1);
+                Ez(_,l)=Ezcand(_,l);
+                gammaprime(l)=gammaprimecand(l);
+              }
+            }
           }
         }
       }
-    }
-    // Update N
-    for(int l=1; l<t; l++){
-      N(l)=0;
-      for(int i=0; i<M; i++){
-        N(l)+=z(i,l);
+      // Update N[,2+]
+      for(int l=1; l<t; l++){
+        N(l)=0;
+        for(int i=0; i<M; i++){
+          N(l)+=z(i,l);
+        }
       }
     }
     //Update psi

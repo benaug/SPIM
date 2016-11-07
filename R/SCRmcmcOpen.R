@@ -30,7 +30,6 @@ SCRmcmcOpen <-
       stop("user must supply either 'buff' or 'vertices' in data object")
     }
     ##pull out initial values
-    # psi<- inits$psi
     lam0<- inits$lam0
     sigma<- inits$sigma
     sigma_t=inits$sigma_t
@@ -418,14 +417,14 @@ SCRmcmcOpen <-
           Ntmp[1]=sum(z.cand[,1])
           for(l in 2:t){
             gamma.prime.cand[l-1]=(Ntmp[l-1]*gammause[l-1]) / sum(a.cand[,l-1])
-            if(gamma.prime.cand[1] > 1) { # E(Recruits) must be < nAvailable
+            if(gamma.prime.cand[l-1] > 1) { # E(Recruits) must be < nAvailable
               warning("Rejected z due to low M")
               next
             }
             Ez.cand[,l-1]=z.cand[,l-1]*phiuse[l-1] + a.cand[,l-1]*gamma.prime.cand[l-1]
             ll.z.cand[,l]=dbinom(z.cand[,l], 1, Ez.cand[,l-1], log=TRUE)
           }
-          if(runif(1) < exp((sum(ll.y.cand[i,,1])+ ll.z.cand[i,1]+sum(ll.z.cand[,-1]))-(sum(ll.y[i,,1])+ll.z[i,1]+sum(ll.z[,-1])) )) {#z1 and z2 matter
+          if(runif(1) < exp((sum(ll.y.cand[i,,1])+ ll.z.cand[i,1]+sum(ll.z.cand[,-1]))-(sum(ll.y[i,,1])+ll.z[i,1]+sum(ll.z[,-1])) )) {
             ll.y[i,,1] = ll.y.cand[i,,1]
             ll.z[i,1] = ll.z.cand[i,1]
             ll.z[,-1] = ll.z.cand[,-1]
@@ -436,8 +435,7 @@ SCRmcmcOpen <-
           }
         }else{#Don't need to modify more than one year
           z1.cand <- z[,1]
-          z1.cand[i] <- 1-z[i]
-          ll.y.cand[i,,1]=dbinom(y[i,,1],K[1],pd[i,,1]*z1.cand[i],log=TRUE)
+          z1.cand[i] <- 1-z[i,1]
           a1.cand <- a[,1]
           a1.cand[i] <- 1-z1.cand[i]
           gamma.prime.cand[1] <- sum(z1.cand)*gamma[1] / sum(a1.cand)
@@ -445,6 +443,7 @@ SCRmcmcOpen <-
             warning("Rejected z due to low M")
             next
           }
+          ll.y.cand[i,,1]=dbinom(y[i,,1],K[1],pd[i,,1]*z1.cand[i],log=TRUE)
           ll.z.cand[i,1] <- dbinom(z1.cand[i], 1, psi, log=TRUE)
           Ez.cand[,1]=z1.cand*phi[1] + a1.cand*gamma.prime.cand[1]
           ll.z.cand[,2] <- dbinom(z[,2], 1, Ez.cand[,1], log=TRUE)

@@ -54,7 +54,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=0.1,phi=0.1,s2x=0.2,s2y=0.2,propz=c(30)) #The number of proppars must match the number of initial values
-#'out=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
 #'plot(mcmc(out$out))
 #'
 #same but t=3
@@ -75,7 +75,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=0.1,phi=0.1,s2x=0.2,s2y=0.2,propz=c(30,30)) #Need 1 more propz
-#'out=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'
@@ -97,7 +97,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=rep(0.025,3),sigma=rep(0.025,3),gamma=0.1,phi=0.1,s2x=0.2,s2y=0.2,propz=c(30,30)) #Note we need 3 proppars for lam0 and sigma
-#'out=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'
@@ -119,7 +119,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=c(0.1,0.1),phi=c(0.1,0.1),s2x=0.2,s2y=0.2,propz=c(30,30)) #and phi and gamma get 2 proppars
-#'out=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'
@@ -143,7 +143,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=0.1,phi=0.1,s1x=0.05,s1y=0.05,s2x=0.2,s2y=0.2,propz=c(30,30),sigma_t=0.025) #Note there is a proppar for sigma_t and the meta mus
-#'out=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR((data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'#Let's look at some activity centers
@@ -159,16 +159,15 @@
 #'points(data$s[idx,1,1],data$s[idx,1,2],pch=4,col="yellow",lwd=5,cex=3)
 #'points(data$s[idx,2,1],data$s[idx,2,2],pch=4,col="yellow",lwd=5,cex=3)
 #'points(data$s[idx,3,1],data$s[idx,3,2],pch=4,col="yellow",lwd=5,cex=3)
-
 #'
 #'}
-#' @export
+#'@export
 
 mcmc.OpenSCR <-
-  function(data,niter=2400,nburn=1200, nthin=5, K=NA,M = 200, inits=inits,proppars=NA,keepACs=TRUE,Rcpp=FALSE){
+  function(data,niter=2400,nburn=1200, nthin=5, K=NA,M = 200, inits=inits,proppars=NA,keepACs=TRUE,Rcpp=TRUE){
     if(Rcpp==TRUE){ #Do we use Rcpp?
-      stop("Sorry, Rcpp isn't ready yet =(")
       if("tf"%in%names(data)){ #Do we have a trap operation file?
+        stop("Sorry, trap file functionality isn't ready yet =(")
         out2=SCRmcmcOpenRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
       }else{#No trap file
         out2=SCRmcmcOpenRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
