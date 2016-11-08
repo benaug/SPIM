@@ -705,9 +705,7 @@ SCRmcmcOpen <-
               pd.cand[i,,l]=1-exp(-lamd.cand[i,,l])
               ll.y.cand[i,,l] <- dbinom(y[i,,l], K[l], pd.cand[i,,l]*z[i,l], log=TRUE)
               ll.s2.cand<- dnorm(Scand[1],s1[i,1],sigma_t,log=TRUE)+dnorm(Scand[2],s1[i,2],sigma_t,log=TRUE)
-              # if(runif(1) < exp((sum(ll.y.cand[i,,l])) -(sum(ll.y[i,,l])))){
               if(runif(1) < exp((sum(ll.y.cand[i,,l])+ll.s2.cand) -(sum(ll.y[i,,l])+ll.s2[i,l]))){
-
                 s2[i,l,] <- Scand
                 D[i,,l] <- dtmp
                 lamd[i,,l] <- lamd.cand[i,,l]

@@ -143,7 +143,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=0.1,phi=0.1,s1x=0.05,s1y=0.05,s2x=0.2,s2y=0.2,propz=c(30,30),sigma_t=0.025) #Note there is a proppar for sigma_t and the meta mus
-#'out=mcmc.OpenSCR((data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,Rcpp=FALSE) #Need to fix this part of Rcpp code
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'#Let's look at some activity centers
@@ -181,7 +181,11 @@ mcmc.OpenSCR <-
       }
     }
     if(keepACs==TRUE){
-      list(out=out2$out, sxout=out2$sxout, syout=out2$syout, zout=out2$zout, ID_Lout=out2$ID_Lout,ID_Rout=out2$ID_Rout)
+      if("s2xout"%in%names(out2)){
+        list(out=out2$out, s1xout=out2$s1xout, s1yout=out2$s1yout,s2xout=out2$s2xout, s2yout=out2$s2yout, zout=out2$zout)
+      }else{
+        list(out=out2$out, s1xout=out2$s1xout, s1yout=out2$s1yout, zout=out2$zout)
+      }
     }else{
       list(out=out2$out)
     }
