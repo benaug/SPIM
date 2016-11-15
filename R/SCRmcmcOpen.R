@@ -214,7 +214,7 @@ SCRmcmcOpen <-
           }
         }
       }
-      #Count z==0?
+      #Count z==0
       ll.s2=(dnorm(s2[,,1],s1[,1],sigma_t,log=TRUE)+dnorm(s2[,,2],s1[,2],sigma_t,log=TRUE))
     }
     # some objects to hold the MCMC simulation output
@@ -515,19 +515,16 @@ SCRmcmcOpen <-
         for(i in swapz){
           pr.zt=zt.cand=z[,l]
           ####Try proposing not based on Ez. Just swap it. Take out prop and back probs. Should help mixing
-          # zt.cand[i] <-rbinom(1,1,Ez[i,l-1])
-          # if(zt.cand[i] == z[i,l])
-          #   next
           #Normal stuff
           zt.cand[i]=1-z[i,l]
           at.cand=1*(a[,l-1]==1&zt.cand==0) #who was available on last occasion and not proposed to be captured?
-          # prop.probs <- dbinom(zt.cand[i], 1, Ez[i,l-1], log=TRUE)
-          # back.probs <- dbinom(z[i,l], 1, Ez[i,l-1], log=TRUE) #same Ez bc Ezcand[,l-1] not changed
           ll.y.cand[i,,l] <- dbinom(y[i,,l], K[l],pd[i,,l]*zt.cand[i],log=TRUE)
-          ll.z.cand[,l] <- dbinom(zt.cand, 1, Ez[,l-1], log=TRUE) ## Don't subset z
-          prior.z <- sum(ll.z[,l])
-          prior.z.cand <- sum(ll.z.cand[,l])
-          prop.probs=back.probs=0
+          # ll.z.cand[,l] <- dbinom(zt.cand, 1, Ez[,l-1], log=TRUE) ## Don't subset z
+          ll.z.cand[i,l] <- dbinom(zt.cand[i], 1, Ez[i,l-1], log=TRUE) ## why not?
+          # prior.z <- sum(ll.z[i,l])
+          # prior.z.cand <- sum(ll.z.cand[i,l])
+          prior.z <- sum(ll.z[i,l])
+          prior.z.cand <- sum(ll.z.cand[i,l])
           #New stuff
           fix1=zt.cand[i]==1&sum(z[i,])==0 #guys never in pop proposed to be turned on
           fix2=sum(z[i,])==1&zt.cand[i]==0&z[i,l]==1 #guys in pop only once and proposed to be turned off
@@ -574,9 +571,10 @@ SCRmcmcOpen <-
               prior.z.cand <- prior.z.cand + sum(ll.z.cand[,l+1])
             }
           }
-          if(runif(1) < exp((sum(ll.y.cand[i,,l]) + prior.z.cand + back.probs) - (sum(ll.y[i,,l]) +prior.z + prop.probs) )) {
+          if(runif(1) < exp((sum(ll.y.cand[i,,l]) + prior.z.cand) - (sum(ll.y[i,,l]) +prior.z) )) {
             ll.y[i,,l] <- ll.y.cand[i,,l]
-            ll.z[,l] <- ll.z.cand[,l]
+            # ll.z[,l] <- ll.z.cand[,l]
+            ll.z[i,l] <- ll.z.cand[i,l]
             if((fix1|fix2)&(t>3)&(l<t)){
               z=z.cand
               a=a.cand

@@ -34,6 +34,7 @@
 #'
 #' @examples
 #' \dontrun{
+#' ##Still working out a bug in the Rcpp code, so don't use that yet, unless t=2
 #' library(coda)
 #' ###2 years of data,  all parameters fixed, stationary activity centers
 #' t=2
@@ -54,7 +55,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=0.1,phi=0.1,s2x=0.2,s2y=0.2,propz=c(30)) #The number of proppars must match the number of initial values
-#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,Rcpp=FALSE)
 #'plot(mcmc(out$out))
 #'
 #same but t=3
@@ -75,7 +76,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=0.1,phi=0.1,s2x=0.2,s2y=0.2,propz=c(30,30)) #Need 1 more propz
-#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,Rcpp=FALSE)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'
@@ -97,7 +98,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=rep(0.025,3),sigma=rep(0.025,3),gamma=0.1,phi=0.1,s2x=0.2,s2y=0.2,propz=c(30,30)) #Note we need 3 proppars for lam0 and sigma
-#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,Rcpp=FALSE)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'
@@ -119,7 +120,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=c(0.1,0.1),phi=c(0.1,0.1),s2x=0.2,s2y=0.2,propz=c(30,30)) #and phi and gamma get 2 proppars
-#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,Rcpp=FALSE)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'
@@ -143,7 +144,7 @@
 #'nburn=0
 #'nthin=1
 #'proppars=list(lam0=0.025,sigma=0.025,gamma=0.1,phi=0.1,s1x=0.05,s1y=0.05,s2x=0.2,s2y=0.2,propz=c(30,30),sigma_t=0.025) #Note there is a proppar for sigma_t and the meta mus
-#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,Rcpp=FALSE) #Need to fix this part of Rcpp code
+#'out=mcmc.OpenSCR(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,Rcpp=FALSE)
 #'plot(mcmc(out$out))
 #'summary(mcmc(out$out))
 #'#Let's look at some activity centers
@@ -164,7 +165,7 @@
 #'@export
 
 mcmc.OpenSCR <-
-  function(data,niter=2400,nburn=1200, nthin=5, K=NA,M = 200, inits=inits,proppars=NA,keepACs=TRUE,Rcpp=TRUE){
+  function(data,niter=2000,nburn=200, nthin=1, K=NA,M = 200, inits=inits,proppars=NA,keepACs=TRUE,Rcpp=TRUE){
     if(Rcpp==TRUE){ #Do we use Rcpp?
       if("tf"%in%names(data)){ #Do we have a trap operation file?
         stop("Sorry, trap file functionality isn't ready yet =(")

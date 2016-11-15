@@ -524,7 +524,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   if(metamu){
     for(int l=0; l<t; l++){
       for(int i=0; i<M; i++) { //X and Y normal log-likelihood simplified
-        ll_s2(i,l)=pow(sigma_t(0),2.0)-(1/(2*pow(sigma_t(0),2.0)))*(pow(s2(i,l,0)-s1(i,0),2.0)+pow(s2(i,l,1)-s1(i,1),2.0));
+        ll_s2(i,l)=-log(pow(sigma_t(0),2.0))-(1/(2*pow(sigma_t(0),2.0)))*(pow(s2(i,l,0)-s1(i,0),2.0)+pow(s2(i,l,1)-s1(i,1),2.0));
       }
     }
   }
@@ -940,18 +940,14 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
             pr_zt(i2)=z(i2,l);
             zt_cand(i2)=z(i2,l);
           }
-          // pr_zt(swapz(i))=Ez(swapz(i),l-1);
-          // rand=Rcpp::rbinom(1,1,pr_zt(swapz(i)));
           zt_cand(swapz(i))=1-z(swapz(i),l);
           at_cand=1*((a(_,l-1)==1)&(zt_cand==0)); //who was available on last occasion and not proposed to be captured?
           ll_z_cand=clone(ll_z);
           //sum ll across j for each l and chosen i
           llycandsum=0;
           llysum=0;
-          llzcandsum=0;
-          llzsum=0;
           for(int j=0; j<Xidx(l); j++){
-            ll_y_cand(swapz(i),j,l)=zt_cand(swapz(i))*(y(swapz(i),j,l)*log(pd(swapz(i),j,l))+(K(0)-y(swapz(i),j,l))*log(1-pd(swapz(i),j,l)));
+            ll_y_cand(swapz(i),j,l)=zt_cand(swapz(i))*(y(swapz(i),j,l)*log(pd(swapz(i),j,l))+(K(l)-y(swapz(i),j,l))*log(1-pd(swapz(i),j,l)));
             //Add up y likelihood contributions curr and cand for swapped guys
             if(ll_y_cand(swapz(i),j,l)==ll_y_cand(swapz(i),j,l)){
               llycandsum+=ll_y_cand(swapz(i),j,l);
@@ -961,10 +957,12 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
             }
           }
           //Add up the z likelihood contributions curr and cand for swapped guys
-          ll_z_cand(swapz(i),l) = zt_cand(swapz(i))*log(Ezcand(swapz(i),l-1))+(1-zt_cand(swapz(i)))*log(1-Ezcand(swapz(i),l-1));
+          ll_z_cand(swapz(i),l) = zt_cand(swapz(i))*log(Ez(swapz(i),l-1))+(1-zt_cand(swapz(i)))*log(1-Ez(swapz(i),l-1));
           if(ll_z(swapz(i),l)!=ll_z(swapz(i),l)){//Turn NaNs to 0s
             ll_z(swapz(i),l)=0;
           }
+          llzcandsum=0;
+          llzsum=0;
           llzcandsum+=ll_z_cand(swapz(i),l);//prior.z.cand
           llzsum+=ll_z(swapz(i),l);//prior.z
           //If we make this change to z[,l] and a[,l], how does it change ll.z[,l+1]?
@@ -980,7 +978,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
           if((sumz==1)&(zt_cand(swapz(i))==0)&(z(i,l)==1)){
             fix2=TRUE;
           }
-          if((fix1|fix2)&(t>3)&(l<(t))){
+          if((fix1|fix2)&(t>3)&(l<(t-1))){
             acand=clone(a);
             acand(_,l)=at_cand;
             zcand=clone(z);
@@ -1051,7 +1049,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
             for(int j=0; j<Xidx(l); j++){
               ll_y_curr(swapz(i),j,l) = ll_y_cand(swapz(i),j,l);
             }
-            ll_z(_,l)=ll_z_cand(_,l);
+            ll_z(swapz(i),l)=ll_z_cand(swapz(i),l);
             if((fix1|fix2)&(t>3)&(l<(t-1))){
               z=clone(zcand);
               a=clone(acand);
@@ -1237,13 +1235,13 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
                 llysum+=ll_y_curr(i,j,l);
               }
             }
-            ll_s2_cand(i,l)=pow(sigma_t(0),2.0)-(1/(2*pow(sigma_t(0),2.0)))*(pow(ScandX(0)-s1(i,0),2.0)+pow(ScandY(0)-s1(i,1),2.0));
+            ll_s2_cand(i,l)=-log(pow(sigma_t(0),2.0))-(1/(2*pow(sigma_t(0),2.0)))*(pow(ScandX(0)-s1(i,0),2.0)+pow(ScandY(0)-s1(i,1),2.0));
             rand=Rcpp::runif(1);
             if(rand(0)<exp((llycandsum+ll_s2_cand(i,l))-(llysum+ll_s2(i,l)))){
               s2(i,l,0)=ScandX(0);
               s2(i,l,1)=ScandY(0);
               ll_s2(i,l)=ll_s2_cand(i,l);
-              for(int j=0; j<J; j++){
+              for(int j=0; j<Xidx(l); j++){
                 D(i,j,l) = dtmp(j,l);
                 lamd(i,j,l) = lamdcand(i,j,l);
                 pd(i,j,l) = pdcand(i,j,l);
@@ -1254,7 +1252,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
 
         }
       }
-      // // Update meta mus
+      // Update meta mus
       for(int i=0; i<M; i++) {
         ScandX=Rcpp::rnorm(1,s1(i,0),props1x);
         ScandY=Rcpp::rnorm(1,s1(i,1),props1y);
@@ -1266,8 +1264,8 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         if(inbox(0)){
           lls2sum=0;
           lls2candsum=0;
-          for(int l=0; l<t; l++) {//cancel out z(i,l)=0
-            ll_s2_cand(i,l)=pow(sigma_t(0),2.0)-(1/(2*pow(sigma_t(0),2.0)))*(pow(s2(i,l,0)-ScandX(0),2.0)+pow(s2(i,l,1)-ScandY(0),2.0));
+          for(int l=0; l<t; l++) {
+            ll_s2_cand(i,l)=-log(pow(sigma_t(0),2.0))-(1/(2*pow(sigma_t(0),2.0)))*(pow(s2(i,l,0)-ScandX(0),2.0)+pow(s2(i,l,1)-ScandY(0),2.0));
             lls2sum+=ll_s2(i,l);
             lls2candsum+=ll_s2_cand(i,l);
           }
@@ -1282,14 +1280,13 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         }
       }
       // Update sigma_t
-      NumericVector sigma_t_cand(1);
       sigma_t_cand=rnorm(1,sigma_t(0),propsigma_t);
       if(sigma_t_cand(0) > 0){
         lls2sum=0;
         lls2candsum=0;
         for(int i=0; i<M; i++) {
           for(int l=0; l<t; l++) {
-            ll_s2_cand(i,l)=pow(sigma_t_cand(0),2.0)-(1/(2*pow(sigma_t_cand(0),2.0)))*(pow(s2(i,l,0)-s1(i,0),2.0)+pow(s2(i,l,1)-s1(i,1),2.0));
+            ll_s2_cand(i,l)=-log(pow(sigma_t_cand(0),2.0))-(1/(2*pow(sigma_t_cand(0),2.0)))*(pow(s2(i,l,0)-s1(i,0),2.0)+pow(s2(i,l,1)-s1(i,1),2.0));
             lls2sum+=ll_s2(i,l);
             lls2candsum+=ll_s2_cand(i,l);
           }
@@ -1396,8 +1393,11 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         out(iteridx,idx)=N(l);
         idx=idx+1;
       }
-      iteridx=iteridx+1;
     }
+    if(metamu){
+      out(iteridx,idx)=sigma_t(0);
+    }
+    iteridx=iteridx+1;
   }
   List to_return(11);
   to_return[0] = out;
