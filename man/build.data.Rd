@@ -53,6 +53,9 @@ data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,buff=
 str(data)
 
 #Regular SCR Open population
+data(Opendata)
+data=build.data(Opendata$y,Opendata$K,Opendata$X,buff=Opendata$buff,model="OpenSCR")
+str(data)
 }
 }
 \author{

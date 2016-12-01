@@ -379,6 +379,6 @@ SCRmcmcOpenRcpp <-
         list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout)
       }
     }else{
-      list(out=out,zout=zout,llzout=llzout)
+      list(out=out,zout=zout)
     }
   }
