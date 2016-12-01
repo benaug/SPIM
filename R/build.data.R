@@ -35,6 +35,9 @@
 #' str(data)
 #'
 #' #Regular SCR Open population
+#' data(Opendata)
+#' data=build.data(Opendata$y,Opendata$K,Opendata$X,buff=Opendata$buff,model="OpenSCR")
+#' str(data)
 #'}
 
 build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
@@ -138,18 +141,19 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
     }
   }else if(model=="OpenSCR"){
     n=max(input[,1])
-    t=max(input$t)
-    J=lapply(X,nrow)
+    t=max(input[,4])
+    J=unlist(lapply(X,nrow))
     maxJ=max(unlist(J))
     maxK=max(K)
-    y=array(0,dim=c(n,maxK,maxJ,t))
+    y=array(0,dim=c(n,maxJ,maxK,t))
     for(i in 1:nrow(input)){
-      y[input[i,1],input[i,3],input[i,2],input[i,4]]=1
+      y[input[i,1],input[i,2],input[i,3],input[i,4]]=1
     }
+    y=apply(y,c(1,2,4),sum)
     if(!is.na(vertices)){
-      data=list(y=y,X=X,n=n,K=K,vertices=vertices)
+      data=list(y=y,X=X,n=n,J=J,K=K,vertices=vertices)
     }else if (!is.na(buff)){
-      data=list(y=y,X=X,n=n,K=K,buff=buff)
+      data=list(y=y,X=X,n=n,J=J,K=K,buff=buff)
     }else{
       stop("User must input a buffer or polygon vertices")
     }

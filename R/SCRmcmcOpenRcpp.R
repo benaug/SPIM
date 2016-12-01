@@ -374,9 +374,9 @@ SCRmcmcOpenRcpp <-
     }
     if(keepACs==TRUE){
       if(metamu){
-        list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout,llzout=llzout)
+        list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout)
       }else{
-        list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout,llzout=llzout)
+        list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout)
       }
     }else{
       list(out=out,zout=zout,llzout=llzout)
