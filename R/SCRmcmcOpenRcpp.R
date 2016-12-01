@@ -262,7 +262,12 @@ SCRmcmcOpenRcpp <-
     if(metamu){
       npar=npar+1
     }
-    store=mcmc_Open(  lam0,  sigma,  gamma, gamma.prime,  phi, D,lamd, y, z, a,  s1, s2,
+    #So these aren't modified by Rcpp
+    lam0in=lam0
+    sigmain=sigma
+    gammain=gamma
+    phiin=phi
+    store=mcmc_Open(  lam0in,  sigmain,  gammain, gamma.prime,  phiin, D,lamd, y, z, a,  s1, s2,
                       metamu, useverts, vertices, xlim, ylim, known.matrix, Xidx, Xcpp, K, Ez,  psi,
                       N, proppars$lam0, proppars$sigma, proppars$propz,  proppars$gamma, proppars$s1x,  proppars$s1y,
                       proppars$s2x,proppars$s2y,proppars$sigma_t,sigma_t,niter,nburn,nthin,npar,each)
@@ -273,6 +278,73 @@ SCRmcmcOpenRcpp <-
     s2xout=store[[4]]
     s2yout=store[[5]]
     zout=store[[6]]
+    warn=store[[7]]
+    # aout=store[[8]]
+    # llzout=store[[8]]
+    # storeupz=store[[14]]
+    # storeswapz=store[[15]]
+    if(warn>0){
+      warning(paste("gamma proposal led to gamma prime >1",warn,"times. May want to raise M"))
+    }
+    # # Sanity check to make sure there are no shenanigans in z or a
+    # if(t>3){
+    #   for(i in 1:niter){
+    #     sanity=any(rowSums(zout[i,,])==0&rowSums(aout[i,,-t])!=(t-1))
+    #     for(l2 in 2:(t-2)){
+    #       sanity=c(sanity,any(aout[i,,l2]==0&aout[i,,l2-1]==1&aout[i,,l2+1]==1))
+    #     }
+    #     sanity=c(sanity,any((zout[i,,-t]+aout[i,,-t])>1))
+    #     if(any(sanity)){stop("insanity")}
+    #   }
+    # }else if(t==3){
+    #   for(i in 1:niter){
+    #     sanity=any(rowSums(zout[i,,])==0&rowSums(aout[i,,-t])!=(t-1))
+    #     sanity=c(sanity,any((zout[i,,-t]+aout[i,,-t])>1))
+    #     if(any(sanity)){stop("insanity")}
+    #   }
+    # }
+
+    #Check upz. spot check passes. do systematic check
+
+    # l=2
+    # i=1
+    # for(i in 1:M){
+    #   z=zout[i,,]
+    #   for(l in 2:t){
+    #
+    #     upz=which(known.matrix[,l]==0)#guys not caught on or on either side of this occ
+    #     if(l==2&l==(t-2)){#only happens if t=4
+    #       rem=which(z[,1]>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+    #       rem2=which(z[,l]==0&z[,l+1]==0&z[,t]>0)#guys with 0 0 and subsequent 1 can't be turned on
+    #     }else if(l==2){
+    #       rem=which(z[,1]>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+    #       rem2=which(z[,l]==0&z[,l+1]==0&rowSums(z[,(l+2):t])>0) #guys with 0 0 and subsequent 1 can't be turned on
+    #     }else if(l==(t-2)){
+    #       rem=which(rowSums(z[,1:(l-1)])>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+    #       rem2=which(z[,l]==0&z[,l+1]==0&z[,t]>0)#guys with 0 0 and subsequent 1 can't be turned on
+    #     }else if(l==(t-1)){
+    #       rem=which(rowSums(z[,1:(l-1)])>0&z[,t]>0)#guys in pop before and after
+    #       rem2=integer()
+    #     }else if (l==t){
+    #       rem=integer()
+    #       rem2=integer()
+    #     }else{
+    #       rem=which(rowSums(z[,1:(l-1)])>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+    #       rem2=which(z[,l]==0&z[,l+1]==0&rowSums(z[,(l+2):t])>0)#guys with 0 0 and subsequent 1 can't be turned on
+    #     }
+    #     which(storeupz[i+1,,l]==1)
+    #   }
+    # }
+    # which(!(0:(M-1)%in%sort(unique(as.numeric(storeswapz)))))
+    #
+    # known.matrix[which(!(0:(M-1)%in%sort(unique(as.numeric(storeswapz))))),]
+    # known.matrix[which((0:(M-1)%in%sort(unique(as.numeric(storeswapz))))),]
+    # cbind(apply(storeupz,c(2,3),sum),known.matrix)
+    # apply(storeupz,c(2,3),sum)
+    # idx=5000
+    # cbind(zout[idx,,],aout[idx,,])
+    # which(apply(zout,2,sum)==0)
+
     # name out
     if(length(lam0)==t){
       lam0names=paste("lam0",1:t,sep="")
@@ -302,11 +374,11 @@ SCRmcmcOpenRcpp <-
     }
     if(keepACs==TRUE){
       if(metamu){
-        list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout)
+        list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout,llzout=llzout)
       }else{
-        list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout)
+        list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout,llzout=llzout)
       }
     }else{
-      list(out=out)
+      list(out=out,zout=zout,llzout=llzout)
     }
   }

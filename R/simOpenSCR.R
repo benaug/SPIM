@@ -127,7 +127,6 @@ simOpenSCR <-
 
     #######Capture process######################
     # Simulate encounter history
-    idx=0
     y <-array(0,dim=c(M,maxJ,t))
     if(obstype=="bernoulli"){
       pd=1-exp(-lamd)

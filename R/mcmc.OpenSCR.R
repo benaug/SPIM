@@ -166,6 +166,9 @@
 
 mcmc.OpenSCR <-
   function(data,niter=2000,nburn=200, nthin=1, K=NA,M = 200, inits=inits,proppars=NA,keepACs=TRUE,Rcpp=TRUE){
+    #Test data set for right dimension
+    #apply(y,c(1,3,4),sum)
+
     if(Rcpp==TRUE){ #Do we use Rcpp?
       if("tf"%in%names(data)){ #Do we have a trap operation file?
         stop("Sorry, trap file functionality isn't ready yet =(")

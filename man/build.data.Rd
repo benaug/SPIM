@@ -2,37 +2,36 @@
 % Please edit documentation in R/build.data.R
 \name{build.data}
 \alias{build.data}
-\title{Format encounter data for SPIM}
+\title{Format encounter data for SPIM, open population SPIM, regular SCR, or open population SCR}
 \usage{
 build.data(input, K, X, IDknown = NA, buff = NA, vertices = NA,
   model = "2side")
 }
 \arguments{
 \item{input}{a data frame with columns ID, trap, occ, and type.  Each capture event has its own row with individual ID, capture
-occasion, trap number, and capture type (B, L, or R)}
+occasion, trap number, and capture type (B, L, or R) (for the SPIM model only)}
 
 \item{K}{the integer number of capture occasions}
 
 \item{X}{the J x 3 matrix of trap locations and number of cameras at each trap. columns are X, Y, #cams (1 or 2)}
 
-\item{IDknown}{the vector listing the complete indentity individuals, 1:nC.  Leave blank or set to NA if no identities are complete}
+\item{IDknown}{the vector listing the complete indentity individuals, 1:nC.  Leave blank or set to NA if no identities are complete. Not applicable for regular SCR.}
 
 \item{buff}{the distance to buffer the trapping array in the X and Y dimensions to produce the state space}
 
 \item{vertices}{a matrix of n_verts X 2 X and Y locations for the vertices of a polygon state space}
 }
 \value{
-a list with elements pIDL and pIDR, which are also lists.  Element X of pIDL corresponds to left individual X and contains the right
-individuals it was matched with on at least one MCMC iteration and the posterior for each match.  Similarly for pIDR.
+A properly formatted data set.
 }
 \description{
 This function formats the input object into a data set in the necessary format to run the spatial partial ID model.  You should
 number the nC complete identity individuals as 1:nC with individuals that had a both capture numbered 1:nB and any other complete identity
-individuals numbered (nB+1):nC.
+individuals numbered (nB+1):nC.  The function will format for closed or open population SPIM as well as closed and open population regular SCR.
 }
 \examples{
 \dontrun{
-#trivial example
+#SPIM trivial example
 X=cbind(1:6,1:6,rep(2,6))
 ID=c(1,1,2,4,5,3)
 occ=c(1,2,1,4,2,1)
@@ -41,11 +40,19 @@ type=c("B","L","B","R","R","L")
 input=data.frame(ID=ID,trap=trap,occ=occ,type=type)
 data=build.data(input,X=X,K=5,IDknown=1:2,buff=2,model="2side")
 
-#Less trivial example from single camera trap study
+#SPIM Less trivial example from single camera trap study
 data(singlecamInput)
 singlecamInput$input
 data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,IDknown=NA,buff=singlecamInput$buff,model="2side")
 str(data)
+
+#Regular SCR data
+data(singlecamInput)
+singlecamInput$input
+data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,buff=singlecamInput$buff,model="SCR")
+str(data)
+
+#Regular SCR Open population
 }
 }
 \author{

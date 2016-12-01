@@ -403,8 +403,10 @@ SCRmcmcOpen <-
         z.cand <- z #use full z to calculate correct proposed Ez.cand
         z.cand[i,1] <- 1-z[i,1]
         ll.y.cand[i,,1]=dbinom(y[i,,1],K[1],pd[i,,1]*z.cand[i,1],log=TRUE)
-        if(((z.cand[i,1]==1&sum(a[i,])==t)|(sum(z[i,])==1&sum(a[i,])==0))&(t>2)){#Are we turning on a guy that was never on before? or turning off a guy that was only on on z1?
+        #I changed this line if something goes haywire. I relied on sum(a)=t before
+        if(((z.cand[i,1]==1&sum(z[i,])==0)|(sum(z[i,])==1&z.cand[i,1]==0&z[i,1]==1))&(t>2)){#Are we turning on a guy that was never on before? or turning off a guy that was only on on z1?
           a.cand <- a
+          #only a option is all on or all off
           if(z.cand[i,1]==1&sum(a[i,])==t){
             a.cand[i,]=0 #all off
           }else{
@@ -443,7 +445,6 @@ SCRmcmcOpen <-
             warning("Rejected z due to low M")
             next
           }
-          ll.y.cand[i,,1]=dbinom(y[i,,1],K[1],pd[i,,1]*z1.cand[i],log=TRUE)
           ll.z.cand[i,1] <- dbinom(z1.cand[i], 1, psi, log=TRUE)
           Ez.cand[,1]=z1.cand*phi[1] + a1.cand*gamma.prime.cand[1]
           ll.z.cand[,2] <- dbinom(z[,2], 1, Ez.cand[,1], log=TRUE)
@@ -513,7 +514,7 @@ SCRmcmcOpen <-
         swapz=upz[sample.int(navail, propz)]
         #Update swapz one at a time
         for(i in swapz){
-          pr.zt=zt.cand=z[,l]
+          zt.cand=z[,l]
           ####Try proposing not based on Ez. Just swap it. Take out prop and back probs. Should help mixing
           #Normal stuff
           zt.cand[i]=1-z[i,l]
@@ -523,8 +524,8 @@ SCRmcmcOpen <-
           ll.z.cand[i,l] <- dbinom(zt.cand[i], 1, Ez[i,l-1], log=TRUE) ## why not?
           # prior.z <- sum(ll.z[i,l])
           # prior.z.cand <- sum(ll.z.cand[i,l])
-          prior.z <- sum(ll.z[i,l])
-          prior.z.cand <- sum(ll.z.cand[i,l])
+          prior.z=ll.z[i,l]
+          prior.z.cand=ll.z.cand[i,l]
           #New stuff
           fix1=zt.cand[i]==1&sum(z[i,])==0 #guys never in pop proposed to be turned on
           fix2=sum(z[i,])==1&zt.cand[i]==0&z[i,l]==1 #guys in pop only once and proposed to be turned off
@@ -534,10 +535,10 @@ SCRmcmcOpen <-
             z.cand=z
             z.cand[,l]=zt.cand
             if(fix1){
-              a.cand[i,l:t]=0 #all l:t off
+              a.cand[i,l:t]=0 #all off
             }
             if(fix2){
-              a.cand[i,l:t]=1 #all on 1:(l-1) are already on
+              a.cand[i,l:t]=1 #all on
             }
             #Calculate gamma.prime, Ez, and ll.z for l:t
             reject=FALSE

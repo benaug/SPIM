@@ -1,20 +1,19 @@
-#' Format encounter data for SPIM
+#' Format encounter data for SPIM, open population SPIM, regular SCR, or open population SCR
 #' @param input a data frame with columns ID, trap, occ, and type.  Each capture event has its own row with individual ID, capture
-#' occasion, trap number, and capture type (B, L, or R)
+#' occasion, trap number, and capture type (B, L, or R) (for the SPIM model only)
 #' @param K the integer number of capture occasions
 #' @param X the J x 3 matrix of trap locations and number of cameras at each trap. columns are X, Y, #cams (1 or 2)
-#' @param IDknown the vector listing the complete indentity individuals, 1:nC.  Leave blank or set to NA if no identities are complete
+#' @param IDknown the vector listing the complete indentity individuals, 1:nC.  Leave blank or set to NA if no identities are complete. Not applicable for regular SCR.
 #' @param buff the distance to buffer the trapping array in the X and Y dimensions to produce the state space
 #' @param vertices a matrix of n_verts X 2 X and Y locations for the vertices of a polygon state space
 #' @author Ben Augustine
 #' @description This function formats the input object into a data set in the necessary format to run the spatial partial ID model.  You should
 #' number the nC complete identity individuals as 1:nC with individuals that had a both capture numbered 1:nB and any other complete identity
-#' individuals numbered (nB+1):nC.
-#' @return a list with elements pIDL and pIDR, which are also lists.  Element X of pIDL corresponds to left individual X and contains the right
-#' individuals it was matched with on at least one MCMC iteration and the posterior for each match.  Similarly for pIDR.
+#' individuals numbered (nB+1):nC.  The function will format for closed or open population SPIM as well as closed and open population regular SCR.
+#' @return A properly formatted data set.
 #' @examples
 #' \dontrun{
-#' #trivial example
+#' #SPIM trivial example
 #' X=cbind(1:6,1:6,rep(2,6))
 #' ID=c(1,1,2,4,5,3)
 #' occ=c(1,2,1,4,2,1)
@@ -23,22 +22,30 @@
 #' input=data.frame(ID=ID,trap=trap,occ=occ,type=type)
 #' data=build.data(input,X=X,K=5,IDknown=1:2,buff=2,model="2side")
 #'
-#' #Less trivial example from single camera trap study
+#' #SPIM Less trivial example from single camera trap study
 #' data(singlecamInput)
 #' singlecamInput$input
 #' data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,IDknown=NA,buff=singlecamInput$buff,model="2side")
 #' str(data)
+#'
+#' #Regular SCR data
+#' data(singlecamInput)
+#' singlecamInput$input
+#' data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,buff=singlecamInput$buff,model="SCR")
+#' str(data)
+#'
+#' #Regular SCR Open population
 #'}
 
 build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
   #Check to see if IDs ordered correctly
-  IDs=sort(unique(input$ID))
-  if(all(IDs!=1:length(IDs))){
-    stop("Individuals not ordered consecutively starting at 1")
-  }
-  n=max(input[,1])
-  J=nrow(X)
   if(model=="2side"){
+    n=max(input[,1])
+    J=nrow(X)
+    IDs=sort(unique(input$ID))
+    if(all(IDs!=1:length(IDs))){
+      stop("Individuals not ordered consecutively starting at 1")
+    }
     B=input[input[,4]=="B",]
     L=input[input[,4]=="L",]
     R=input[input[,4]=="R",]
@@ -116,6 +123,8 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
       stop("User must input a buffer or polygon vertices")
     }
   }else if(model=="SCR"){
+    n=max(input[,1])
+    J=nrow(X)
     y=array(0,dim=c(n,K,J))
     for(i in 1:nrow(input)){
       y[input[i,1],input[i,3],input[i,2]]=1
@@ -127,8 +136,27 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
     }else{
       stop("User must input a buffer or polygon vertices")
     }
+  }else if(model=="OpenSCR"){
+    n=max(input[,1])
+    t=max(input$t)
+    J=lapply(X,nrow)
+    maxJ=max(unlist(J))
+    maxK=max(K)
+    y=array(0,dim=c(n,maxK,maxJ,t))
+    for(i in 1:nrow(input)){
+      y[input[i,1],input[i,3],input[i,2],input[i,4]]=1
+    }
+    if(!is.na(vertices)){
+      data=list(y=y,X=X,n=n,K=K,vertices=vertices)
+    }else if (!is.na(buff)){
+      data=list(y=y,X=X,n=n,K=K,buff=buff)
+    }else{
+      stop("User must input a buffer or polygon vertices")
+    }
+  }else if(model=="Open2side"){
+    stop("Open2side not yet functional")
   }else{
-    stop("model must be 2side or SCR")
+    stop("model must be 2side, SCR, Open2side, or OpenSCR")
   }
   return(data)
 }

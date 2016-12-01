@@ -33,7 +33,13 @@ mcmc.2sideR <-
     }else{
       stop("user must supply either 'buff' or 'vertices' in data object")
     }
+    ##pull out initial values
+    psi<- inits$psi
+    lam01<- inits$lam01
+    sigma<- inits$sigma
+    lam01<- inits$lam01
     lam02<- inits$lam02
+
     #Figure out what needs to be updated
     uplam01=uplam02=upIDs=TRUE
     if(lam01==0){
@@ -46,11 +52,6 @@ mcmc.2sideR <-
     if(upIDs==TRUE&(nleft==0&nright==0)){  #not sure what will happen if we only have left only or right only
       upIDs=FALSE
     }
-
-    ##pull out initial values
-    psi<- inits$psi
-    lam01<- inits$lam01
-    sigma<- inits$sigma
 
     #augment both data
     both<- abind(both,array(0, dim=c( M-dim(both)[1],3,K, J)), along=1)
@@ -222,7 +223,7 @@ mcmc.2sideR <-
         map=cbind(1:M,ID_L)
         candmap=map
         candmap[1:Nfixed,]=NA #Don't swap out IDknown guys
-        candmap[z==0,1]=NA #Don't swap in z=0 guys
+        candmap[z==0,1]=NA #Don't swap in z=0 guys.
         candmap[candmap[,2]%in%which(z==0),2]=NA #Don't choose a guy1 that will make you swap in a z=0 guy
         #These are the guys that can come out and go in
         OUTcands=which(!is.na(candmap[,2]))

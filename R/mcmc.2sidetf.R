@@ -43,6 +43,7 @@ mcmc.2sidetf <-
     }
     tf=tfnew
     #Figure out what needs to be updated
+    lam01<- inits$lam01
     lam02<- inits$lam02
     uplam01=uplam02=upIDs=TRUE
     if(lam01==0){
@@ -58,7 +59,6 @@ mcmc.2sidetf <-
 
     ##pull out initial values
     psi<- inits$psi
-    lam01<- inits$lam01
     sigma<- inits$sigma
     if(uplam02){
       lam02<- inits$lam02
