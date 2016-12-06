@@ -23,6 +23,8 @@ mcmc.OpenSCR(data, niter = 2000, nburn = 200, nthin = 1, K = NA,
 
 \item{proppars}{a list of tuning parameters for the proposal distributions}
 
+\item{jointZ}{a logical indicating whether you want to use the sequential or joint z update.}
+
 \item{keepACs}{a logical indicating whether or not to keep the posteriors for z, s}
 
 \item{Rcpp}{a logical indicating whether or not to use Rcpp}
@@ -52,6 +54,10 @@ It must have elemnts "lam0", "sigma", "gamma", "s2x", "s2y", and "propz". If a p
 the appropriate number of proppars. propz is the number of data augmentation z's to update in years 2,...,t, so it should
 be of length t-1.  Increasing propz improves mixing (up to a point) but increases computation time. Finally, if you set
 an initial value for sigma_t, you need to provide proppars for "s1x", "s1y", and "sigma_t".
+
+A note on the z samplers.  jointZ=TRUE will update all the z's for each individual at the same time while jointZ=FALSE
+will update them sequentially.  For T=3-6ish, you get a greater effective sample size with the joint update than sequential.
+The joint update always mixes better, but takes longer as t increases.
 }
 \examples{
 \dontrun{

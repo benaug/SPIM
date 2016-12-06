@@ -155,6 +155,8 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   LogicalVector fixed(t);
   IntegerVector cancel(nzpossible);
   NumericVector propto(nzpossible);
+  NumericVector propto1(nzpossible);
+  NumericVector propto2(nzpossible);
   IntegerVector zchoose(1);
   IntegerVector choose=Rcpp::seq(0,(nzpossible-1));
   IntegerVector zprop(nzpossible);
@@ -162,7 +164,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   double propprob;
   double backprob;
   int currz=0;
-  double sumpropto;
+  double sumpropto=0;
 
   //Preallocate phi and gamma
   int survive=0;
@@ -927,18 +929,20 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
           //new z stuff
           sumpropto=0;
           for(int i2=0; i2<nzpossible; i2++){
-            propto(i2)=0;
+            propto1(i2)=0;
             if(cancel(i2)==1){
               for(int l=0; l<t; l++){
-                propto(i2)+=exp(llzpossible(i2,l));
+                propto1(i2)+=exp(llzpossible(i2,l));
               }
-              sumpropto+=propto(i2);
+              sumpropto+=propto1(i2);
             }
           }
           for(int i2=0; i2<nzpossible; i2++){
-            propto(i2)*=1/sumpropto;
+            propto(i2)=propto1(i2)/sumpropto;
+            propto2(i2)=propto1(i2)/sumpropto;
           }
-          zchoose=Rcpp::RcppArmadillo::sample(choose,1,FALSE,propto);
+          //sample screws up ordering so feeding in second copy not used later
+          zchoose=Rcpp::RcppArmadillo::sample(choose,1,FALSE,propto2);
           sumz=0; //using here to see if prop z is same as curr z
           for(int l=0; l<t; l++){
             zprop(l)=zpossible(zchoose(0),l);
@@ -1009,7 +1013,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
                 for(int i2=0; i2<M; i2++){
                   //Add on contributions to z ll from l+1 for cand and curr
                   Ezcand(i2,l) = zcand(i2,l)*phiuse(l) + acand(i2,l)*gammaprimecand(l);
-                  ll_z_cand(i2,l+1) = z(i2,l+1)*log(Ezcand(i2,l))+(1-z(i2,l+1))*log(1-Ezcand(i2,l));
+                  ll_z_cand(i2,l+1) = zcand(i2,l+1)*log(Ezcand(i2,l))+(1-zcand(i2,l+1))*log(1-Ezcand(i2,l));
                   llzsum+=ll_z(i2,l+1);//prior.z
                   if(ll_z_cand(i2,l+1)==ll_z_cand(i2,l+1)){
                     llzcandsum+=ll_z_cand(i2,l+1);//prior.z.cand
@@ -1384,5 +1388,16 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   to_return[5] = zout;
   to_return[6] = warncount;
   to_return[7] = a;
+  // to_return[8] = choose;
+  // to_return[9] = propto1;
+  // to_return[10] = propto;
+  // to_return[11] = cancel;
+  // to_return[12] = llzpossible;
+  // to_return[13] = sumpropto;
+  // to_return[14] = propprob;
+  // to_return[15] = backprob;
+  // to_return[16] = zchoose;
+  // to_return[17] = currz;
+
   return to_return;
 }
