@@ -1,5 +1,5 @@
 SCRmcmcOpenRcpp <-
-  function(data,niter=2400,nburn=1200, nthin=5,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
+  function(data,niter=2400,nburn=1200, nthin=5,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),jointZ=TRUE,keepACs=TRUE){
     library(abind)
     t=dim(data$y)[3]
     y<-data$y
@@ -250,6 +250,38 @@ SCRmcmcOpenRcpp <-
     if(!is.finite(ll.y.sum)){
       stop("Detection function starting values produce -Inf log likelihood values. Try increasing sigma and/or lam0")
     }
+    #identify all possible z and a
+    if(jointZ==TRUE){
+      #Figure out all possible z histories
+      zpossible=cbind(c(1,1,0),c(1,0,1))
+      if (t > 2) {
+        for (i in (3:t)) {
+          zpossible=cbind(c(rep(1,2^(i-1)),rep(0,((2^(i-1))-1))), rbind(zpossible, rep(0, (i-1)), zpossible))
+        }
+        #remove zombie histories
+        illegal=rep(FALSE,nrow(zpossible))
+        for(l in 1:(t-2)){
+          latecaps=rep(0,nrow(zpossible))
+          for(l2 in (l+2):(t)){
+            latecaps=latecaps+zpossible[,l2]
+          }
+          illegal=illegal|(zpossible[,l]==1&zpossible[,l+1]==0&latecaps>0)
+        }
+        zpossible=zpossible[which(illegal==FALSE),]
+      }
+
+      zpossible=rbind(zpossible,rep(0,t))#add on all zero history
+      nzpossible=nrow(zpossible)
+      apossible=matrix(1,nrow=nzpossible,ncol=t)
+      apossible[zpossible[,1]==1,1]=0
+      for(l in 2:t){
+        apossible[apossible[,l-1]==1&zpossible[,l]==1,l]=0
+        apossible[apossible[,l-1]==0,l]=0
+      }
+    }else{
+      #make up some fake stuff to feed to rcpp
+      zpossible=apossible=0
+    }
     Xidx=unlist(lapply(X,dim))[seq(1,2*length(X)-1,2)]
     Xcpp=array(NA,dim=c(t,max(Xidx),2))
     for(l in 1:t){
@@ -270,7 +302,8 @@ SCRmcmcOpenRcpp <-
     store=mcmc_Open(  lam0in,  sigmain,  gammain, gamma.prime,  phiin, D,lamd, y, z, a,  s1, s2,
                       metamu, useverts, vertices, xlim, ylim, known.matrix, Xidx, Xcpp, K, Ez,  psi,
                       N, proppars$lam0, proppars$sigma, proppars$propz,  proppars$gamma, proppars$s1x,  proppars$s1y,
-                      proppars$s2x,proppars$s2y,proppars$sigma_t,sigma_t,niter,nburn,nthin,npar,each)
+                      proppars$s2x,proppars$s2y,proppars$sigma_t,sigma_t,niter,nburn,nthin,npar,each,jointZ,
+                      zpossible,apossible)
 
     out=store[[1]]
     s1xout=store[[2]]

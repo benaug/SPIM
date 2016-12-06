@@ -7,6 +7,7 @@
 #' @param inits a list of user-supplied initial values.
 #' @param proppars a list of tuning parameters for the proposal distributions
 #' @param keepACs a logical indicating whether or not to keep the posteriors for z, s
+#' @param jointZ a logical indicating whether you want to use the sequential or joint z update.
 #' @param Rcpp a logical indicating whether or not to use Rcpp
 #' @return  a list with the posteriors for the open population SCR parameters (out), s, and z
 #' @author Ben Augustine, Richard Chandler
@@ -31,6 +32,11 @@
 #' the appropriate number of proppars. propz is the number of data augmentation z's to update in years 2,...,t, so it should
 #' be of length t-1.  Increasing propz improves mixing (up to a point) but increases computation time. Finally, if you set
 #' an initial value for sigma_t, you need to provide proppars for "s1x", "s1y", and "sigma_t".
+#'
+#' A note on the z samplers.  jointZ=TRUE will update all the z's for each individual at the same time while jointZ=FALSE
+#' will update them sequentially.  For T=3-6ish, you get a greater effective sample size with the joint update than sequential.
+#' The joint update always mixes better, but takes longer as t increases.
+#'
 #'
 #' @examples
 #' \dontrun{
@@ -164,7 +170,7 @@
 #'@export
 
 mcmc.OpenSCR <-
-  function(data,niter=2000,nburn=200, nthin=1, K=NA,M = 200, inits=inits,proppars=NA,keepACs=TRUE,Rcpp=TRUE){
+  function(data,niter=2000,nburn=200, nthin=1, K=NA,M = 200, inits=inits,proppars=NA,jointZ=TRUE,keepACs=TRUE,Rcpp=TRUE){
     #Test data set for right dimension
     #apply(y,c(1,3,4),sum)
 
@@ -178,9 +184,9 @@ mcmc.OpenSCR <-
     }else{#Don't use Rcpp
       if("tf"%in%names(data)){ #Do we have a trap operation file?
         stop("Sorry, trap file functionality isn't ready yet =(")
-        out2=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+        out2=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,jointZ=jointZ)
       }else{#No trap file
-        out2=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+        out2=SCRmcmcOpen(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,jointZ=jointZ)
       }
     }
     if(keepACs==TRUE){

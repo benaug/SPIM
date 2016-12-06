@@ -1,5 +1,5 @@
 SCRmcmcOpen <-
-  function(data,niter=2400,nburn=1200, nthin=5,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
+  function(data,niter=2400,nburn=1200, nthin=5,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),jointZ=TRUE,keepACs=TRUE){
     library(abind)
     t=dim(data$y)[3]
     y<-data$y
@@ -158,6 +158,7 @@ SCRmcmcOpen <-
       ll.z[,l]=dbinom(z[,l], 1, Ez[,l-1], log=TRUE)
     }
     ll.z.cand=ll.z
+    gamma.prime.cand=gamma.prime
     #Optimize starting locations given where they are trapped. Initalizing s1 and s2 at same locs
     s1<- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
     idx=which(known.vector==1) #switch for those actually caught
@@ -287,6 +288,36 @@ SCRmcmcOpen <-
     if(!is.finite(ll.y.sum)){
       stop("Detection function starting values produce -Inf log likelihood values. Try increasing sigma and/or lam0")
     }
+    if(jointZ==TRUE){
+      #Figure out all possible z histories
+      zpossible=cbind(c(1,1,0),c(1,0,1))
+      if (t > 2) {
+        for (i in (3:t)) {
+          zpossible=cbind(c(rep(1,2^(i-1)),rep(0,((2^(i-1))-1))), rbind(zpossible, rep(0, (i-1)), zpossible))
+        }
+        #remove zombie histories
+        illegal=rep(FALSE,nrow(zpossible))
+        for(l in 1:(t-2)){
+          latecaps=rep(0,nrow(zpossible))
+          for(l2 in (l+2):(t)){
+            latecaps=latecaps+zpossible[,l2]
+          }
+          illegal=illegal|(zpossible[,l]==1&zpossible[,l+1]==0&latecaps>0)
+        }
+        zpossible=zpossible[which(illegal==FALSE),]
+      }
+
+      zpossible=rbind(zpossible,rep(0,t))#add on all zero history
+      nzpossible=nrow(zpossible)
+      apossible=matrix(1,nrow=nzpossible,ncol=t)
+      apossible[zpossible[,1]==1,1]=0
+      for(l in 2:t){
+        apossible[apossible[,l-1]==1&zpossible[,l]==1,l]=0
+        apossible[apossible[,l-1]==0,l]=0
+      }
+      Ezpossible=matrix(NA,nrow=nzpossible,ncol=t-1)
+      ll_z_possible=matrix(NA,nrow=nzpossible,ncol=t)
+    }
 
     for(iter in 1:niter){
       ll.y.t.sum=apply(ll.y,3,sum) #only needed for detection parameters, changes in z and AC updates
@@ -390,33 +421,254 @@ SCRmcmcOpen <-
         }
       }
       # Update z[,1]
-      if(t>3){
-        upz=which(!(z[,1]==0&z[,2]==0&rowSums(z[,3:t]>0))&known.matrix[,1]==0)
-      }else if(t==3){
-        upz=which(!(z[,1]==0&z[,2]==0&z[,3]>0)&known.matrix[,1]==0)
-      }else{
-        upz=which(known.matrix[,1]==0)
-      }
-      for(i in upz){
-        gamma.prime.cand <- gamma.prime
-        #Do we need to modify a in more than one year.
-        z.cand <- z #use full z to calculate correct proposed Ez.cand
-        z.cand[i,1] <- 1-z[i,1]
-        ll.y.cand[i,,1]=dbinom(y[i,,1],K[1],pd[i,,1]*z.cand[i,1],log=TRUE)
-        #I changed this line if something goes haywire. I relied on sum(a)=t before
-        if(((z.cand[i,1]==1&sum(z[i,])==0)|(sum(z[i,])==1&z.cand[i,1]==0&z[i,1]==1))&(t>2)){#Are we turning on a guy that was never on before? or turning off a guy that was only on on z1?
-          a.cand <- a
-          #only a option is all on or all off
-          if(z.cand[i,1]==1&sum(a[i,])==t){
-            a.cand[i,]=0 #all off
-          }else{
-            a.cand[i,]=1 #all on
+      if(jointZ==FALSE){
+        if(t>3){
+          upz=which(!(z[,1]==0&z[,2]==0&rowSums(z[,3:t]>0))&known.matrix[,1]==0)
+        }else if(t==3){
+          upz=which(!(z[,1]==0&z[,2]==0&z[,3]>0)&known.matrix[,1]==0)
+        }else{
+          upz=which(known.matrix[,1]==0)
+        }
+        for(i in upz){
+          gamma.prime.cand <- gamma.prime
+          #Do we need to modify a in more than one year.
+          z.cand <- z #use full z to calculate correct proposed Ez.cand
+          z.cand[i,1] <- 1-z[i,1]
+          ll.y.cand[i,,1]=dbinom(y[i,,1],K[1],pd[i,,1]*z.cand[i,1],log=TRUE)
+          #I changed this line if something goes haywire. I relied on sum(a)=t before
+          if(((z.cand[i,1]==1&sum(z[i,])==0)|(sum(z[i,])==1&z.cand[i,1]==0&z[i,1]==1))&(t>2)){#Are we turning on a guy that was never on before? or turning off a guy that was only on on z1?
+            a.cand <- a
+            #only a option is all on or all off
+            if(z.cand[i,1]==1&sum(a[i,])==t){
+              a.cand[i,]=0 #all off
+            }else{
+              a.cand[i,]=1 #all on
+            }
+            #Calculate gamma.prime, Ez, and ll.z candidates
+            ll.z.cand[i,1] <- dbinom(z.cand[i,1], 1, psi, log=TRUE)
+            #Make object to put N1_prop in to but use current values of the other Ns
+            Ntmp=N
+            Ntmp[1]=sum(z.cand[,1])
+            for(l in 2:t){
+              gamma.prime.cand[l-1]=(Ntmp[l-1]*gammause[l-1]) / sum(a.cand[,l-1])
+              if(gamma.prime.cand[l-1] > 1) { # E(Recruits) must be < nAvailable
+                warning("Rejected z due to low M")
+                next
+              }
+              Ez.cand[,l-1]=z.cand[,l-1]*phiuse[l-1] + a.cand[,l-1]*gamma.prime.cand[l-1]
+              ll.z.cand[,l]=dbinom(z.cand[,l], 1, Ez.cand[,l-1], log=TRUE)
+            }
+            if(runif(1) < exp((sum(ll.y.cand[i,,1])+ ll.z.cand[i,1]+sum(ll.z.cand[,-1]))-(sum(ll.y[i,,1])+ll.z[i,1]+sum(ll.z[,-1])) )) {
+              ll.y[i,,1] = ll.y.cand[i,,1]
+              ll.z[i,1] = ll.z.cand[i,1]
+              ll.z[,-1] = ll.z.cand[,-1]
+              Ez = Ez.cand
+              z[i,1] = z.cand[i,1]
+              gamma.prime = gamma.prime.cand
+              a=a.cand
+            }
+          }else{#Don't need to modify more than one year
+            z1.cand <- z[,1]
+            z1.cand[i] <- 1-z[i,1]
+            a1.cand <- a[,1]
+            a1.cand[i] <- 1-z1.cand[i]
+            gamma.prime.cand[1] <- sum(z1.cand)*gamma[1] / sum(a1.cand)
+            if(gamma.prime.cand[1] > 1) { # E(Recruits) must be < nAvailable
+              warning("Rejected z due to low M")
+              next
+            }
+            ll.z.cand[i,1] <- dbinom(z1.cand[i], 1, psi, log=TRUE)
+            Ez.cand[,1]=z1.cand*phi[1] + a1.cand*gamma.prime.cand[1]
+            ll.z.cand[,2] <- dbinom(z[,2], 1, Ez.cand[,1], log=TRUE)
+            if(runif(1) < exp((sum(ll.y.cand[i,,1])+ ll.z.cand[i,1]+sum(ll.z.cand[,2]))-(sum(ll.y[i,,1])+ll.z[i,1]+sum(ll.z[,2])) )) {#z1 and z2 matter
+              ll.y[i,,1] = ll.y.cand[i,,1]
+              ll.z[i,1] = ll.z.cand[i,1]
+              ll.z[,2] = ll.z.cand[,2]
+              Ez[,1] = Ez.cand[,1]
+              z[i,1] = z1.cand[i]
+              gamma.prime[1] = gamma.prime.cand[1]
+              a[i,1]=a1.cand[i]
+            }
           }
+        }
+        N[1]=sum(z[,1])
+
+        for(l in 2:t){
+          #Determine who can be updated
+          upz=which(known.matrix[,l]==0)#guys not caught on or on either side of this occ
+          #Figure out illegal moves.  Depends on t.
+          #Could use apply function, but need something to convert to Rcpp
+          if(t>3){
+            if(l==2&l==(t-2)){#only happens if t=4
+              rem=which(z[,1]>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+              rem2=which(z[,l]==0&z[,l+1]==0&z[,t]>0)#guys with 0 0 and subsequent 1 can't be turned on
+            }else if(l==2){
+              rem=which(z[,1]>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+              rem2=which(z[,l]==0&z[,l+1]==0&rowSums(z[,(l+2):t])>0) #guys with 0 0 and subsequent 1 can't be turned on
+            }else if(l==(t-2)){
+              rem=which(rowSums(z[,1:(l-1)])>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+              rem2=which(z[,l]==0&z[,l+1]==0&z[,t]>0)#guys with 0 0 and subsequent 1 can't be turned on
+            }else if(l==(t-1)){
+              rem=which(rowSums(z[,1:(l-1)])>0&z[,t]>0)#guys in pop before and after
+              rem2=integer()
+            }else if (l==t){
+              rem=integer()
+              rem2=integer()
+            }else{
+              rem=which(rowSums(z[,1:(l-1)])>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
+              rem2=which(z[,l]==0&z[,l+1]==0&rowSums(z[,(l+2):t])>0)#guys with 0 0 and subsequent 1 can't be turned on
+            }
+          }else if(t==3){
+            if(l==2){
+              rem=which(z[,1]>0&z[,t]>0)#guys in pop before and after
+              rem2=integer()
+            }else{#l==3
+              rem=integer()
+              rem2=integer()
+            }
+          }else{#t==2
+            rem=integer()
+            rem2=integer()
+          }
+          rem3=which( (z[,l-1]==0) & (a[,l-1]==0)) #dead guys.
+          remall=c(rem,rem2,rem3)
+          upz=upz[!upz%in%remall]#We can change these guys
+          navail=length(upz)
+          if(navail<1){
+            next
+          }
+          if(navail < proppars$propz[l-1]) {
+            propz=navail
+            warning("M isn't big enough to propose all propz")
+          }else{
+            propz=proppars$propz[l-1]
+          }
+          swapz=upz[sample.int(navail, propz)]
+          #Update swapz one at a time
+          for(i in swapz){
+            zt.cand=z[,l]
+            ####Try proposing not based on Ez. Just swap it. Take out prop and back probs. Should help mixing
+            #Normal stuff
+            zt.cand[i]=1-z[i,l]
+            at.cand=1*(a[,l-1]==1&zt.cand==0) #who was available on last occasion and not proposed to be captured?
+            ll.y.cand[i,,l] <- dbinom(y[i,,l], K[l],pd[i,,l]*zt.cand[i],log=TRUE)
+            # ll.z.cand[,l] <- dbinom(zt.cand, 1, Ez[,l-1], log=TRUE) ## Don't subset z
+            ll.z.cand[i,l] <- dbinom(zt.cand[i], 1, Ez[i,l-1], log=TRUE) ## why not?
+            # prior.z <- sum(ll.z[i,l])
+            # prior.z.cand <- sum(ll.z.cand[i,l])
+            prior.z=ll.z[i,l]
+            prior.z.cand=ll.z.cand[i,l]
+            #New stuff
+            fix1=zt.cand[i]==1&sum(z[i,])==0 #guys never in pop proposed to be turned on
+            fix2=sum(z[i,])==1&zt.cand[i]==0&z[i,l]==1 #guys in pop only once and proposed to be turned off
+            if((fix1|fix2)&(t>3)&(l<t)){
+              a.cand <- a
+              a.cand[,l]=at.cand
+              z.cand=z
+              z.cand[,l]=zt.cand
+              if(fix1){
+                a.cand[i,l:t]=0 #all off
+              }
+              if(fix2){
+                a.cand[i,l:t]=1 #all on
+              }
+              #Calculate gamma.prime, Ez, and ll.z for l:t
+              reject=FALSE
+              Ntmp=N
+              Ntmp[l]=sum(zt.cand)
+              for(l2 in l:(t-1)){
+                gamma.prime.cand[l2]=(Ntmp[l2]*gammause[l2]) / sum(a.cand[,l2])
+                if(gamma.prime.cand[l2] > 1){
+                  reject=TRUE
+                }
+                Ez.cand[,l2]=z.cand[,l2]*phiuse[l2] + a.cand[,l2]*gamma.prime.cand[l2]
+                ll.z.cand[,l2+1]=dbinom(z.cand[,l2+1], 1, Ez.cand[,l2], log=TRUE)
+                prior.z <- prior.z + sum(ll.z[,l2+1])
+                prior.z.cand <- prior.z.cand + sum(ll.z.cand[,l2+1])
+              }
+              if(reject){
+                warning("Rejected z due to low M")
+                next
+              }
+            }else{
+              #Calculate gamma.prime, Ez, and ll.z for l
+              if(l<t){ ## NOTE: Don't subset with swapz
+                gamma.prime.cand[l] <- sum(zt.cand)*gammause[l] / sum(at.cand)
+                if(gamma.prime.cand[l] > 1){
+                  warning("Rejected z due to low M")
+                  next
+                }
+                Ez.cand[,l] <- zt.cand*phiuse[l] + at.cand*gamma.prime.cand[l]
+                ll.z.cand[,l+1] <- dbinom(z[,l+1], 1, Ez.cand[,l], log=TRUE)
+                prior.z <- prior.z + sum(ll.z[,l+1])
+                prior.z.cand <- prior.z.cand + sum(ll.z.cand[,l+1])
+              }
+            }
+            if(runif(1) < exp((sum(ll.y.cand[i,,l]) + prior.z.cand) - (sum(ll.y[i,,l]) +prior.z) )) {
+              ll.y[i,,l] <- ll.y.cand[i,,l]
+              # ll.z[,l] <- ll.z.cand[,l]
+              ll.z[i,l] <- ll.z.cand[i,l]
+              if((fix1|fix2)&(t>3)&(l<t)){
+                z=z.cand
+                a=a.cand
+                ll.z[,l:t]=ll.z.cand[,l:t]
+                Ez[,l:(t-1)]=Ez.cand[,l:(t-1)]
+                gamma.prime[l:(t-1)]= gamma.prime.cand[l:(t-1)]
+              }else{
+                z[,l] <- zt.cand
+                a[,l] <- at.cand
+                if(l < t) {
+                  ll.z[,l+1] <- ll.z.cand[,l+1]
+                  Ez[,l] <- Ez.cand[,l]
+                  gamma.prime[l] <- gamma.prime.cand[l]
+                }
+              }
+              N[l] <- sum(z[,l])
+            }
+          }
+        }
+      }else{
+        #Can update anyone who wasn't captured on every occasion
+        upz=which(rowSums(known.matrix)!=t)
+        #jointZ update
+        #ll.z[,1] won't change across i
+        ll_z_possible[,1]=dbinom(zpossible[,1], 1, psi,log=TRUE)
+        for(i in upz){
+          #Get likelihood for all possible z histories
+          for(l in 2:t){
+            Ezpossible[,l-1]=zpossible[,l-1]*phiuse[l-1] + apossible[,l-1]*gamma.prime[l-1]
+            ll_z_possible[,l]=dbinom(zpossible[,l], 1, Ezpossible[,l-1],log=TRUE)
+          }
+          #Zero out known matrix years for both swapped
+          fixed=which(known.matrix[i,]==1)
+          cancel=rep(1,nzpossible)
+          for(i2 in 1:nzpossible){
+            if(!all(fixed%in%which(zpossible[i2,]==1))){
+              cancel[i2]=0
+            }
+          }
+          #new z stuff
+          propto1=rowSums(exp(ll_z_possible))*(1*(cancel==1))
+          propto=propto1/sum(propto1)
+          zchoose=sample(1:nzpossible,1,prob=propto)
+          zprop=zpossible[zchoose,]
+          if(all(zprop==z[i,])) next #abort if proposal is current history
+          prop.prob=propto[zchoose]
+          #old z stuff
+          currz=which(apply(zpossible,1,function(x){all(x==z[i,])}))
+          back.prob=propto[currz]
+
+          #Because a and z changes, must update gamma.prime and Ez
+          #Don't need to update all years every time, but not figuring that out for now
+          aprop=apossible[zchoose,]
+
           #Calculate gamma.prime, Ez, and ll.z candidates
+          z.cand=z
+          z.cand[i,]=zprop
+          a.cand=a
+          a.cand[i,]=aprop
+          Ntmp=colSums(z.cand)
           ll.z.cand[i,1] <- dbinom(z.cand[i,1], 1, psi, log=TRUE)
-          #Make object to put N1_prop in to but use current values of the other Ns
-          Ntmp=N
-          Ntmp[1]=sum(z.cand[,1])
           for(l in 2:t){
             gamma.prime.cand[l-1]=(Ntmp[l-1]*gammause[l-1]) / sum(a.cand[,l-1])
             if(gamma.prime.cand[l-1] > 1) { # E(Recruits) must be < nAvailable
@@ -426,183 +678,32 @@ SCRmcmcOpen <-
             Ez.cand[,l-1]=z.cand[,l-1]*phiuse[l-1] + a.cand[,l-1]*gamma.prime.cand[l-1]
             ll.z.cand[,l]=dbinom(z.cand[,l], 1, Ez.cand[,l-1], log=TRUE)
           }
-          if(runif(1) < exp((sum(ll.y.cand[i,,1])+ ll.z.cand[i,1]+sum(ll.z.cand[,-1]))-(sum(ll.y[i,,1])+ll.z[i,1]+sum(ll.z[,-1])) )) {
-            ll.y[i,,1] = ll.y.cand[i,,1]
-            ll.z[i,1] = ll.z.cand[i,1]
-            ll.z[,-1] = ll.z.cand[,-1]
-            Ez = Ez.cand
-            z[i,1] = z.cand[i,1]
-            gamma.prime = gamma.prime.cand
-            a=a.cand
+          #update ll.y
+          for(l in 1:t){
+            ll.y.cand[i,,l] <- dbinom(y[i,,l], K[l],pd[i,,l]*z.cand[i,l],log=TRUE)
           }
-        }else{#Don't need to modify more than one year
-          z1.cand <- z[,1]
-          z1.cand[i] <- 1-z[i,1]
-          a1.cand <- a[,1]
-          a1.cand[i] <- 1-z1.cand[i]
-          gamma.prime.cand[1] <- sum(z1.cand)*gamma[1] / sum(a1.cand)
-          if(gamma.prime.cand[1] > 1) { # E(Recruits) must be < nAvailable
-            warning("Rejected z due to low M")
-            next
-          }
-          ll.z.cand[i,1] <- dbinom(z1.cand[i], 1, psi, log=TRUE)
-          Ez.cand[,1]=z1.cand*phi[1] + a1.cand*gamma.prime.cand[1]
-          ll.z.cand[,2] <- dbinom(z[,2], 1, Ez.cand[,1], log=TRUE)
-          if(runif(1) < exp((sum(ll.y.cand[i,,1])+ ll.z.cand[i,1]+sum(ll.z.cand[,2]))-(sum(ll.y[i,,1])+ll.z[i,1]+sum(ll.z[,2])) )) {#z1 and z2 matter
-            ll.y[i,,1] = ll.y.cand[i,,1]
-            ll.z[i,1] = ll.z.cand[i,1]
-            ll.z[,2] = ll.z.cand[,2]
-            Ez[,1] = Ez.cand[,1]
-            z[i,1] = z1.cand[i]
-            gamma.prime[1] = gamma.prime.cand[1]
-            a[i,1]=a1.cand[i]
-          }
-        }
-      }
-      N[1]=sum(z[,1])
 
-      for(l in 2:t){
-        #Determine who can be updated
-        upz=which(known.matrix[,l]==0)#guys not caught on or on either side of this occ
-        #Figure out illegal moves.  Depends on t.
-        #Could use apply function, but need something to convert to Rcpp
-        if(t>3){
-          if(l==2&l==(t-2)){#only happens if t=4
-            rem=which(z[,1]>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
-            rem2=which(z[,l]==0&z[,l+1]==0&z[,t]>0)#guys with 0 0 and subsequent 1 can't be turned on
-          }else if(l==2){
-            rem=which(z[,1]>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
-            rem2=which(z[,l]==0&z[,l+1]==0&rowSums(z[,(l+2):t])>0) #guys with 0 0 and subsequent 1 can't be turned on
-          }else if(l==(t-2)){
-            rem=which(rowSums(z[,1:(l-1)])>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
-            rem2=which(z[,l]==0&z[,l+1]==0&z[,t]>0)#guys with 0 0 and subsequent 1 can't be turned on
-          }else if(l==(t-1)){
-            rem=which(rowSums(z[,1:(l-1)])>0&z[,t]>0)#guys in pop before and after
-            rem2=integer()
-          }else if (l==t){
-            rem=integer()
-            rem2=integer()
-          }else{
-            rem=which(rowSums(z[,1:(l-1)])>0&rowSums(z[,(l+1):t])>0)#guys in pop before and after
-            rem2=which(z[,l]==0&z[,l+1]==0&rowSums(z[,(l+2):t])>0)#guys with 0 0 and subsequent 1 can't be turned on
-          }
-        }else if(t==3){
-          if(l==2){
-            rem=which(z[,1]>0&z[,t]>0)#guys in pop before and after
-            rem2=integer()
-          }else{#l==3
-            rem=integer()
-            rem2=integer()
-          }
-        }else{#t==2
-          rem=integer()
-          rem2=integer()
-        }
-        rem3=which( (z[,l-1]==0) & (a[,l-1]==0)) #dead guys.
-        remall=c(rem,rem2,rem3)
-        upz=upz[!upz%in%remall]#We can change these guys
-        navail=length(upz)
-        if(navail<1){
-          next
-        }
-        if(navail < proppars$propz[l-1]) {
-          propz=navail
-          warning("M isn't big enough to propose all propz")
-        }else{
-          propz=proppars$propz[l-1]
-        }
-        swapz=upz[sample.int(navail, propz)]
-        #Update swapz one at a time
-        for(i in swapz){
-          zt.cand=z[,l]
-          ####Try proposing not based on Ez. Just swap it. Take out prop and back probs. Should help mixing
-          #Normal stuff
-          zt.cand[i]=1-z[i,l]
-          at.cand=1*(a[,l-1]==1&zt.cand==0) #who was available on last occasion and not proposed to be captured?
-          ll.y.cand[i,,l] <- dbinom(y[i,,l], K[l],pd[i,,l]*zt.cand[i],log=TRUE)
-          # ll.z.cand[,l] <- dbinom(zt.cand, 1, Ez[,l-1], log=TRUE) ## Don't subset z
-          ll.z.cand[i,l] <- dbinom(zt.cand[i], 1, Ez[i,l-1], log=TRUE) ## why not?
-          # prior.z <- sum(ll.z[i,l])
-          # prior.z.cand <- sum(ll.z.cand[i,l])
-          prior.z=ll.z[i,l]
-          prior.z.cand=ll.z.cand[i,l]
-          #New stuff
-          fix1=zt.cand[i]==1&sum(z[i,])==0 #guys never in pop proposed to be turned on
-          fix2=sum(z[i,])==1&zt.cand[i]==0&z[i,l]==1 #guys in pop only once and proposed to be turned off
-          if((fix1|fix2)&(t>3)&(l<t)){
-            a.cand <- a
-            a.cand[,l]=at.cand
-            z.cand=z
-            z.cand[,l]=zt.cand
-            if(fix1){
-              a.cand[i,l:t]=0 #all off
-            }
-            if(fix2){
-              a.cand[i,l:t]=1 #all on
-            }
-            #Calculate gamma.prime, Ez, and ll.z for l:t
-            reject=FALSE
-            Ntmp=N
-            Ntmp[l]=sum(zt.cand)
-            for(l2 in l:(t-1)){
-              gamma.prime.cand[l2]=(Ntmp[l2]*gammause[l2]) / sum(a.cand[,l2])
-              if(gamma.prime.cand[l2] > 1){
-                reject=TRUE
-              }
-              Ez.cand[,l2]=z.cand[,l2]*phiuse[l2] + a.cand[,l2]*gamma.prime.cand[l2]
-              ll.z.cand[,l2+1]=dbinom(z.cand[,l2+1], 1, Ez.cand[,l2], log=TRUE)
-              prior.z <- prior.z + sum(ll.z[,l2+1])
-              prior.z.cand <- prior.z.cand + sum(ll.z.cand[,l2+1])
-            }
-            if(reject){
-              warning("Rejected z due to low M")
-              next
-            }
-          }else{
-            #Calculate gamma.prime, Ez, and ll.z for l
-            if(l<t){ ## NOTE: Don't subset with swapz
-              gamma.prime.cand[l] <- sum(zt.cand)*gammause[l] / sum(at.cand)
-              if(gamma.prime.cand[l] > 1){
-                warning("Rejected z due to low M")
-                next
-              }
-              Ez.cand[,l] <- zt.cand*phiuse[l] + at.cand*gamma.prime.cand[l]
-              ll.z.cand[,l+1] <- dbinom(z[,l+1], 1, Ez.cand[,l], log=TRUE)
-              prior.z <- prior.z + sum(ll.z[,l+1])
-              prior.z.cand <- prior.z.cand + sum(ll.z.cand[,l+1])
-            }
-          }
-          if(runif(1) < exp((sum(ll.y.cand[i,,l]) + prior.z.cand) - (sum(ll.y[i,,l]) +prior.z) )) {
-            ll.y[i,,l] <- ll.y.cand[i,,l]
-            # ll.z[,l] <- ll.z.cand[,l]
-            ll.z[i,l] <- ll.z.cand[i,l]
-            if((fix1|fix2)&(t>3)&(l<t)){
-              z=z.cand
-              a=a.cand
-              ll.z[,l:t]=ll.z.cand[,l:t]
-              Ez[,l:(t-1)]=Ez.cand[,l:(t-1)]
-              gamma.prime[l:(t-1)]= gamma.prime.cand[l:(t-1)]
-            }else{
-              z[,l] <- zt.cand
-              a[,l] <- at.cand
-              if(l < t) {
-                ll.z[,l+1] <- ll.z.cand[,l+1]
-                Ez[,l] <- Ez.cand[,l]
-                gamma.prime[l] <- gamma.prime.cand[l]
-              }
-            }
-            N[l] <- sum(z[,l])
+          #MH step
+          if(runif(1)<exp((sum(ll.y.cand[i,,])+ll.z.cand[i,1]+sum(ll.z.cand[,2:t]))-(sum(ll.y[i,,])+ll.z[i,1]+sum(ll.z[,2:t])))*(back.prob/prop.prob)){
+            z[i,]=zprop
+            a[i,]=aprop
+            gamma.prime=gamma.prime.cand
+            N=Ntmp
+            Ez=Ez.cand
+            ll.z[i,1]=ll.z.cand[i,1]
+            ll.z[,2:t]=ll.z.cand[,2:t]
+            ll.y[i,,]=ll.y.cand[i,,]
           }
         }
       }
-      if(t>3){
-        #a for last year isn't updated so it does not matter if it comes back on.
-        sanity=any(rowSums(z)==0&rowSums(a[,-t])!=(t-1))
-        for(l2 in 2:(t-2)){
-          sanity=c(sanity,any(a[,l2]==0&a[,l2-1]==1&a[,l2+1]==1))
-        }
-        if(any(sanity)){stop("insanity")}
-      }
+      # if(t>3){
+      #   #a for last year isn't updated so it does not matter if it comes back on.
+      #   sanity=any(rowSums(z)==0&rowSums(a[,-t])!=(t-1))
+      #   for(l2 in 2:(t-2)){
+      #     sanity=c(sanity,any(a[,l2]==0&a[,l2-1]==1&a[,l2+1]==1))
+      #   }
+      #   if(any(sanity)){stop("insanity")}
+      # }
       #update psi
       psi <- rbeta(1, 1+N[1], 1+M-N[1])
       ll.z[,1] <- ll.z.cand[,1] <- dbinom(z[,1], 1, psi, log=TRUE)

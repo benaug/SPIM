@@ -395,6 +395,34 @@ SCRmcmcOpenSPIM <-
     if(!is.finite(ll.y.left.sum)|!is.finite(ll.y.left.sum)){
       stop("Single side detection function starting values produce -Inf log likelihood values. Try increasing sigma and/or lam01")
     }
+    if(joint==TRUE){
+      #Figure out all possible z histories
+      zpossible=cbind(c(1,1,0),c(1,0,1))
+      if (t > 2) {
+        for (i in (3:t)) {
+          zpossible=cbind(c(rep(1,2^(i-1)),rep(0,((2^(i-1))-1))), rbind(zpossible, rep(0, (i-1)), zpossible))
+        }
+      }
+      #remove zombie histories
+      illegal=rep(FALSE,nrow(zpossible))
+      for(l in 1:(t-2)){
+        latecaps=rep(0,nrow(zpossible))
+        for(l2 in (l+2):(t)){
+          latecaps=latecaps+zpossible[,l2]
+        }
+        illegal=illegal|(zpossible[,l]==1&zpossible[,l+1]==0&latecaps>0)
+      }
+      zpossible=zpossible[which(illegal==FALSE),]
+      nzpossible=nrow(zpossible)
+      apossible=matrix(1,nrow=nzpossible,ncol=t)
+      apossible[zpossible[,1]==1,1]=0
+      for(l in 2:t){
+        apossible[apossible[,l-1]==1&zpossible[,l]==1,l]=0
+        apossible[apossible[,l-1]==0,l]=0
+      }
+      Ezpossible=matrix(NA,nrow=nzpossible,ncol=t-1)
+      ll_z_possible=matrix(NA,nrow=nzpossible,ncol=t)
+    }
 
     for(iter in 1:niter){
       ll.y.both.t.sum=apply(ll.y.both,3,sum) #only needed for detection parameters, changes in z and AC updates
@@ -611,7 +639,7 @@ SCRmcmcOpenSPIM <-
         cat("some z = 0! going into left update",fill=TRUE)
         browser()
       }
-      zAny=rowSums(z)>0
+      zAny=rowSums(z)>0 #zAny status cannot change while updating, just which z's are on
       #Swap left guys first
       if(nleft>0){
         # User inputs how many swaps to make on each iteration my specifying "swap"
@@ -637,6 +665,7 @@ SCRmcmcOpenSPIM <-
           ## under consideration based on how far away they are.  swap.tol is the spatial tolerance
           # if no one around, code swaps guy 1 with guy 1 (no swap, but does calculations)
           possible<- INcands[dv < swap.tol]
+
           if(joint==FALSE){
             if(length(possible)==0){
               next
@@ -666,6 +695,7 @@ SCRmcmcOpenSPIM <-
 
             ##  Which left encounter history is currently associated with both guy s.swap.in?
             guy2<- which(map[,2]==s.swap.in)
+            if(guy1==guy2) next
             newID<-ID_L
             newID[guy1]<- s.swap.in
             newID[guy2]<- s.swap.out
@@ -709,8 +739,6 @@ SCRmcmcOpenSPIM <-
             }
             if(length(possible)==0) next #no guys close enough to swap
             jump.probability<- 1/length(possible)  # h(theta*|theta)
-            # z[c(s.swap.in,s.swap.out),]
-
 
             #compute  h(theta|theta*)
             trash<-   sqrt( (s1[s.swap.in,1]- s1[INcands,1])^2 + (s1[s.swap.in,2] - s1[INcands,2])^2  )
@@ -719,27 +747,106 @@ SCRmcmcOpenSPIM <-
 
             ##  Which left encounter history is currently associated with both guy s.swap.in?
             guy2<- which(map[,2]==s.swap.in)
+            if(guy1==guy2)next
             newID<-ID_L
             newID[guy1]<- s.swap.in
             newID[guy2]<- s.swap.out
 
             ## recompute 'data' and compute likelihood components for swapped guys only
             y.left.tmp<- apply( left[order(newID),2,,,], c(1,2,4), sum)#Only y.left changed
-            swapped=c(s.swap.out,s.swap.in)
+            swapped=c(s.swap.in,s.swap.out)
 
-            #update z before ll.y.left
+            ##update z before ll.y.left
+            #Get likelihood for all possible z histories
+            ll_z_possible[,1]=dbinom(zpossible[,1], 1, psi,log=TRUE)
+            for(l in 2:t){
+              Ezpossible[,l-1]=zpossible[,l-1]*phiuse[l-1] + apossible[,l-1]*gamma.prime[l-1]
+              ll_z_possible[,l]=dbinom(zpossible[,l], 1, Ezpossible[,l-1],log=TRUE)
+            }
 
+            #Proposing y.left.tmp changes known.matrix
+            swappedR=c(which(ID_R==swapped[1]),which(ID_R==swapped[2]))
+            tmpdata.prop=both[swapped,,,,] + left[c(guy1,guy2),,,,] + right[swappedR,,,,]
+            tmpdata.prop<- apply(tmpdata.prop,c(1,3,5),sum)
+            known.matrix.prop=1*(apply(tmpdata.prop,c(1,3),sum)>0)
 
+            #pick a new z based on updated known.matrix constraints
+            zchoose=zcandguy=prop.prob=back.prob=rep(NA,2)
+            zprop=matrix(NA,nrow=2,ncol=t)
+            for(i2 in 1:2){
+              #Zero out known matrix years for both swapped
+              fixed=which(known.matrix.prop[i2,]==1)
+              cancel=rep(1,nzpossible)
+              for(i3 in 1:nzpossible){
+                if(!all(fixed%in%which(zpossible[i3,]==1))){
+                  cancel[i3]=0
+                }
+              }
+              #new z stuff
+              propto1=rowSums(exp(ll_z_possible))*(1*(cancel==1))
+              propto=propto1/sum(propto1)
+              zchoose[i2]=sample(1:nzpossible,1,prob=propto)
+              zprop[i2,]=zpossible[zchoose[i2],]
+              prop.prob[i2]=propto[zchoose[i2]]
+              #old z stuff
+              zcandguy[i2]=which(apply(zpossible,1,function(x){all(x==z[swapped[i2],])}))
+              back.prob[i2]=propto[zcandguy[i2]]
+            }
 
+            #Because a and z changes, must update gamma.prime and Ez
+            #Don't need to update all years every time, but not figuring that out for now
+            aprop=apossible[zchoose,]
+
+            #Calculate gamma.prime, Ez, and ll.z candidates
+            ll.z.cand[swapped,1] <- dbinom(zprop[,1], 1, psi, log=TRUE)
+            z.cand=z
+            z.cand[swapped,]=zprop
+            a.cand=a
+            a.cand[swapped,]=aprop
+            Ntmp=colSums(z.cand)
+            for(l in 2:t){
+              gamma.prime.cand[l-1]=(Ntmp[l-1]*gammause[l-1]) / sum(a.cand[,l-1])
+              if(gamma.prime.cand[l-1] > 1) { # E(Recruits) must be < nAvailable
+                warning("Rejected z due to low M")
+                next
+              }
+              Ez.cand[,l-1]=z.cand[,l-1]*phiuse[l-1] + a.cand[,l-1]*gamma.prime.cand[l-1]
+              ll.z.cand[,l]=dbinom(z.cand[,l], 1, Ez.cand[,l-1], log=TRUE)
+            }
+
+            #update new ll.y.left for new y.left and z
             for(l in 1:t){
-              ll.y.left.cand[swapped,,l]=dbinom(y.left.tmp[swapped,,l],K[l],z[swapped,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
+              ll.y.left.cand[swapped,,l]=dbinom(y.left.tmp[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
             }
             if(!is.finite(sum(ll.y.left.cand))){
               stop("ll.y.left not finite. Maybe swap.tol too large")
             }
-            llswap.curr<- sum(ll.y.left[swapped,,l])
-            llswap.cand<- sum(ll.y.left.cand[swapped,,l])
-            lldiff=llswap.cand-llswap.curr
+            llyswap.curr<- sum(ll.y.left[swapped,,])
+            llyswap.cand<- sum(ll.y.left.cand[swapped,,])
+            llzswap.curr=sum(ll.z[swapped,1])+sum(ll.z[,2:t])
+            llzswap.cand=sum(ll.z.cand[swapped,1])+sum(ll.z.cand[,2:t])
+            #MH step
+            if(runif(1)<exp((llyswap.cand+llzswap.cand)-(llyswap.curr+llzswap.curr))*((jump.back*prod(back.prob))/(jump.probability*prod(prop.prob)))){
+              y.left[swapped,,] <- y.left.tmp[swapped,,] #update left data
+              ll.y.left[swapped,,]=ll.y.left.cand[swapped,,]
+              ID_L<-newID #update data order
+              map[c(guy1,guy2),2]=c(s.swap.in,s.swap.out)
+              known.matrix[swapped,]=known.matrix.prop
+              gamma.prime=gamma.prime.cand
+              N=Ntmp
+              Ez=Ez.cand
+              ll.z[swapped,1]=ll.z.cand[swapped,1]
+              ll.z[,2:t]=ll.z.cand[,2:t]
+              zero.guys<- apply(y.both+y.left + y.right ,c(1,3),sum) == 0
+              if(any(((colSums(y.both[guy1,,] + y.left.tmp[guy1,,]+ y.right[guy1,,])>0)==TRUE)&((z[guy1,]==0)==TRUE))){
+                cat("error on guy1",fill=TRUE)
+                browser()
+              }
+              if( any(((colSums(y.both[guy2,,] + y.left.tmp[guy2,,]+ y.right[guy2,,])>0)==TRUE)&((z[guy2,]==0)==TRUE))){
+                cat("error on guy2",fill=TRUE)
+                browser()
+              }
+            }
           }
         }
         #Do any captured guys have z==0?
@@ -751,16 +858,20 @@ SCRmcmcOpenSPIM <-
 
       #Repeat for rights
       if(nright>0){
+        # User inputs how many swaps to make on each iteration my specifying "swap"
+        #map lefts to boths
+        #candmap used to remove disallowed candidates.NA any lefts that map back to z=0 indices and boths that are z=0 indices
         map=cbind(1:M,ID_R)
         candmap=map
-        candmap[1:Nfixed,]=NA
-        candmap[which(!zAny),]=NA #Don't swap in zAny=0 guys.
-        # candmap[which(!zAny),1]=NA #Don't swap in zAny=0 guys.
-        candmap[candmap[,2]%in%which(!zAny),2]=NA #Don't choose a guy1 that will make you swap in a zAny=0 guy
+        candmap[1:Nfixed,]=NA #Don't swap out IDknown guys
+        candmap[which(!zAny),1]=NA #Don't swap in z=0 guys.
+        # candmap[which(!zAny),]=NA #Don't swap in z=0 guys.
+        candmap[candmap[,2]%in%which(!zAny),2]=NA #Don't choose a guy1 that will make you swap in a z=0 guy
+        #These are the guys that can come out and go in
         OUTcands=which(!is.na(candmap[,2]))
         INcands=which(!is.na(candmap[,1]))
         for(up in 1:swap){
-          ### In this code here "guy1" and "guy2" are indexing "right-side encounter histories" whereas
+          ### In this code here "guy1" and "guy2" are indexing "left-side encounter histories" whereas
           ### "s.swap.in" and "s.swap.out" are indexing (both-side guys, s, z)
           guy1<- sample(OUTcands, 1)
           s.swap.out<- map[guy1,2]
@@ -768,6 +879,7 @@ SCRmcmcOpenSPIM <-
           dv<-  sqrt( (s1[s.swap.out,1]- s1[INcands,1])^2 + (s1[s.swap.out,2] - s1[INcands,2])^2 )
           ## This is a list of both side activity centers that could be assinged to the right side guy
           ## under consideration based on how far away they are.  swap.tol is the spatial tolerance
+          # if no one around, code swaps guy 1 with guy 1 (no swap, but does calculations)
           possible<- INcands[dv < swap.tol]
           if(joint==FALSE){
             if(length(possible)==0){
@@ -782,11 +894,11 @@ SCRmcmcOpenSPIM <-
             # this is a particular value of s to swap for guy1.id
             if(length(possible)>1){
               s.swap.in <-  sample( possible, 1)
-            }else if(length(possible)==1){
-              s.swap.in <- possible
-            }else{
-              next #no guys close enough to swap
             }
+            if(length(possible) ==1){
+              s.swap.in <- possible
+            }
+            if(length(possible)==0) next #no guys close enough to swap
             jump.probability<- 1/length(possible)  # h(theta*|theta)
 
             #compute  h(theta|theta*)
@@ -794,33 +906,34 @@ SCRmcmcOpenSPIM <-
             trash<-  INcands[trash < swap.tol]
             jump.back<-  1/length(trash)
 
-            ##  Which right encounter history is currently associated with both guy s.swap.in?
+            ##  Which left encounter history is currently associated with both guy s.swap.in?
             guy2<- which(map[,2]==s.swap.in)
+            if(guy1==guy2) next
             newID<-ID_R
             newID[guy1]<- s.swap.in
             newID[guy2]<- s.swap.out
 
             ## recompute 'data' and compute likelihood components for swapped guys only
-            y.right.tmp<- apply( right[order(newID),3,,,], c(1,2,4), sum)#Only y.left changed
+            y.right.tmp<- apply( left[order(newID),3,,,], c(1,2,4), sum)#Only y.left changed
             swapped=c(s.swap.out,s.swap.in)
             for(l in 1:t){
               ll.y.right.cand[swapped,,l]=dbinom(y.right.tmp[swapped,,l],K[l],z[swapped,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
             }
             if(!is.finite(sum(ll.y.right.cand))){
-              stop("ll.y.right not finite. Maybe swap.tol too large")
+              stop("ll.y.right.cand not finite. Maybe swap.tol too large")
             }
             llswap.curr<- sum(ll.y.right[swapped,,l])
             llswap.cand<- sum(ll.y.right.cand[swapped,,l])
             lldiff=llswap.cand-llswap.curr
             #MH step
             if(runif(1)<exp(lldiff)*(jump.back/jump.probability) ){
-              y.right[swapped,,] <- y.right.tmp[swapped,,] #update left data
+              # lik.curr=lik.curr+lldiff #update likelihood
+              y.right[swapped,,] <- y.right.tmp[swapped,,] #update right data
               ll.y.right[swapped,,]=ll.y.right.cand[swapped,,]
-              y.right <- y.right.tmp #update right data
               ID_R<-newID #update data order
               map[c(guy1,guy2),2]=c(s.swap.in,s.swap.out)
               zero.guys<- apply(y.both+y.left + y.right ,c(1,3),sum) == 0
-              if( any(((colSums(y.both[guy1,,] + y.left[guy1,,]+ y.right.tmp[guy1,,])>0)==TRUE)&((z[guy1,]==0)==TRUE))){
+              if(any(((colSums(y.both[guy1,,] + y.left[guy1,,]+ y.right.tmp[guy1,,])>0)==TRUE)&((z[guy1,]==0)==TRUE))){
                 cat("error on guy1",fill=TRUE)
                 browser()
               }
@@ -831,6 +944,122 @@ SCRmcmcOpenSPIM <-
             }
           }else{
             #joint update
+            if(length(possible)>1){
+              s.swap.in <-  sample( possible, 1)
+            }
+            if(length(possible) ==1){
+              s.swap.in <- possible
+            }
+            if(length(possible)==0) next #no guys close enough to swap
+            jump.probability<- 1/length(possible)  # h(theta*|theta)
+
+            #compute  h(theta|theta*)
+            trash<-   sqrt( (s1[s.swap.in,1]- s1[INcands,1])^2 + (s1[s.swap.in,2] - s1[INcands,2])^2  )
+            trash<-  INcands[trash < swap.tol]
+            jump.back<-  1/length(trash)
+
+            ##  Which right encounter history is currently associated with both guy s.swap.in?
+            guy2<- which(map[,2]==s.swap.in)
+            if(guy1==guy2)next
+            newID<-ID_R
+            newID[guy1]<- s.swap.in
+            newID[guy2]<- s.swap.out
+
+            ## recompute 'data' and compute likelihood components for swapped guys only
+            y.right.tmp<- apply( right[order(newID),3,,,], c(1,2,4), sum)#Only y.right changed
+            swapped=c(s.swap.in,s.swap.out)
+
+            ##update z before ll.y.right
+            #Get likelihood for all possible z histories
+            ll_z_possible[,1]=dbinom(zpossible[,1], 1, psi,log=TRUE)
+            for(l in 2:t){
+              Ezpossible[,l-1]=zpossible[,l-1]*phiuse[l-1] + apossible[,l-1]*gamma.prime[l-1]
+              ll_z_possible[,l]=dbinom(zpossible[,l], 1, Ezpossible[,l-1],log=TRUE)
+            }
+
+            #Proposing y.right.tmp changes known.matrix
+            swappedL=c(which(ID_L==swapped[1]),which(ID_L==swapped[2]))
+            tmpdata.prop=both[swapped,,,,] + left[swappedL,,,,] + right[c(guy1,guy2),,,,]
+            tmpdata.prop<- apply(tmpdata.prop,c(1,3,5),sum)
+            known.matrix.prop=1*(apply(tmpdata.prop,c(1,3),sum)>0)
+
+            #pick a new z based on updated known.matrix constraints
+            zchoose=zcandguy=prop.prob=back.prob=rep(NA,2)
+            zprop=matrix(NA,nrow=2,ncol=t)
+            for(i2 in 1:2){
+              #Zero out known matrix years for both swapped
+              fixed=which(known.matrix.prop[i2,]==1)
+              cancel=rep(1,nzpossible)
+              for(i3 in 1:nzpossible){
+                if(!all(fixed%in%which(zpossible[i3,]==1))){
+                  cancel[i3]=0
+                }
+              }
+              #new z stuff
+              propto1=rowSums(exp(ll_z_possible))*(1*(cancel==1))
+              propto=propto1/sum(propto1)
+              zchoose[i2]=sample(1:nzpossible,1,prob=propto)
+              zprop[i2,]=zpossible[zchoose[i2],]
+              prop.prob[i2]=prod(propto[zchoose[i2]])
+              #old z stuff
+              zcandguy[i2]=which(apply(zpossible,1,function(x){all(x==z[swapped[i2],])}))
+              back.prob[i2]=propto[zcandguy[i2]]
+            }
+
+            #Because a and z changes, must update gamma.prime and Ez
+            #Don't need to update all years every time, but not figuring that out for now
+            aprop=apossible[zchoose,]
+
+            #Calculate gamma.prime, Ez, and ll.z candidates
+            ll.z.cand[swapped,1] <- dbinom(zprop[,1], 1, psi, log=TRUE)
+            z.cand=z
+            z.cand[swapped,]=zprop
+            a.cand=a
+            a.cand[swapped,]=aprop
+            Ntmp=colSums(z.cand)
+            for(l in 2:t){
+              gamma.prime.cand[l-1]=(Ntmp[l-1]*gammause[l-1]) / sum(a.cand[,l-1])
+              if(gamma.prime.cand[l-1] > 1) { # E(Recruits) must be < nAvailable
+                warning("Rejected z due to low M")
+                next
+              }
+              Ez.cand[,l-1]=z.cand[,l-1]*phiuse[l-1] + a.cand[,l-1]*gamma.prime.cand[l-1]
+              ll.z.cand[,l]=dbinom(z.cand[,l], 1, Ez.cand[,l-1], log=TRUE)
+            }
+
+            #update new ll.y.right for new y.right and z
+            for(l in 1:t){
+              ll.y.right.cand[swapped,,l]=dbinom(y.right.tmp[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
+            }
+            if(!is.finite(sum(ll.y.right.cand))){
+              stop("ll.y.right.cand not finite. Maybe swap.tol too large")
+            }
+            llyswap.curr<- sum(ll.y.right[swapped,,])
+            llyswap.cand<- sum(ll.y.right.cand[swapped,,])
+            llzswap.curr=sum(ll.z[swapped,1])+sum(ll.z[,2:t])
+            llzswap.cand=sum(ll.z.cand[swapped,1])+sum(ll.z.cand[,2:t])
+            #MH step
+            if(runif(1)<exp(c(llyswap.cand+llzswap.cand)-c(llyswap.curr+llzswap.curr))*((jump.back*prod(back.prob))/(jump.probability*prod(prop.prob)))){
+              y.right[swapped,,] <- y.right.tmp[swapped,,] #update right data
+              ll.y.right[swapped,,]=ll.y.right.cand[swapped,,]
+              ID_R<-newID #update data order
+              map[c(guy1,guy2),2]=c(s.swap.in,s.swap.out)
+              known.matrix[swapped,]=known.matrix.prop
+              gamma.prime=gamma.prime.cand
+              N=Ntmp
+              Ez=Ez.cand
+              ll.z[swapped,1]=ll.z.cand[swapped,1]
+              ll.z[,2:t]=ll.z.cand[,2:t]
+              zero.guys<- apply(y.both+y.left + y.right ,c(1,3),sum) == 0
+              if(any(((colSums(y.both[guy1,,] + y.left[guy1,,]+ y.right.tmp[guy1,,])>0)==TRUE)&((z[guy1,]==0)==TRUE))){
+                cat("error on guy1",fill=TRUE)
+                browser()
+              }
+              if( any(((colSums(y.both[guy2,,] + y.left[guy2,,]+ y.right.tmp[guy2,,])>0)==TRUE)&((z[guy2,]==0)==TRUE))){
+                cat("error on guy2",fill=TRUE)
+                browser()
+              }
+            }
           }
         }
         #Do any captured guys have z==0?
@@ -840,10 +1069,10 @@ SCRmcmcOpenSPIM <-
         }
       }
 
-      #known matrix must be updated
-      tmpdata<- both + left[order(ID_L),,,,] + right[order(ID_R),,,,]
-      tmpdata<- apply(tmpdata,c(1,3,5),sum)
-      known.matrix=1*(apply(tmpdata,c(1,3),sum)>0)
+      # #known matrix must be updated
+      # tmpdata<- both + left[order(ID_L),,,,] + right[order(ID_R),,,,]
+      # tmpdata<- apply(tmpdata,c(1,3,5),sum)
+      # known.matrix=1*(apply(tmpdata,c(1,3),sum)>0)
 
       # Update z[,1]
       if(t>3){
