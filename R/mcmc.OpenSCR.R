@@ -177,9 +177,9 @@ mcmc.OpenSCR <-
     if(Rcpp==TRUE){ #Do we use Rcpp?
       if("tf"%in%names(data)){ #Do we have a trap operation file?
         stop("Sorry, trap file functionality isn't ready yet =(")
-        out2=SCRmcmcOpenRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+        out2=SCRmcmcOpenRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,jointZ=jointZ)
       }else{#No trap file
-        out2=SCRmcmcOpenRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars)
+        out2=SCRmcmcOpenRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M =M, inits=inits,proppars=proppars,jointZ=jointZ)
       }
     }else{#Don't use Rcpp
       if("tf"%in%names(data)){ #Do we have a trap operation file?
