@@ -82,7 +82,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
                IntegerVector N,NumericVector proplam0, NumericVector propsig,NumericVector propz, NumericVector propgamma,double props1x,
                double props1y,double props2x,double props2y, double propsigma_t,NumericVector sigma_t,
                int niter, int nburn, int nthin,int npar,IntegerVector each,bool jointZ,IntegerMatrix zpossible,
-               IntegerMatrix apossible) {
+               IntegerMatrix apossible,IntegerMatrix cancel) {
   RNGScope scope;
   int M = size(lamd)[0];
   int J = size(lamd)[1];
@@ -138,6 +138,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   LogicalVector warn(M,FALSE);
   int warncount=0;
   LogicalVector upz(M);
+  LogicalVector upz3(M);
   IntegerVector upz2(M);
   IntegerVector swapz(M);
   IntegerVector latecaps(M,0);
@@ -153,7 +154,6 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   NumericMatrix Ezpossible(nzpossible,t-1);
   NumericMatrix llzpossible(nzpossible,t);
   LogicalVector fixed(t);
-  IntegerVector cancel(nzpossible);
   NumericVector propto(nzpossible);
   NumericVector propto1(nzpossible);
   NumericVector propto2(nzpossible);
@@ -206,11 +206,25 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
     nstore=nstore+1;
   }
   NumericMatrix out(nstore,npar);
-    NumericMatrix s1xout(nstore,M);
-    NumericMatrix s1yout(nstore,M);
-    arma::cube s2xout(nstore,M,t);
-    arma::cube s2yout(nstore,M,t);
-    arma::cube zout(nstore,M,t);
+  NumericMatrix s1xout(nstore,M);
+  NumericMatrix s1yout(nstore,M);
+  arma::cube s2xout(nstore,M,t);
+  arma::cube s2yout(nstore,M,t);
+  arma::cube zout(nstore,M,t);
+
+  //Can update anyone who wasn't captured on every occasion
+  for(int i=0; i<M; i++){
+    sumz=0;//reusing sum z to sum known.matrix
+    for(int l=0; l<t; l++){
+      sumz+=knownmatrix(i,l);
+    }
+    if(sumz<t){
+      upz3(i)=TRUE;
+    }else{
+      upz3(i)=FALSE;
+    }
+  }
+
 
   int iteridx=0;
   //////Calculate starting log likelihoods///////
@@ -888,49 +902,28 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         }
       }
     }else{
-      //Can update anyone who wasn't captured on every occasion
-      for(int i=0; i<M; i++){
-        sumz=0;//reusing sum z to sum known.matrix
-        for(int l=0; l<t; l++){
-          sumz+=knownmatrix(i,l);
-        }
-        if(sumz<t){
-          upz(i)=TRUE;
-        }else{
-          upz(i)=FALSE;
-        }
-      }
       //jointZ update
       //ll.z[,1] won't change across i
       for(int i=0; i<nzpossible; i++){
         llzpossible(i,0) = zpossible(i,0)*log(psi)+(1-zpossible(i,0))*log(1-psi);
       }
+      //Get likelihood for all possible z histories. must update if accepted
+      for(int l=1; l<t; l++){
+        for(int i2=0; i2<nzpossible; i2++){
+          Ezpossible(i2,l-1)=zpossible(i2,l-1)*phiuse(l-1) + apossible(i2,l-1)*gammaprime(l-1);
+          llzpossible(i2,l)=zpossible(i2,l)*log(Ezpossible(i2,l-1))+(1-zpossible(i2,l))*log(1-Ezpossible(i2,l-1));
+          if(llzpossible(i2,l)!=llzpossible(i2,l)){//fix NaNs
+            llzpossible(i2,l)=0;
+          }
+        }
+      }
       for(int i=0; i<M; i++){
-        if(upz){
-          //Get likelihood for all possible z histories
-          for(int l=1; l<t; l++){
-            for(int i2=0; i2<nzpossible; i2++){
-              Ezpossible(i2,l-1)=zpossible(i2,l-1)*phiuse(l-1) + apossible(i2,l-1)*gammaprime(l-1);
-              llzpossible(i2,l)=zpossible(i2,l)*log(Ezpossible(i2,l-1))+(1-zpossible(i2,l))*log(1-Ezpossible(i2,l-1));
-              if(llzpossible(i2,l)!=llzpossible(i2,l)){//fix NaNs
-                llzpossible(i2,l)=0;
-              }
-            }
-          }
-          //Zero out known matrix years for both swapped
-          for(int i2=0; i2<nzpossible; i2++){
-            cancel(i2)=1;
-            for(int l=0; l<t; l++){
-              if((zpossible(i2,l)==0)&(knownmatrix(i,l)==1)){
-                cancel(i2)=0;
-              }
-            }
-          }
+        if(upz3){
           //new z stuff
           sumpropto=0;
           for(int i2=0; i2<nzpossible; i2++){
             propto1(i2)=0;
-            if(cancel(i2)==1){
+            if(cancel(i,i2)==1){
               for(int l=0; l<t; l++){
                 propto1(i2)+=exp(llzpossible(i2,l));
               }
@@ -1054,6 +1047,16 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
                 for(int i2=0; i2<M; i2++){
                   Ez(i2,l)=Ezcand(i2,l);
                   ll_z(i2,l+1)=ll_z_cand(i2,l+1);
+                }
+              }
+              //Update likelihood for all possible z histories
+              for(int l=1; l<t; l++){
+                for(int i2=0; i2<nzpossible; i2++){
+                  Ezpossible(i2,l-1)=zpossible(i2,l-1)*phiuse(l-1) + apossible(i2,l-1)*gammaprime(l-1);
+                  llzpossible(i2,l)=zpossible(i2,l)*log(Ezpossible(i2,l-1))+(1-zpossible(i2,l))*log(1-Ezpossible(i2,l-1));
+                  if(llzpossible(i2,l)!=llzpossible(i2,l)){//fix NaNs
+                    llzpossible(i2,l)=0;
+                  }
                 }
               }
             }
@@ -1191,7 +1194,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
       }
     }
     for(int i=0; i<M; i++) {
-        warncount+=warn(i);
+      warncount+=warn(i);
     }
     //////// Now we have to update the activity centers//////////////////
     if(metamu){
@@ -1379,7 +1382,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
       iteridx=iteridx+1;
     }
   }
-  List to_return(8);
+  List to_return(9);
   to_return[0] = out;
   to_return[1] = s1xout;
   to_return[2] = s1yout;
@@ -1388,6 +1391,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   to_return[5] = zout;
   to_return[6] = warncount;
   to_return[7] = a;
+  to_return[8] = upz;
   // to_return[8] = choose;
   // to_return[9] = propto1;
   // to_return[10] = propto;

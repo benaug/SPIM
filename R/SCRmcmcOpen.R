@@ -317,6 +317,18 @@ SCRmcmcOpen <-
       }
       Ezpossible=matrix(NA,nrow=nzpossible,ncol=t-1)
       ll_z_possible=matrix(NA,nrow=nzpossible,ncol=t)
+      #Can always update anyone who wasn't captured on every occasion
+      upz3=which(rowSums(known.matrix)!=t)
+      #Zero out known matrix years for both swapped
+      cancel=matrix(1,nrow=M,ncol=nzpossible)
+      for(i in 1:M){
+        fixed=which(known.matrix[i,]==1)
+        for(i2 in 1:nzpossible){
+          if(!all(fixed%in%which(zpossible[i2,]==1))){
+            cancel[i,i2]=0
+          }
+        }
+      }
     }
 
     for(iter in 1:niter){
@@ -628,27 +640,17 @@ SCRmcmcOpen <-
           }
         }
       }else{
-        #Can update anyone who wasn't captured on every occasion
-        upz=which(rowSums(known.matrix)!=t)
         #jointZ update
         #ll.z[,1] won't change across i
         ll_z_possible[,1]=dbinom(zpossible[,1], 1, psi,log=TRUE)
-        for(i in upz){
-          #Get likelihood for all possible z histories
-          for(l in 2:t){
-            Ezpossible[,l-1]=zpossible[,l-1]*phiuse[l-1] + apossible[,l-1]*gamma.prime[l-1]
-            ll_z_possible[,l]=dbinom(zpossible[,l], 1, Ezpossible[,l-1],log=TRUE)
-          }
-          #Zero out known matrix years for both swapped
-          fixed=which(known.matrix[i,]==1)
-          cancel=rep(1,nzpossible)
-          for(i2 in 1:nzpossible){
-            if(!all(fixed%in%which(zpossible[i2,]==1))){
-              cancel[i2]=0
-            }
-          }
+        #Get likelihood for all possible z histories. Need to update when accepted
+        for(l in 2:t){
+          Ezpossible[,l-1]=zpossible[,l-1]*phiuse[l-1] + apossible[,l-1]*gamma.prime[l-1]
+          ll_z_possible[,l]=dbinom(zpossible[,l], 1, Ezpossible[,l-1],log=TRUE)
+        }
+        for(i in upz3){
           #new z stuff
-          propto1=rowSums(exp(ll_z_possible))*(1*(cancel==1))
+          propto1=rowSums(exp(ll_z_possible))*(1*(cancel[i,]==1))
           propto=propto1/sum(propto1)
           zchoose=sample(1:nzpossible,1,prob=propto)
           zprop=zpossible[zchoose,]
@@ -693,6 +695,11 @@ SCRmcmcOpen <-
             ll.z[i,1]=ll.z.cand[i,1]
             ll.z[,2:t]=ll.z.cand[,2:t]
             ll.y[i,,]=ll.y.cand[i,,]
+            #Update likelihood for all possible z histories
+            for(l in 2:t){
+              Ezpossible[,l-1]=zpossible[,l-1]*phiuse[l-1] + apossible[,l-1]*gamma.prime[l-1]
+              ll_z_possible[,l]=dbinom(zpossible[,l], 1, Ezpossible[,l-1],log=TRUE)
+            }
           }
         }
       }

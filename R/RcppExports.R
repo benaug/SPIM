@@ -5,8 +5,8 @@ inoutCppOpen <- function(sx, sy, vertices) {
     .Call('SPIM_inoutCppOpen', PACKAGE = 'SPIM', sx, sy, vertices)
 }
 
-mcmc_Open <- function(lam0, sigma, gamma, gammaprime, phi, D, lamd, y, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam0, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible) {
-    .Call('SPIM_mcmc_Open', PACKAGE = 'SPIM', lam0, sigma, gamma, gammaprime, phi, D, lamd, y, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam0, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible)
+mcmc_Open <- function(lam0, sigma, gamma, gammaprime, phi, D, lamd, y, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam0, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible, cancel) {
+    .Call('SPIM_mcmc_Open', PACKAGE = 'SPIM', lam0, sigma, gamma, gammaprime, phi, D, lamd, y, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam0, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible, cancel)
 }
 
 inoutCpp <- function(sx, sy, vertices) {

@@ -278,6 +278,16 @@ SCRmcmcOpenRcpp <-
         apossible[apossible[,l-1]==1&zpossible[,l]==1,l]=0
         apossible[apossible[,l-1]==0,l]=0
       }
+      #Zero out known matrix years for both swapped
+      cancel=matrix(1,nrow=M,ncol=nzpossible)
+      for(i in 1:M){
+        fixed=which(known.matrix[i,]==1)
+        for(i2 in 1:nzpossible){
+          if(!all(fixed%in%which(zpossible[i2,]==1))){
+            cancel[i,i2]=0
+          }
+        }
+      }
     }else{
       #make up some fake stuff to feed to rcpp
       zpossible=apossible=matrix(0,nrow=2,ncol=2)
@@ -303,7 +313,7 @@ SCRmcmcOpenRcpp <-
                       metamu, useverts, vertices, xlim, ylim, known.matrix, Xidx, Xcpp, K, Ez,  psi,
                       N, proppars$lam0, proppars$sigma, proppars$propz,  proppars$gamma, proppars$s1x,  proppars$s1y,
                       proppars$s2x,proppars$s2y,proppars$sigma_t,sigma_t,niter,nburn,nthin,npar,each,jointZ,
-                      zpossible,apossible)
+                      zpossible,apossible,cancel)
 
     out=store[[1]]
     s1xout=store[[2]]
