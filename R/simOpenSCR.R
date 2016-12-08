@@ -148,6 +148,9 @@ simOpenSCR <-
     }else{
       stop("observation model not recognized")
     }
+    sfull=s
+    yfull=y
+    mufull=mu
     caps=apply(y,1,sum)
     idx=order(caps,decreasing=TRUE)
     y=y[idx,,]
@@ -166,9 +169,9 @@ simOpenSCR <-
       gamma=gamma
     }
     if(is.null(sigma_t)){
-      out<-list(y=y,s=s,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype)
+      out<-list(y=y,s=s,yfull=yfull,sfull=sfull,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype)
     }else{
-      out<-list(y=y,mu=mu,s=s,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype)
+      out<-list(y=y,mu=mu,s=s,yfull=yfull,sfull=sfull,mufull=mufull,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype)
     }
     return(out)
   }

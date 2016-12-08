@@ -290,7 +290,7 @@ SCRmcmcOpenRcpp <-
       }
     }else{
       #make up some fake stuff to feed to rcpp
-      zpossible=apossible=matrix(0,nrow=2,ncol=2)
+      zpossible=apossible=cancel=matrix(0,nrow=2,ncol=2)
     }
     Xidx=unlist(lapply(X,dim))[seq(1,2*length(X)-1,2)]
     Xcpp=array(NA,dim=c(t,max(Xidx),2))
