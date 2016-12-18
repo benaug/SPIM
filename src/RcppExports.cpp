@@ -72,6 +72,74 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mcmc_Open_SPIM
+List mcmc_Open_SPIM(NumericVector lam01, NumericVector lam02, NumericVector sigma, NumericVector gamma, NumericVector gammaprime, NumericVector phi, arma::cube D, arma::cube lamd1, arma::cube lamd2, arma::cube yboth, arma::cube yleft, arma::cube yright, IntegerMatrix z, IntegerMatrix a, NumericMatrix s1, arma::cube s2, bool metamu, bool useverts, NumericMatrix vertices, NumericVector xlim, NumericVector ylim, IntegerMatrix knownmatrix, IntegerVector Xidx, arma::cube Xcpp, IntegerVector K, NumericMatrix Ez, double psi, IntegerVector N, NumericVector proplam01, NumericVector proplam02, NumericVector propsig, NumericVector propz, NumericVector propgamma, double props1x, double props1y, double props2x, double props2y, double propsigma_t, NumericVector sigma_t, int niter, int nburn, int nthin, int npar, IntegerVector each, bool jointZ, IntegerMatrix zpossible, IntegerMatrix apossible, IntegerMatrix cancel, IntegerVector ID_L, IntegerVector ID_R, IntegerMatrix ones, IntegerMatrix twos, LogicalVector updates, int swap, int swaptol, int Nfixed, arma::cube left, arma::cube right);
+RcppExport SEXP SPIM_mcmc_Open_SPIM(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP gammaSEXP, SEXP gammaprimeSEXP, SEXP phiSEXP, SEXP DSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP aSEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP metamuSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP knownmatrixSEXP, SEXP XidxSEXP, SEXP XcppSEXP, SEXP KSEXP, SEXP EzSEXP, SEXP psiSEXP, SEXP NSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigSEXP, SEXP propzSEXP, SEXP propgammaSEXP, SEXP props1xSEXP, SEXP props1ySEXP, SEXP props2xSEXP, SEXP props2ySEXP, SEXP propsigma_tSEXP, SEXP sigma_tSEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP nparSEXP, SEXP eachSEXP, SEXP jointZSEXP, SEXP zpossibleSEXP, SEXP apossibleSEXP, SEXP cancelSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP onesSEXP, SEXP twosSEXP, SEXP updatesSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP NfixedSEXP, SEXP leftSEXP, SEXP rightSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type lam01(lam01SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type lam02(lam02SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type gamma(gammaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type gammaprime(gammaprimeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type D(DSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type lamd1(lamd1SEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type lamd2(lamd2SEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type yboth(ybothSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type yleft(yleftSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type yright(yrightSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type z(zSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type a(aSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type s1(s1SEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type s2(s2SEXP);
+    Rcpp::traits::input_parameter< bool >::type metamu(metamuSEXP);
+    Rcpp::traits::input_parameter< bool >::type useverts(usevertsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type vertices(verticesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type xlim(xlimSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type ylim(ylimSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type knownmatrix(knownmatrixSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type Xidx(XidxSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type Xcpp(XcppSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type K(KSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Ez(EzSEXP);
+    Rcpp::traits::input_parameter< double >::type psi(psiSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type N(NSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type proplam01(proplam01SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type proplam02(proplam02SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type propsig(propsigSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type propz(propzSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type propgamma(propgammaSEXP);
+    Rcpp::traits::input_parameter< double >::type props1x(props1xSEXP);
+    Rcpp::traits::input_parameter< double >::type props1y(props1ySEXP);
+    Rcpp::traits::input_parameter< double >::type props2x(props2xSEXP);
+    Rcpp::traits::input_parameter< double >::type props2y(props2ySEXP);
+    Rcpp::traits::input_parameter< double >::type propsigma_t(propsigma_tSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sigma_t(sigma_tSEXP);
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP);
+    Rcpp::traits::input_parameter< int >::type nthin(nthinSEXP);
+    Rcpp::traits::input_parameter< int >::type npar(nparSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type each(eachSEXP);
+    Rcpp::traits::input_parameter< bool >::type jointZ(jointZSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type zpossible(zpossibleSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type apossible(apossibleSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type cancel(cancelSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type ID_L(ID_LSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type ID_R(ID_RSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type ones(onesSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type twos(twosSEXP);
+    Rcpp::traits::input_parameter< LogicalVector >::type updates(updatesSEXP);
+    Rcpp::traits::input_parameter< int >::type swap(swapSEXP);
+    Rcpp::traits::input_parameter< int >::type swaptol(swaptolSEXP);
+    Rcpp::traits::input_parameter< int >::type Nfixed(NfixedSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type left(leftSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type right(rightSEXP);
+    rcpp_result_gen = Rcpp::wrap(mcmc_Open_SPIM(lam01, lam02, sigma, gamma, gammaprime, phi, D, lamd1, lamd2, yboth, yleft, yright, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam01, proplam02, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible, cancel, ID_L, ID_R, ones, twos, updates, swap, swaptol, Nfixed, left, right));
+    return rcpp_result_gen;
+END_RCPP
+}
 // inoutCpp
 bool inoutCpp(NumericVector sx, NumericVector sy, NumericMatrix vertices);
 RcppExport SEXP SPIM_inoutCpp(SEXP sxSEXP, SEXP sySEXP, SEXP verticesSEXP) {

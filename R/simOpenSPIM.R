@@ -253,37 +253,37 @@ simOpenSPIM <-
     }
 
     #Add all zero dimensions so both left and right can be added together
-    add=array(0,dim=c(M,maxJ,maxK,t))
-    both=abind(both,add,add,along=0)
-    left=abind(add,left,add,along=0)
-    right=abind(add,add,right,along=0)
-    both=aperm(both,c(2,1,3,4,5))
-    left=aperm(left,c(2,1,3,4,5))
-    right=aperm(right,c(2,1,3,4,5))
+    # add=array(0,dim=c(M,maxJ,maxK,t))
+    # both=abind(both,add,add,along=0)
+    # left=abind(add,left,add,along=0)
+    # right=abind(add,add,right,along=0)
+    # both=aperm(both,c(2,1,3,4,5))
+    # left=aperm(left,c(2,1,3,4,5))
+    # right=aperm(right,c(2,1,3,4,5))
 
     #Remove all 0 capture histories.  Don't remove right and left all 0 histories for known IDs
-    both<- both[IDknown,,,,]
-    if(length(dim(both))==4){#if there is 1 both guy need to keep 5d
+    both<- both[IDknown,,,]
+    if(length(dim(both))==3){#if there is 1 both guy need to keep 4d
       both=array(both,dim=c(1,dim(both)))
+    }
+    if(length(dim(left))==3){#if there is 1 left guy need to keep 4d
+      left=array(left,dim=c(1,dim(left)))
+    }
+    if(length(dim(right))==3){#if there is 1 right guy need to keep 4d
+      right=array(right,dim=c(1,dim(right)))
     }
     lcap=which(apply(left,1,sum)>0)
     rcap=which(apply(right,1,sum)>0)
-    left<- left[sort(unique(c(lcap,IDknown))),,,,]
-    right<- right[sort(unique(c(rcap,IDknown))),,,,]
-
-    if(length(dim(left))==4){#if there is 1 both guy need to keep 5d
-      left=array(left,dim=c(1,dim(left)))
-    }
-    if(length(dim(right))==4){#if there is 1 both guy need to keep 5d
-      right=array(right,dim=c(1,dim(right)))
-    }
     lorder=sort(unique(c(lcap,IDknown)))
     rorder=sort(unique(c(rcap,IDknown)))
-    mu=mu[unique(c(IDknown,lcap,rcap)),]
-    s=s[unique(c(IDknown,lcap,rcap)),,]
-    #Renumber unknown guys
+    left<- left[lorder,,,]
+    right<- right[rorder,,,]
+    simID_L=lorder #keep these for sim plots
+    simID_R=rorder
+
+    #Renumber partial ID guys and put at end
     fix=unique(c(lorder[!lorder%in%IDknown],rorder[!rorder%in%IDknown]))
-    if(length(fix)>0){
+    if(length(fix)>0&Nknown>0){
       replace=length(IDknown)+1
       for(i in 1:length(fix)){
         if(fix[i]%in%lorder){
@@ -301,34 +301,34 @@ simOpenSPIM <-
       ID_L=ID_R=1:M
     }
     # #Build all possible observed data sets
-    B3D=apply(both,c(1,3,5),sum)
-    L3D=apply(left,c(1,3,5),sum)
-    R3D=apply(right,c(1,3,5),sum)
+    B3D=apply(both,c(1,2,4),sum)
+    L3D=apply(left,c(1,2,4),sum)
+    R3D=apply(right,c(1,2,4),sum)
     known=dim(both)[1]
     if(known>0){
-      BLR=1*((both[,1,,,]+left[1:known,2,,,]+right[1:known,3,,,])>0) #keep boths and lefts and rights for boths
+      BLR=1*((both+left[1:known,,,]+right[1:known,,,])>0) #keep boths and lefts and rights for boths
       if(length(dim(BLR))==3){
         BLR=array(BLR,dim=c(1,dim(BLR)))
       }
       if(dim(left)[1]>known){
-        BLRL=abind(BLR,left[(known+1):dim(left)[1],2,,,],along=1) #Add unknown lefts
+        BLRL=abind(BLR,left[(known+1):dim(left)[1],,,],along=1) #Add unknown lefts
       }else{
         BLRL=BLR
       }
       if(dim(right)[1]>known){
-        BLRR=abind(BLR,right[(known+1):dim(right)[1],3,,,],along=1) #Add unknown rights
+        BLRR=abind(BLR,right[(known+1):dim(right)[1],,,],along=1) #Add unknown rights
       }else{
         BLRR=BLR
       }
     }else{ #no known guys
-      BLR=both[,1,,,]
+      BLR=both
       if(dim(left)[1]>known){
-        BLRL=left[,2,,,] #Add unknown lefts
+        BLRL=left #Add unknown lefts
       }else{
         BLRL=BLR
       }
       if(dim(right)[1]>known){
-        BLRR=right[,3,,,] #Add unknown rights
+        BLRR=right #Add unknown rights
       }else{
         BLRR=BLR
       }
@@ -339,9 +339,9 @@ simOpenSPIM <-
         BLRR=array(BLRR,dim=c(1,dim(BLRR)))
       }
     }
-    BLR2D=apply(BLR,c(1,3),sum)
-    BLRL2D=apply(BLRL,c(1,3),sum)
-    BLRR2D=apply(BLRR,c(1,3),sum)
+    BLR3D=apply(BLR,c(1,2,4),sum)
+    BLRL3D=apply(BLRL,c(1,2,4),sum)
+    BLRR3D=apply(BLRR,c(1,2,4),sum)
     y.obs=list(BLRL=BLRL,BLRR=BLRR)
     if(length(storeparms$gamma)==1){
       gamma=gamma[1]
@@ -351,18 +351,18 @@ simOpenSPIM <-
     if(is.null(sigma_t)){
       if(usetf==TRUE){
       out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,s=s,X=X,tf=tf,K=K,buff=buff,J=J,
-                EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap)
+                EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap,simID_L=simID_L,simID_R=simID_R)
       }else{
         out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,s=s,X=X,K=K,buff=buff,J=J,
-                  EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap)
+                  EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap,simID_L=simID_L,simID_R=simID_R)
       }
     }else{
       if(usetf==TRUE){
         out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,mu=mu,s=s,X=X,tf=tf,K=K,buff=buff,J=J
-                ,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap)
+                ,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap,simID_L=simID_L,simID_R=simID_R)
       }else{
         out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,mu=mu,s=s,X=X,K=K,buff=buff,J=J
-                  ,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap)
+                  ,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap,simID_L=simID_L,simID_R=simID_R)
       }
     }
     return(out)

@@ -9,6 +9,10 @@ mcmc_Open <- function(lam0, sigma, gamma, gammaprime, phi, D, lamd, y, z, a, s1,
     .Call('SPIM_mcmc_Open', PACKAGE = 'SPIM', lam0, sigma, gamma, gammaprime, phi, D, lamd, y, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam0, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible, cancel)
 }
 
+mcmc_Open_SPIM <- function(lam01, lam02, sigma, gamma, gammaprime, phi, D, lamd1, lamd2, yboth, yleft, yright, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam01, proplam02, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible, cancel, ID_L, ID_R, ones, twos, updates, swap, swaptol, Nfixed, left, right) {
+    .Call('SPIM_mcmc_Open_SPIM', PACKAGE = 'SPIM', lam01, lam02, sigma, gamma, gammaprime, phi, D, lamd1, lamd2, yboth, yleft, yright, z, a, s1, s2, metamu, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam01, proplam02, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible, cancel, ID_L, ID_R, ones, twos, updates, swap, swaptol, Nfixed, left, right)
+}
+
 inoutCpp <- function(sx, sy, vertices) {
     .Call('SPIM_inoutCpp', PACKAGE = 'SPIM', sx, sy, vertices)
 }

@@ -49,7 +49,7 @@ SCRmcmcOpen <-
       stop("Input either 1 or t-1 initial values for phi")
     }
     #Check proppars
-    if(length(proppars$propz)!=(t-1)){
+    if(jointZ==FALSE&(length(proppars$propz)!=(t-1))){
       stop("must supply t-1 proppars for propz")
     }
     if(length(lam0)!=length(proppars$lam0)){
@@ -291,7 +291,7 @@ SCRmcmcOpen <-
     if(jointZ==TRUE){
       #Figure out all possible z histories
       zpossible=cbind(c(1,1,0),c(1,0,1))
-      if (t > 2) {
+      if (t > 2) {#4 lines from From Rcapture histpost()
         for (i in (3:t)) {
           zpossible=cbind(c(rep(1,2^(i-1)),rep(0,((2^(i-1))-1))), rbind(zpossible, rep(0, (i-1)), zpossible))
         }

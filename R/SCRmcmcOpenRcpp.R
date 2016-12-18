@@ -50,7 +50,7 @@ SCRmcmcOpenRcpp <-
       stop("Input either 1 or t-1 initial values for phi")
     }
     #Check proppars
-    if(length(proppars$propz)!=(t-1)){
+    if(jointZ==FALSE&(length(proppars$propz)!=(t-1))){
       stop("must supply t-1 proppars for propz")
     }
     if(length(lam0)!=length(proppars$lam0)){
