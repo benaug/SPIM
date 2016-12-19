@@ -2052,7 +2052,7 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
         bins(i)=x;
       }
 
-      // ///////////////// //swap left sides//////////////
+    ///////////////// //swap left sides//////////////
       for (int m=0; m<swap; m++) {
         //Find guy 1
         rand=Rcpp::runif(1);
@@ -2136,15 +2136,15 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
           }
           // Proposing yLtmp changes known.matrix
           for (int i2=0; i2<2; i2++) {
-            for (int i=0; i<M; i++) {
-              if((ID_R(i))==swapped(i2)){
-                swappedR(i2)=i;//indexed 0...(M-1)
-              }
-            }
+            // for (int i=0; i<M; i++) {
+            //   if((ID_R(i))==swapped(i2)){
+            //     swappedR(i2)=i;//indexed 0...(M-1)
+            //   }
+            // }
             for(int l=0; l<t; l++) {
               sumz=0;
               for(int j=0; j<Xidx(l); j++) {
-                tmpdataprop(i2,j,l)=left(guys(i2)-1,j,l)+right(swappedR(i2),j,l);
+                tmpdataprop(i2,j,l)=left(guys(i2)-1,j,l)+yright(swapped(i2)-1,j,l);
                 sumz+=tmpdataprop(i2,j,l);
               }
               if(sumz>0){
@@ -2266,9 +2266,11 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
               }
             }
           }
-          //update ll.y left for swapped guys only
+          //update ll.y left for swapped guys only, right, too since z changed
           llyLcandsum=0;
           llyLsum=0;
+          llyRcandsum=0;
+          llyRsum=0;
           for(int i2=0; i2<2; i2++){
             for(int l=0; l<t; l++){
               for(int j=0; j<Xidx(l); j++){
@@ -2280,12 +2282,20 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
                 if(ll_y_left(swapped(i2)-1,j,l)==ll_y_left(swapped(i2)-1,j,l)){
                   llyLsum+=ll_y_left(swapped(i2)-1,j,l);
                 }
+                ll_y_right_cand(swapped(i2)-1,j,l)=zcand(swapped(i2)-1,l)*(yright(swapped(i2)-1,j,l)*log(ones(j,l)*pd1(swapped(i2)-1,j,l)+twos(j,l)*(2*pd1(swapped(i2)-1,j,l)-pd1(swapped(i2)-1,j,l)*pd1(swapped(i2)-1,j,l)))+
+                  (K(l)-yright(swapped(i2)-1,j,l))*log(1-(ones(j,l)*pd1(swapped(i2)-1,j,l)+twos(j,l)*(2*pd1(swapped(i2)-1,j,l)-pd1(swapped(i2)-1,j,l)*pd1(swapped(i2)-1,j,l)))));
+                if(ll_y_right_cand(swapped(i2)-1,j,l)==ll_y_right_cand(swapped(i2)-1,j,l)){
+                  llyRcandsum+=ll_y_right_cand(swapped(i2)-1,j,l);
+                }
+                if(ll_y_right(swapped(i2)-1,j,l)==ll_y_right(swapped(i2)-1,j,l)){
+                  llyRsum+=ll_y_right(swapped(i2)-1,j,l);
+                }
               }
             }
           }
           //MH step
           rand=Rcpp::runif(1);
-          if(rand(0)<exp((llyLcandsum+llzcandsum)-(llyLsum+llzsum))*((backprobZID(0)*backprobZID(1)*backprob)/(propprobZID(0)*propprobZID(1)*propprob))){
+          if(rand(0)<exp((llyLcandsum+llyRcandsum+llzcandsum)-(llyLsum+llyRsum+llzsum))*((backprobZID(0)*backprobZID(1)*backprob)/(propprobZID(0)*propprobZID(1)*propprob))){
             ID_L=Rcpp::clone(newID);
             map(guy1-1,1)=swapin;
             map(guy2-1,1)=swapout;
@@ -2312,6 +2322,7 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
                 for(int j=0; j<Xidx(l); j++){
                   yleft(swapped(i2)-1,j,l)=yLtmp(swapped(i2)-1,j,l);
                   ll_y_left(swapped(i2)-1,j,l)=ll_y_left_cand(swapped(i2)-1,j,l);
+                  ll_y_right(swapped(i2)-1,j,l)=ll_y_right_cand(swapped(i2)-1,j,l);
                 }
               }
             }
@@ -2338,7 +2349,7 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
         }
       }
     }
-    //  // Update right sides
+     // Update right sides
     if(updates(3)){
       //Build map
       map(_,1)=ID_R;
@@ -2460,15 +2471,15 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
           }
           // Proposing yRtmp changes known.matrix
           for (int i2=0; i2<2; i2++) {
-            for (int i=0; i<M; i++) {
-              if((ID_L(i))==swapped(i2)){
-                swappedL(i2)=i;//indexed 0...(M-1)
-              }
-            }
+            // for (int i=0; i<M; i++) {
+            //   if((ID_L(i))==swapped(i2)){
+            //     swappedL(i2)=i;//indexed 0...(M-1)
+            //   }
+            // }
             for(int l=0; l<t; l++) {
               sumz=0;
               for(int j=0; j<Xidx(l); j++) {
-                tmpdataprop(i2,j,l)=left(swappedL(i2),j,l)+right(guys(i2)-1,j,l);
+                tmpdataprop(i2,j,l)=yleft(swapped(i2)-1,j,l)+right(guys(i2)-1,j,l);
                 sumz+=tmpdataprop(i2,j,l);
               }
               if(sumz>0){
@@ -2594,6 +2605,8 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
           //update ll.y right for swapped guys only
           llyRcandsum=0;
           llyRsum=0;
+          llyLcandsum=0;
+          llyLsum=0;
           for(int i2=0; i2<2; i2++){
             for(int l=0; l<t; l++){
               for(int j=0; j<Xidx(l); j++){
@@ -2605,12 +2618,20 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
                 if(ll_y_right(swapped(i2)-1,j,l)==ll_y_right(swapped(i2)-1,j,l)){
                   llyRsum+=ll_y_right(swapped(i2)-1,j,l);
                 }
+                ll_y_left_cand(swapped(i2)-1,j,l)=zcand(swapped(i2)-1,l)*(yleft(swapped(i2)-1,j,l)*log(ones(j,l)*pd1(swapped(i2)-1,j,l)+twos(j,l)*(2*pd1(swapped(i2)-1,j,l)-pd1(swapped(i2)-1,j,l)*pd1(swapped(i2)-1,j,l)))+
+                  (K(l)-yleft(swapped(i2)-1,j,l))*log(1-(ones(j,l)*pd1(swapped(i2)-1,j,l)+twos(j,l)*(2*pd1(swapped(i2)-1,j,l)-pd1(swapped(i2)-1,j,l)*pd1(swapped(i2)-1,j,l)))));
+                if(ll_y_left_cand(swapped(i2)-1,j,l)==ll_y_left_cand(swapped(i2)-1,j,l)){
+                  llyLcandsum+=ll_y_left_cand(swapped(i2)-1,j,l);
+                }
+                if(ll_y_left(swapped(i2)-1,j,l)==ll_y_left(swapped(i2)-1,j,l)){
+                  llyLsum+=ll_y_left(swapped(i2)-1,j,l);
+                }
               }
             }
           }
           //MH step
           rand=Rcpp::runif(1);
-          if(rand(0)<exp((llyRcandsum+llzcandsum)-(llyRsum+llzsum))*((backprobZID(0)*backprobZID(1)*backprob)/(propprobZID(0)*propprobZID(1)*propprob))){
+          if(rand(0)<exp((llyRcandsum+llyLcandsum+llzcandsum)-(llyRsum+llyLsum+llzsum))*((backprobZID(0)*backprobZID(1)*backprob)/(propprobZID(0)*propprobZID(1)*propprob))){
             ID_R=Rcpp::clone(newID);
             map(guy1-1,1)=swapin;
             map(guy2-1,1)=swapout;
@@ -2636,6 +2657,7 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
                 for(int j=0; j<Xidx(l); j++){
                   yright(swapped(i2)-1,j,l)=yRtmp(swapped(i2)-1,j,l);
                   ll_y_right(swapped(i2)-1,j,l)=ll_y_right_cand(swapped(i2)-1,j,l);
+                  ll_y_left(swapped(i2)-1,j,l)=ll_y_left_cand(swapped(i2)-1,j,l);
                 }
               }
             }
@@ -3515,7 +3537,7 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
     }
     //////// Now we have to update the activity centers//////////////////
     if(metamu){
-      // // Update within year ACs
+      // Update within year ACs
       for(int i=0; i<M; i++) {
         for(int l=0; l<t; l++) {
           ScandX=Rcpp::rnorm(1,s2(i,l,0),props2x);
@@ -3591,7 +3613,7 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
           }
         }
       }
-      // // Update meta mus
+      // Update meta mus
       for(int i=0; i<M; i++) {
         ScandX=Rcpp::rnorm(1,s1(i,0),props1x);
         ScandY=Rcpp::rnorm(1,s1(i,1),props1y);

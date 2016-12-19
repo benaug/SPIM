@@ -326,7 +326,7 @@ SCRmcmcOpenSPIMRcpp <-
     Nnames=paste("N",1:t,sep="")
     if(metamu){
       out<-matrix(NA,nrow=nstore,ncol=length(lam01)+length(lam02)+length(sigma)+length(gamma)+length(phi)+t+1)
-      colnames(out)<-c(lam0names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
+      colnames(out)<-c(lam01names,lam02names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
       s1xout<- s1yout<- matrix(NA,nrow=nstore,ncol=M)
       zout<-array(NA,dim=c(nstore,M,t))
       s2xout<- s2yout<-array(NA,dim=c(nstore,M,t))

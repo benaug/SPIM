@@ -321,7 +321,7 @@ SCRmcmcOpenSPIM <-
     Nnames=paste("N",1:t,sep="")
     if(metamu){
       out<-matrix(NA,nrow=nstore,ncol=length(lam01)+length(lam02)+length(sigma)+length(gamma)+length(phi)+t+1)
-      colnames(out)<-c(lam0names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
+      colnames(out)<-c(lam01names,lam02names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
       s1xout<- s1yout<- matrix(NA,nrow=nstore,ncol=M)
       zout<-array(NA,dim=c(nstore,M,t))
       s2xout<- s2yout<-array(NA,dim=c(nstore,M,t))
@@ -439,8 +439,10 @@ SCRmcmcOpenSPIM <-
     both=apply(both,c(1,2,4),sum)
     left=apply(left,c(1,2,4),sum)
     right=apply(right,c(1,2,4),sum)
-
-
+# storellyL=array(-1,dim=c(niter,3))
+# storellyR=array(-1,dim=c(niter,3))
+# storellyLcand=array(-1,dim=c(niter,3))
+# storellyRcand=array(-1,dim=c(niter,3))
     for(iter in 1:niter){
       ll.y.both.t.sum=apply(ll.y.both,3,sum) #only needed for detection parameters, changes in z and AC updates
       ll.y.left.t.sum=apply(ll.y.left,3,sum)
@@ -448,6 +450,8 @@ SCRmcmcOpenSPIM <-
       ll.y.both.sum=sum(ll.y.both.t.sum)
       ll.y.left.sum=sum(ll.y.left.t.sum)
       ll.y.right.sum=sum(ll.y.right.t.sum)
+      # storellyL[iter,1:3]=ll.y.left.t.sum
+      # storellyR[iter,1:3]=ll.y.right.t.sum
       # Update lam01
       if(uplam01){
         if(length(lam01)==t){ #if lam0 is year-specific
@@ -510,6 +514,8 @@ SCRmcmcOpenSPIM <-
           }
         }
       }
+      # storellyLcand[iter,1:3]=ll.y.left.cand.t.sum
+      # storellyRcand[iter,1:3]=ll.y.right.cand.t.sum
       # Update lam02
       if(uplam02){
         if(length(lam02)==t){ #if lam0 is year-specific
@@ -710,8 +716,9 @@ SCRmcmcOpenSPIM <-
           y.left.tmp<- left[order(newID),,]#Only y.left changed
           swapped=c(s.swap.in,s.swap.out)
           #Proposing y.left.tmp changes known.matrix
-          swappedR=c(which(ID_R==swapped[1]),which(ID_R==swapped[2]))
-          tmpdata.prop=both[swapped,,] + left[c(guy1,guy2),,] + right[swappedR,,]
+          # swappedR=c(which(ID_R==swapped[1]),which(ID_R==swapped[2]))
+          # tmpdata.prop=left[c(guy1,guy2),,] + right[swappedR,,]
+          tmpdata.prop=left[c(guy1,guy2),,] + y.right[swapped,,]
           known.matrix.prop=1*(apply(tmpdata.prop,c(1,3),sum)>0)
 
           ##update z before ll.y.left
@@ -770,21 +777,23 @@ SCRmcmcOpenSPIM <-
             ll.z.cand[,l]=dbinom(z.cand[,l], 1, Ez.cand[,l-1], log=TRUE)
           }
 
-          #update new ll.y.left for new y.left and z
+          #update new ll.y.left for new y.left and z. y.right too because z changed
           for(l in 1:t){
             ll.y.left.cand[swapped,,l]=dbinom(y.left.tmp[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
+            ll.y.right.cand[swapped,,l]=dbinom(y.right[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
           }
           if(!is.finite(sum(ll.y.left.cand))){
             stop("ll.y.left not finite. Maybe swap.tol too large")
           }
-          llyswap.curr<- sum(ll.y.left[swapped,,])
-          llyswap.cand<- sum(ll.y.left.cand[swapped,,])
+          llyswap.curr<- sum(ll.y.left[swapped,,])+sum(ll.y.right[swapped,,])
+          llyswap.cand<- sum(ll.y.left.cand[swapped,,])+ sum(ll.y.right.cand[swapped,,])
           llzswap.curr=sum(ll.z[swapped,1])+sum(ll.z[,2:t])
           llzswap.cand=sum(ll.z.cand[swapped,1])+sum(ll.z.cand[,2:t])
           #MH step
           if(runif(1)<exp((llyswap.cand+llzswap.cand)-(llyswap.curr+llzswap.curr))*((jump.back*prod(back.prob))/(jump.probability*prod(prop.prob)))){
             y.left[swapped,,] <- y.left.tmp[swapped,,] #update left data
             ll.y.left[swapped,,]=ll.y.left.cand[swapped,,]
+            ll.y.right[swapped,,]=ll.y.right.cand[swapped,,]
             ID_L<-newID #update data order
             map[c(guy1,guy2),2]=c(s.swap.in,s.swap.out)
             z[swapped,]=zprop
@@ -813,7 +822,6 @@ SCRmcmcOpenSPIM <-
               browser()
             }
           }
-
         }
         #Do any captured guys have z==0?
         if(any(!zero.guys&z==0)){
@@ -874,8 +882,9 @@ SCRmcmcOpenSPIM <-
           y.right.tmp<- right[order(newID),,]#Only y.right changed
           swapped=c(s.swap.in,s.swap.out)
           #Proposing y.right.tmp changes known.matrix
-          swappedL=c(which(ID_L==swapped[1]),which(ID_L==swapped[2]))
-          tmpdata.prop=left[swappedL,,] + right[c(guy1,guy2),,]
+          # swappedL=c(which(ID_L==swapped[1]),which(ID_L==swapped[2]))
+          # tmpdata.prop=left[swappedL,,] + right[c(guy1,guy2),,]
+          tmpdata.prop=y.left[swapped,,] + right[c(guy1,guy2),,]
           known.matrix.prop=1*(apply(tmpdata.prop,c(1,3),sum)>0)
 
           ##update z before ll.y.right
@@ -934,21 +943,23 @@ SCRmcmcOpenSPIM <-
             ll.z.cand[,l]=dbinom(z.cand[,l], 1, Ez.cand[,l-1], log=TRUE)
           }
 
-          #update new ll.y.right for new y.right and z
+          #update new ll.y.right for new y.right and z. ll.y.left, too bc z changed
           for(l in 1:t){
             ll.y.right.cand[swapped,,l]=dbinom(y.right.tmp[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
+            ll.y.left.cand[swapped,,l]=dbinom(y.left[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
           }
           if(!is.finite(sum(ll.y.right.cand))){
             stop("ll.y.right.cand not finite. Maybe swap.tol too large")
           }
-          llyswap.curr<- sum(ll.y.right[swapped,,])
-          llyswap.cand<- sum(ll.y.right.cand[swapped,,])
+          llyswap.curr<- sum(ll.y.right[swapped,,])+sum(ll.y.left[swapped,,])
+          llyswap.cand<- sum(ll.y.right.cand[swapped,,])+sum(ll.y.left.cand[swapped,,])
           llzswap.curr=sum(ll.z[swapped,1])+sum(ll.z[,2:t])
           llzswap.cand=sum(ll.z.cand[swapped,1])+sum(ll.z.cand[,2:t])
           #MH step
           if(runif(1)<exp(c(llyswap.cand+llzswap.cand)-c(llyswap.curr+llzswap.curr))*((jump.back*prod(back.prob))/(jump.probability*prod(prop.prob)))){
             y.right[swapped,,] <- y.right.tmp[swapped,,] #update right data
             ll.y.right[swapped,,]=ll.y.right.cand[swapped,,]
+            ll.y.left[swapped,,]=ll.y.left.cand[swapped,,]
             ID_R<-newID #update data order
             map[c(guy1,guy2),2]=c(s.swap.in,s.swap.out)
             z[swapped,]=zprop
