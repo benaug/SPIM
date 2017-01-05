@@ -1,6 +1,6 @@
 genSPIMmcmc <-
-  function(data,niter=2400,nburn=1200, nthin=5, M = 200,K=NA, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
-    ###
+  function(data,niter=2400,nburn=1200, nthin=5, M = 200,K=NA, inits=inits,
+           proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE,swap.tol=1,s.lim=6,res=0.2){
     library(abind)
     y<-data$yID
     y.unk<-data$yUnkobs
@@ -35,41 +35,56 @@ genSPIMmcmc <-
 
     ##match up unknown but constrained samples to true z's
     ##Currently aggregating allowed matches caught at same trap
-    nUnk=nrow(constraints)
-    ID=rep(NA,nUnk)
-    assign=nUnk
-    idx=1:assign
-    IDassign=1:assign+n
-    used=c()
-    while(assign>0){
-      focaltrap=which(rowSums(y.unk[idx[1],,])>0)
-      cands=which(constraints[idx[1],]==1)
-      cands=setdiff(cands,used)
-      keep=rep(0,length(cands))
-      for(j in 1:length(cands)){
-        candtraps=which(rowSums(y.unk[cands[j],,])>0)
-        if(focaltrap%in%candtraps){
-          keep[j]=1
+    if(!any(is.na(constraints))){
+      nUnk=nrow(constraints)
+      ID=rep(NA,nUnk)
+      assign=nUnk
+      idx=1:assign
+      IDassign=1:assign+n
+      used=c()
+      while(assign>0){
+        focaltrap=which(rowSums(y.unk[idx[1],,])>0)
+        cands=which(constraints[idx[1],]==1)
+        cands=setdiff(cands,used)
+        #cands may be consistent with focal but not each other
+        if(length(cands)>1){
+          cands=cands[which(rowSums(constraints[cands,cands])==length(cands))]
         }
+        keep=rep(0,length(cands))
+        for(j in 1:length(cands)){
+          candtraps=which(rowSums(y.unk[cands[j],,])>0)
+          if(focaltrap%in%candtraps){
+            keep[j]=1
+          }
+        }
+        cluster=cands[keep==1]
+        ID[cluster]=IDassign[1]
+        IDassign=IDassign[-1]
+        idx=idx[-which(idx%in%cluster)]
+        used=c(used,cluster)
+        assign=assign-length(cluster)
       }
-      cluster=cands[keep==1]
-      ID[cluster]=IDassign[1]
-      IDassign=IDassign[-1]
-      idx=idx[-which(idx%in%cluster)]
-      used=c(used,cluster)
-      assign=assign-length(cluster)
+    }else{
+      nUnk=0
     }
     #build possibly true data set
     y.true=y
-    for(i in 1:nUnk){
-      y.true[ID[i],,]= y.true[ID[i],,]+y.unk[i,,]
+    if(nUnk>0){
+      for(i in 1:nUnk){
+        y.true[ID[i],,]= y.true[ID[i],,]+y.unk[i,,]
+      }
     }
     y.true=apply(y.true,c(1,2),sum)
     y.unk=apply(y.unk,c(1,2),sum)
+    y=apply(y,c(1,2),sum)
 
     z=1*(apply(y.true,1,sum)>0)
     z[sample(which(z==0),sum(z==0)/2)]=1 #switch some uncaptured z's to 1.  1/3 is arbitrary. smarter way?
-    known.vector=c(rep(1,max(ID)),rep(0,M-max(ID)))
+    if(nUnk>0){
+      known.vector=c(rep(1,max(ID)),rep(0,M-max(ID)))
+    }else{
+      known.vector=c(rep(1,n),rep(0,M-n))
+    }
 
     #Optimize starting locations given where they are trapped.
     s<- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
@@ -100,6 +115,10 @@ genSPIMmcmc <-
           }
         }
       }
+    }
+    if(nUnk>0){
+      locs=apply(y.unk,1,function(x){which(x>0)})
+      locs=X[locs,]
     }
 
     # some objects to hold the MCMC simulation output
@@ -152,148 +171,133 @@ genSPIMmcmc <-
         }
       }
       #Update ID
-      for(l in 1:nUnk){
-        #find who you can swap IDs to
-        #Should we exlude z=0 guys?
-        dv<-  sqrt( (s[ID[l],1]- s[(n+1):M,1])^2 + (s[ID[l],2] - s[(n+1):M,2])^2 )
-        possible<- which(dv < swap.tol)+n
-        possible=possible[-which(possible==ID[l])]
-        possible=possible[z[possible]==1]
-        if(length(possible)>0){
-          legal=rep(TRUE,length(possible))
-          #Check to see if you can swap into these clusters
-          for(i in 1:length(possible)){
-            check=which(ID==possible[i])#Who else is currently assigned this ID?
-            if(length(check)>0){#if false, augmented guy and legal stays true
-              for(j in 1:length(check)){
-                if(constraints[l,check[j]]==0){#if any members of the cluster are inconsistent, illegal move
-                  legal[i]=FALSE
-                }
-              }
-            }
-          }
-
-          possible=possible[legal]
-          if(length(possible)>0){#Can update
-            jump.probability<- 1/length(possible) # h(theta*|theta)
-            newID=ID
-            if(length(possible)>1){
-              newID[l] <-  sample( possible, 1)
-            }else{
-              newID[l]=possible
-            }
-            swapped=c(ID[l],newID[l])
-            trash<-  sqrt( (s[newID[l],1]- s[(n+1):M,1])^2 + (s[newID[l],2] - s[(n+1):M,2])^2 )
-            trash<-   which(dv < swap.tol)+n
-            trash=trash[-which(trash==newID[l])]
-            if(length(trash)>0){
-              legal=rep(TRUE,length(trash))
-              #Check to see if you can swap into these clusters
-              for(i in 1:length(trash)){
-                check=which(ID==trash[i])
-                if(length(check)>0){#if false, augmented guy and legal stays true
-                  for(j in 1:length(check)){
-                    if(constraints[l,check[j]]==0){#if any members of the cluster are inconsistent, illegal move
+      if(nUnk>0){
+        for(l in 1:nUnk){
+          #find who you can swap IDs to
+          #Should we exclude z=0 guys?
+          dv<-  sqrt( (s[ID[l],1]- s[(n+1):M,1])^2 + (s[ID[l],2] - s[(n+1):M,2])^2 )
+          possible<- which(dv < swap.tol)+n
+          possible=possible[-which(possible==ID[l])]
+          possible=possible[z[possible]==1]
+          if(length(possible)>0){
+            thiscluster=which(ID==ID[l])
+            legal=rep(TRUE,length(possible))
+            #Check to see if you can swap into these clusters
+            for(i in 1:length(possible)){
+              check=which(ID==possible[i])#Who else is currently assigned this possible new ID?
+              if(length(check)>0){#if false, no ID assigned to this guy and legal stays true
+                for(k in 1:length(thiscluster)){#loop through guys in focal cluster
+                  for(j in 1:length(check)){#check against guys in possible cluster
+                    if(constraints[thiscluster[k],check[j]]==0){#if any members of the cluster are inconsistent, illegal move
                       legal[i]=FALSE
                     }
                   }
                 }
               }
             }
-            trash=trash[legal]
-            jump.back<-  1/length(trash)
-            #Update y.tmp, z and s for ID[l] and newID
-            cluster1guys=which(newID==swapped[1])
-            cluster2guys=which(newID==swapped[2])
-            y.cand=matrix(0,nrow=2,ncol=J)
-            if(length(cluster1guys)>0){
-              if(length(cluster1guys)>1){
-                y.cand[1,]=colSums(y.unk[cluster1guys,])
+            possible=possible[legal]
+            if(length(possible)>0){#Can update
+              jump.probability<- 1/length(possible) # h(theta*|theta)
+              newID=ID
+              if(length(possible)>1){
+                newID[l] <-  sample( possible, 1)
               }else{
-                y.cand[1,]=y.unk[cluster1guys,]
+                newID[l]=possible
               }
-            }
-            if(length(cluster2guys)>0){
-              if(length(cluster2guys)>1){
-                y.cand[2,]=colSums(y.unk[cluster2guys,])
-              }else{
-                y.cand[2,]=y.unk[cluster2guys,]
-              }
-            }
-
-            #propose new s
-            # Scand=matrix(0,nrow=2,ncol=2)
-            # dtmp=matrix(0,nrow=2,ncol=J)
-            # Stmp=s[swapped,]
-            # lamd.tmp=lamd.tmp.cand=lamd[swapped,]
-            # pd.tmp=pd.tmp.cand=pd[swapped,]
-            # ll.y.tmp=ll.y.tmp.cand=dbinom(y.cand,K,pd.tmp,log=TRUE)
-            # dtmp.cand=dtmp=D[swapped,]
-            # for(j in 1:stune){
-            #   for(i in 1:2){
-            #     inbox=FALSE
-            #     while(inbox==FALSE){#propose until cand is in
-            #       Scand[i,] <- c(rnorm(1, Stmp[i, 1], proppars$sx2), rnorm(1, Stmp[i, 2], proppars$sy2))
-            #       if(useverts==FALSE){
-            #         inbox <- Scand[i,1] < xlim[2] & Scand[i,1] > xlim[1] & Scand[i,2] < ylim[2] & Scand[i,2] > ylim[1]
-            #       }else{
-            #         inbox=inout(Scand[i,],vertices)
-            #       }
-            #     }
-            #     dtmp.cand[i,] <- sqrt((Scand[i,1] - X[, 1])^2 + (Scand[i,2] - X[, 2])^2)
-            #     lamd.tmp.cand[i,]<- lam0*exp(-dtmp.cand[i,]*dtmp.cand[i,]/(2*sigma*sigma))
-            #     pd.tmp.cand[i,]=1-exp(-lamd.tmp.cand[i,])
-            #     ll.y.tmp.cand[i,]=dbinom(y.cand[i,],K,pd.tmp.cand[i,],log=TRUE)
-            #     if (runif(1) < exp(sum(ll.y.tmp.cand[i,]) - sum(ll.y.tmp[i,]))) {
-            #       Stmp[i,]=Scand[i,]
-            #       ll.y.tmp[i,]=ll.y.tmp.cand[i,]
-            #       dtmp[i,]=dtmp.cand[i,]
-            #       lamd.tmp[i,]=lamd.tmp.cand[i,]
-            #       pd.tmp[i,]=pd.tmp.cand[i,]
-            #     }
-            #   }
-            # }
-            Scand=matrix(0,nrow=2,ncol=2)
-            for(j in 1:stune){
-              for(i in 1:2){
-                inbox=FALSE
-                while(inbox==FALSE){#propose until cand is in
-                  Scand[i,] <- c(rnorm(1, Stmp[i, 1], proppars$sx2), rnorm(1, Stmp[i, 2], proppars$sy2))
-                  if(useverts==FALSE){
-                    inbox <- Scand[i,1] < xlim[2] & Scand[i,1] > xlim[1] & Scand[i,2] < ylim[2] & Scand[i,2] > ylim[1]
-                  }else{
-                    inbox=inout(Scand[i,],vertices)
+              trash<-  sqrt( (s[newID[l],1]- s[(n+1):M,1])^2 + (s[newID[l],2] - s[(n+1):M,2])^2 )
+              trash<-   which(dv < swap.tol)+n
+              trash=trash[-which(trash==newID[l])]
+              legal=rep(TRUE,length(trash))
+              backcluster=which(newID==newID[l])#which guys are in the new ID cluster?
+              #Check to see if you can swap into these clusters
+              for(i in 1:length(trash)){
+                check=which(newID==trash[i])
+                for(k in 1:length(backcluster)){#loop through guys in back cluster
+                  if(length(check)>0){#if false, no ID assigned to this back guy and legal stays true
+                    for(j in 1:length(check)){#check against back guys in proposed cluster
+                      if(constraints[backcluster[k],check[j]]==0){#if any members of the cluster are inconsistent, illegal move
+                        legal[i]=FALSE
+                      }
+                    }
                   }
                 }
-                dtmp.cand[i,] <- sqrt((Scand[i,1] - X[, 1])^2 + (Scand[i,2] - X[, 2])^2)
-                lamd.tmp.cand[i,]<- lam0*exp(-dtmp.cand[i,]*dtmp.cand[i,]/(2*sigma*sigma))
-                pd.tmp.cand[i,]=1-exp(-lamd.tmp.cand[i,])
-                ll.y.tmp.cand[i,]=dbinom(y.cand[i,],K,pd.tmp.cand[i,],log=TRUE)
-                if (runif(1) < exp(sum(ll.y.tmp.cand[i,]) - sum(ll.y.tmp[i,]))) {
-                  Stmp[i,]=Scand[i,]
-                  ll.y.tmp[i,]=ll.y.tmp.cand[i,]
-                  dtmp[i,]=dtmp.cand[i,]
-                  lamd.tmp[i,]=lamd.tmp.cand[i,]
-                  pd.tmp[i,]=pd.tmp.cand[i,]
+              }
+              trash=trash[legal]
+              jump.back<-  1/length(trash)
+              swapped=c(ID[l],newID[l])#order swap.out then swap.in
+              cluster1guys=which(newID==swapped[1])
+              cluster2guys=which(newID==swapped[2])
+              y.cand=matrix(0,nrow=2,ncol=J)
+              if(length(cluster1guys)>0){
+                if(length(cluster1guys)>1){
+                  y.cand[1,]=colSums(y.unk[cluster1guys,])
+                }else{
+                  y.cand[1,]=y.unk[cluster1guys,]
                 }
               }
-            }
-            if(runif(1)<exp(sum(ll.y.tmp)-sum(ll.y[swapped,]))*(jump.back/jump.probability)){
-              y.true[swapped,]=y.cand
-              ll.y[swapped,]=ll.y.tmp
-              s[swapped, ]=Stmp
-              D[swapped, ]=dtmp
-              lamd[swapped, ]=lamd.tmp
-              pd[swapped,]=pd.tmp
-              ID=newID
-              known.vector[swapped]=1*(rowSums(y.cand)>0)
+              if(length(cluster2guys)>0){
+                if(length(cluster2guys)>1){
+                  y.cand[2,]=colSums(y.unk[cluster2guys,])
+                }else{
+                  y.cand[2,]=y.unk[cluster2guys,]
+                }
+              }
+              #Propose new S from full conditional
+              s.cand=matrix(NA,nrow=2,ncol=2)
+              dtmp=matrix(NA,nrow=2,ncol=J)
+              for(i in 1:2){
+                grid.locs=as.matrix(expand.grid(seq(s[swapped[i],1]-s.lim/2,s[swapped[i],1]+s.lim/2,res),
+                                 seq(s[swapped[i],2]-s.lim/2,s[swapped[i],2]+s.lim/2,res)))
+                #Check for any off state space
+                rem=which(grid.locs[,1]<xlim[1]|grid.locs[,1]>xlim[2]|grid.locs[,2]<ylim[1]|grid.locs[,2]>ylim[2])
+                if(length(rem)>0){
+                  grid.locs=grid.locs[-rem,]
+                }
+                dtmp.tmp=e2dist(grid.locs,X)
+                lamd.tmp=lam0*exp(-dtmp.tmp*dtmp.tmp/(2*sigma*sigma))
+                pd.tmp=1-exp(-lamd.tmp)
+                npoints=nrow(grid.locs)
+                grid.lik=rep(NA,nrow=npoints)
+                for(j in 1:npoints){
+                  grid.lik[j]=sum(dbinom(y.cand[i,],K,pd.tmp[j,]))
+                }
+                grid.probs=grid.lik/sum(grid.lik)
+                choose=sample(1:npoints,1,prob=grid.probs)
+                s.cand[i,]=grid.locs[choose,]
+                dtmp[i,]=dtmp.tmp[i,]
+                lamd.cand[swapped[i],]=lamd.tmp[choose,]
+                pd.cand[swapped[i],]=pd.tmp[choose,]
+              }
+# image(seq(s[swapped[i],1]-s.lim/2,s[swapped[i],1]+s.lim/2,res),
+#       seq(s[swapped[i],2]-s.lim/2,s[swapped[i],2]+s.lim/2,res),matrix(grid.probs,nrow=sqrt(npoints)))
+
+
+              ll.y.cand[swapped,]=dbinom(y.cand,K,pd.cand[swapped,],log=TRUE)
+              #Check for errors
+              for(j in 1:length(newID)){
+                focal=ID[j]
+                thiscluster=which(newID==focal)
+                if(length(thiscluster)>1){
+                  for(k in 1:length(thiscluster))
+                    if(any(constraints[thiscluster,thiscluster]==0)){
+                      stop("error")
+                    }
+                }
+              }
+              if(runif(1)<exp(sum(ll.y.cand[swapped,])-sum(ll.y[swapped,]))*(jump.back/jump.probability)){
+                y.true[swapped,]=y.cand
+                D[swapped,]=dtmp
+                lamd[swapped,]=lamd.cand[swapped,]
+                pd[swapped,]=pd.cand[swapped,]
+                s[swapped,]=s.cand
+                ll.y[swapped,]=ll.y.cand[swapped,]
+                ID=newID
+                known.vector[swapped]=1*(rowSums(y.cand)>0)
+              }
             }
           }
         }
       }
-
-
-
       #Update psi gibbs
       ## probability of not being captured in a trap AT ALL
       pbar=(1-pd)^K
@@ -321,6 +325,7 @@ genSPIMmcmc <-
             D[i, ]=dtmp
             lamd[i, ]=lamd.cand[i,]
             pd[i,]=pd.cand[i,]
+            ll.y[i,]=ll.y.cand[i,]
           }
         }
       }
@@ -336,7 +341,7 @@ genSPIMmcmc <-
     }  # end of MCMC algorithm
 
     if(keepACs==TRUE){
-      list(out=out, sxout=sxout, syout=syout, zout=zout)
+      list(out=out, sxout=sxout, syout=syout, zout=zout,IDout=IDout)
     }else{
       list(out=out)
     }
