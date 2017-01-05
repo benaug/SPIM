@@ -1050,9 +1050,7 @@ SCRmcmcOpen <-
     }  # end of MCMC algorithm
 
     if(keepACs==TRUE){
-      if(ACtype%in%c("metamu","markov")){
-        list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout)
-      }else if(ACtype=="independent"){
+      if(ACtype%in%c("metamu","markov","independent")){
         list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout)
       }else{
         list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout)

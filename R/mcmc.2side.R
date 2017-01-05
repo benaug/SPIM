@@ -61,6 +61,9 @@ mcmc.2side <-
     if(Rcpp==TRUE){ #Do we use Rcpp?
       if("tf"%in%names(data)){ #Do we have a trap operation file?
         if(length(dim(data$tf))==2){ #Is trap file 2D?
+          if(!any(data$tf)==2){
+            stop("Collapse 2-D trap file to 1-D vector of counts for days on at each trap")
+          }
           out2=mcmc.2sidetfFullRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
                                     proppars=proppars,keepACs=keepACs)
         }else if(is.null(dim(data$tf))){#Is trap file 1D?

@@ -102,12 +102,12 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
     nb=nrow(both)
     #Remove 0s from left and right
     idx=which(rowSums(left)==0)
-    idx=idx[idx>nb]
+    idx=idx[idx>nC]
     if(length(idx)>0){
       left=left[-idx,,,]
     }
     idx=which(rowSums(right)==0)
-    idx=idx[idx>nb]
+    idx=idx[idx>nC]
     if(length(idx)>0){
       right=right[-idx,,,]
     }

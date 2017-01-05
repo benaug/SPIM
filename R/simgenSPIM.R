@@ -72,32 +72,33 @@ simgenSPIM <-
       }
     }
     if(sum(yUnk)>0){
-
-    caps=which(yUnk==1,arr.ind=TRUE)
-    nobs=nrow(caps)
-    yUnkobs=array(0,dim=c(nobs,J,K))
-    for(i in 1:nobs){
-      yUnkobs[i,caps[i,2],caps[i,3]]=1
-    }
-    #Find constraints based on all known identities
-    constraints=matrix(1,nrow=nobs,ncol=nobs)
-    for(i in 1:nobs){
-      constraints[i,which(caps[,1]!=caps[i,1])]=0
-    }
-    nconstrain=round(pconstrain*nobs^2)
-    obsconstrain=sum(constraints)
-    #Add some extra possible matches between different individuals
-    if(nconstrain>obsconstrain){
-      deal=round((nconstrain-obsconstrain)/2) #deal half to upper triangle matrix and fill in respective lower traingle matrix
-      zeros=which(constraints==0&upper.tri(constraints),arr.ind=TRUE)
-      choose=sample(1:nrow(zeros),deal)
-      for(i in 1:deal){
-        constraints[zeros[choose[i],1],zeros[choose[i],2]]=1 #upper tri
-        constraints[zeros[choose[i],2],zeros[choose[i],1]]=1 #lower tri
+      caps=which(yUnk==1,arr.ind=TRUE)
+      nobs=nrow(caps)
+      yUnkobs=array(0,dim=c(nobs,J,K))
+      for(i in 1:nobs){
+        yUnkobs[i,caps[i,2],caps[i,3]]=1
       }
-    }else{
-      warning("pconstrain too small to produce number of constraints more than complete identities imply")
-    }
+      #Find constraints based on all known identities
+      constraints=matrix(1,nrow=nobs,ncol=nobs)
+      for(i in 1:nobs){
+        constraints[i,which(caps[,1]!=caps[i,1])]=0
+      }
+      if(pconstrain>0){
+        nconstrain=round(pconstrain*nobs^2)
+        obsconstrain=sum(constraints)
+        #Add some extra possible matches between different individuals
+        if(nconstrain>obsconstrain){
+          deal=round((nconstrain-obsconstrain)/2) #deal half to upper triangle matrix and fill in respective lower traingle matrix
+          zeros=which(constraints==0&upper.tri(constraints),arr.ind=TRUE)
+          choose=sample(1:nrow(zeros),deal)
+          for(i in 1:deal){
+            constraints[zeros[choose[i],1],zeros[choose[i],2]]=1 #upper tri
+            constraints[zeros[choose[i],2],zeros[choose[i],1]]=1 #lower tri
+          }
+        }else{
+          warning("pconstrain too small to produce number of constraints more than complete identities imply")
+        }
+      }
     }else{
       warning("No unknown identity individuals produced")
       constraints=NA

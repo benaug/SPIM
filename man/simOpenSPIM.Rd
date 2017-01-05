@@ -7,7 +7,7 @@
 simOpenSPIM(N = c(40, 60, 80), gamma = NULL, phi = rep(0.8),
   lam01 = 0.2, lam02 = 0.2, sigma = 0.5, K = rep(10, 3), X = X,
   t = 3, M = M, sigma_t = NULL, buff = 3, obstype = "bernoulli",
-  tf = NA)
+  ACtype = "fixed", tf = NA)
 }
 \arguments{
 \item{N}{a vector indicating the number of individuals to simulate}

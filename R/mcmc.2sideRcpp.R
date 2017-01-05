@@ -122,7 +122,7 @@ mcmc.2sideRcpp <-
                          s,psi,xlim,ylim,useverts,vertices,proppars$lam01,proppars$lam02,proppars$sigma,proppars$sx,
                          proppars$sy,niter,nburn,nthin,updates)
     if(keepACs){
-      list(out=store[[1]], sxout=store[[2]], syout=store[[3]], ID_L=store[[4]],ID_R=store[[5]],zout=store[[6]])
+      list(out=store[[1]], sxout=store[[2]], syout=store[[3]], ID_Lout=store[[4]],ID_Rout=store[[5]],zout=store[[6]])
     }else{
       list(out=store[[1]])
     }

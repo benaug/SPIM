@@ -56,10 +56,10 @@ SCRmcmcOpenSPIMRcpp <-
     phi=inits$phi
     psi=inits$psi
     if(!length(lam01)%in%c(1,t)){
-      stop("Input either 1 or t initial values for lam0")
+      stop("Input either 1 or t initial values for lam01")
     }
     if(!length(lam02)%in%c(1,t)){
-      stop("Input either 1 or t initial values for lam0")
+      stop("Input either 1 or t initial values for lam02")
     }
     if(!length(sigma)%in%c(1,t)){
       stop("Input either 1 or t initial values for sigma")
@@ -75,19 +75,16 @@ SCRmcmcOpenSPIMRcpp <-
       stop("must supply t-1 proppars for propz")
     }
     if(length(lam01)!=length(proppars$lam01)){
-      stop("Must supply a tuning parameter for each lam0")
+      stop("Must supply a tuning parameter for each lam01")
     }
     if(length(lam02)!=length(proppars$lam02)){
-      stop("Must supply a tuning parameter for each lam0")
+      stop("Must supply a tuning parameter for each lam02")
     }
     if(length(sigma)!=length(proppars$sigma)){
       stop("Must supply a tuning parameter for each sigma")
     }
     if(length(gamma)!=length(proppars$gamma)){
       stop("Must supply a tuning parameter for each gamma")
-    }
-    if(length(phi)!=length(proppars$phi)){
-      stop("Must supply a tuning parameter for each phi")
     }
 
     #Figure out what needs to be updated
@@ -397,7 +394,7 @@ SCRmcmcOpenSPIMRcpp <-
     if(!is.finite(ll.y.both.sum)){
       stop("Both side detection function starting values produce -Inf log likelihood values. Try increasing sigma and/or lam02")
     }
-    if(!is.finite(ll.y.left.sum)|!is.finite(ll.y.left.sum)){
+    if(!is.finite(ll.y.left.sum)|!is.finite(ll.y.right.sum)){
       stop("Single side detection function starting values produce -Inf log likelihood values. Try increasing sigma and/or lam01")
     }
 

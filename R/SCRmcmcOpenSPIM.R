@@ -1,6 +1,6 @@
 SCRmcmcOpenSPIM <-
   function(data,niter=2400,nburn=1200, nthin=5,M = 200,swap=10,swap.tol=1, inits=inits,
-           proppars=list(lam01=0.05,lam01=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE,jointZ=TRUE){
+           proppars=list(lam01=0.05,lam01=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE,jointZ=TRUE,ACtype="fixed"){
     library(abind)
     t=dim(data$both)[4]
     both<-data$both
@@ -31,7 +31,17 @@ SCRmcmcOpenSPIM <-
     if(length(K)!=t){
       stop("Must supply a K for each year")
     }
-    metamu="sigma_t"%in%names(inits)
+    if(!ACtype%in%c("fixed","independent","metamu","markov")){
+      stop("ACtype must be 'fixed','independent','metamu', or 'markov'")
+    }
+    if(ACtype%in%c("metamu","markov")){
+      if(!"sigma_t"%in%names(proppars)){
+        stop("must supply proppars$sigma_t if ACtype is metamu or markov")
+      }
+      if(is.null(sigma_t)){
+        stop("must supply inits$sigma_t if ACtype is metamu or markov")
+      }
+    }
     #If using polygon state space
     if("vertices"%in%names(data)){
       vertices=data$vertices
@@ -56,10 +66,10 @@ SCRmcmcOpenSPIM <-
     phi=inits$phi
     psi=inits$psi
     if(!length(lam01)%in%c(1,t)){
-      stop("Input either 1 or t initial values for lam0")
+      stop("Input either 1 or t initial values for lam01")
     }
     if(!length(lam02)%in%c(1,t)){
-      stop("Input either 1 or t initial values for lam0")
+      stop("Input either 1 or t initial values for lam02")
     }
     if(!length(sigma)%in%c(1,t)){
       stop("Input either 1 or t initial values for sigma")
@@ -75,19 +85,16 @@ SCRmcmcOpenSPIM <-
       stop("must supply t-1 proppars for propz")
     }
     if(length(lam01)!=length(proppars$lam01)){
-      stop("Must supply a tuning parameter for each lam0")
+      stop("Must supply a tuning parameter for each lam01")
     }
     if(length(lam02)!=length(proppars$lam02)){
-      stop("Must supply a tuning parameter for each lam0")
+      stop("Must supply a tuning parameter for each lam02")
     }
     if(length(sigma)!=length(proppars$sigma)){
       stop("Must supply a tuning parameter for each sigma")
     }
     if(length(gamma)!=length(proppars$gamma)){
       stop("Must supply a tuning parameter for each gamma")
-    }
-    if(length(phi)!=length(proppars$phi)){
-      stop("Must supply a tuning parameter for each phi")
     }
 
     #Figure out what needs to be updated
@@ -227,6 +234,8 @@ SCRmcmcOpenSPIM <-
     }
     gamma.prime.cand=gamma.prime
     ll.z.cand=ll.z
+
+    #initialize s1 and s2
     s1<- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
     idx=which(rowSums(tmpdata)>0) #switch for those actually caught
     for(i in idx){
@@ -265,8 +274,9 @@ SCRmcmcOpenSPIM <-
     for(l in 1:t){
       s2[,l,]=s1
     }
-    if(metamu){
+    if(ACtype%in%c("metamu","markov")){
       #update s2s for guys captured each year and add noise for uncaptured guys. More consistent with sigma_t>0
+      #should be OK for markov and independent
       for(l in 1:t){
         idx=which(rowSums(tmpdata[,,l])>0) #switch for those actually caught
         for(i in 1:M){
@@ -276,14 +286,42 @@ SCRmcmcOpenSPIM <-
           }else{
             inside=FALSE
             while(inside==FALSE){
-              s2[i,l,]=c(rnorm(1,s1[i,1],sigma_t),rnorm(1,s1[i,2],sigma_t))
+              s2[i,l,]=c(rnorm(1,s1[i,1],sigma_t),rnorm(1,s1[i,2],sigma_t/2))
               inside=inout(s2[i,l,],vertices)
             }
           }
         }
       }
-      #Count z==0
-      ll.s2=(dnorm(s2[,,1],s1[,1],sigma_t,log=TRUE)+dnorm(s2[,,2],s1[,2],sigma_t,log=TRUE))
+
+      if(ACtype=="metamu"){
+        ll.s2=(dnorm(s2[,,1],s1[,1],sigma_t,log=TRUE)+dnorm(s2[,,2],s1[,2],sigma_t,log=TRUE))
+        ll.s2.cand=ll.s2
+      }else if(ACtype=="markov"){
+        ll.s2=matrix(NA,nrow=M,ncol=t-1)
+        for(l in 2:t){
+          ll.s2[,l-1]=(dnorm(s2[,l,1],s2[,l-1,1],sigma_t,log=TRUE)+dnorm(s2[,l,2],s2[,l-1,2],sigma_t,log=TRUE))
+        }
+        ll.s2.cand=ll.s2
+      }
+    }
+    if(ACtype=="independent"){
+      stop("independent ACs not supported, yet.  Need to modify ID update in order to accomodate.")
+      #update s2s for guys captured each year
+      for(l in 1:t){
+        idx=which(rowSums(tmpdata[,,l])>0) #switch for those actually caught
+        for(i in 1:M){
+          if(i%in%idx){
+            trps<- X[[l]][tmpdata[i,,l]>0,1:2]
+            s2[i,l,]<- c(mean(trps[,1]),mean(trps[,2]))
+          }else{
+            inside=FALSE
+            while(inside==FALSE){
+              s2[i,l,]=cbind(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+              inside=inout(s2[i,l,],vertices)
+            }
+          }
+        }
+      }
     }
     # some objects to hold the MCMC simulation output
     if(niter<(nburn)){
@@ -319,9 +357,15 @@ SCRmcmcOpenSPIM <-
       phinames="phi"
     }
     Nnames=paste("N",1:t,sep="")
-    if(metamu){
+    if(ACtype%in%c("metamu","markov")){
       out<-matrix(NA,nrow=nstore,ncol=length(lam01)+length(lam02)+length(sigma)+length(gamma)+length(phi)+t+1)
       colnames(out)<-c(lam01names,lam02names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
+      s1xout<- s1yout<- matrix(NA,nrow=nstore,ncol=M)
+      zout<-array(NA,dim=c(nstore,M,t))
+      s2xout<- s2yout<-array(NA,dim=c(nstore,M,t))
+    }else if(ACtype=="independent"){
+      out<-matrix(NA,nrow=nstore,ncol=length(lam01)+length(lam02)+length(sigma)+length(gamma)+length(phi)+t)
+      colnames(out)<-c(lam01names,lam02names,sigmanames,gammanames,phinames,Nnames)
       s1xout<- s1yout<- matrix(NA,nrow=nstore,ncol=M)
       zout<-array(NA,dim=c(nstore,M,t))
       s2xout<- s2yout<-array(NA,dim=c(nstore,M,t))
@@ -392,7 +436,7 @@ SCRmcmcOpenSPIM <-
     if(!is.finite(ll.y.both.sum)){
       stop("Both side detection function starting values produce -Inf log likelihood values. Try increasing sigma and/or lam02")
     }
-    if(!is.finite(ll.y.left.sum)|!is.finite(ll.y.left.sum)){
+    if(!is.finite(ll.y.left.sum)|!is.finite(ll.y.right.sum)){
       stop("Single side detection function starting values produce -Inf log likelihood values. Try increasing sigma and/or lam01")
     }
     #Figure out all possible z histories
@@ -439,10 +483,7 @@ SCRmcmcOpenSPIM <-
     both=apply(both,c(1,2,4),sum)
     left=apply(left,c(1,2,4),sum)
     right=apply(right,c(1,2,4),sum)
-# storellyL=array(-1,dim=c(niter,3))
-# storellyR=array(-1,dim=c(niter,3))
-# storellyLcand=array(-1,dim=c(niter,3))
-# storellyRcand=array(-1,dim=c(niter,3))
+
     for(iter in 1:niter){
       ll.y.both.t.sum=apply(ll.y.both,3,sum) #only needed for detection parameters, changes in z and AC updates
       ll.y.left.t.sum=apply(ll.y.left,3,sum)
@@ -450,8 +491,7 @@ SCRmcmcOpenSPIM <-
       ll.y.both.sum=sum(ll.y.both.t.sum)
       ll.y.left.sum=sum(ll.y.left.t.sum)
       ll.y.right.sum=sum(ll.y.right.t.sum)
-      # storellyL[iter,1:3]=ll.y.left.t.sum
-      # storellyR[iter,1:3]=ll.y.right.t.sum
+
       # Update lam01
       if(uplam01){
         if(length(lam01)==t){ #if lam0 is year-specific
@@ -514,8 +554,6 @@ SCRmcmcOpenSPIM <-
           }
         }
       }
-      # storellyLcand[iter,1:3]=ll.y.left.cand.t.sum
-      # storellyRcand[iter,1:3]=ll.y.right.cand.t.sum
       # Update lam02
       if(uplam02){
         if(length(lam02)==t){ #if lam0 is year-specific
@@ -689,7 +727,6 @@ SCRmcmcOpenSPIM <-
           # if no one around, code swaps guy 1 with guy 1 (no swap, but does calculations)
           possible<- INcands[dv < swap.tol]
 
-
           #joint update
           if(length(possible)>1){
             s.swap.in <-  sample( possible, 1)
@@ -783,7 +820,7 @@ SCRmcmcOpenSPIM <-
             ll.y.right.cand[swapped,,l]=dbinom(y.right[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
           }
           if(!is.finite(sum(ll.y.left.cand))){
-            stop("ll.y.left not finite. Maybe swap.tol too large")
+            stop("ll.y.left not finite. Maybe swap.tol too large or init sigma_t too large")
           }
           llyswap.curr<- sum(ll.y.left[swapped,,])+sum(ll.y.right[swapped,,])
           llyswap.cand<- sum(ll.y.left.cand[swapped,,])+ sum(ll.y.right.cand[swapped,,])
@@ -949,7 +986,7 @@ SCRmcmcOpenSPIM <-
             ll.y.left.cand[swapped,,l]=dbinom(y.left[swapped,,l],K[l],zprop[,l]*(ones[swapped,,l]*pd1[swapped,,l]+twos[swapped,,l]*(2*pd1[swapped,,l]-pd1[swapped,,l]*pd1[swapped,,l])),log=TRUE)
           }
           if(!is.finite(sum(ll.y.right.cand))){
-            stop("ll.y.right.cand not finite. Maybe swap.tol too large")
+            stop("ll.y.right.cand not finite. Maybe swap.tol too large or init sigma_t too large")
           }
           llyswap.curr<- sum(ll.y.right[swapped,,])+sum(ll.y.left[swapped,,])
           llyswap.cand<- sum(ll.y.right.cand[swapped,,])+sum(ll.y.left.cand[swapped,,])
@@ -1268,7 +1305,7 @@ SCRmcmcOpenSPIM <-
           #MH step
           if(runif(1)<exp((sum(ll.y.both.cand[i,,])+sum(ll.y.left.cand[i,,])+sum(ll.y.right.cand[i,,])+
                            ll.z.cand[i,1]+sum(ll.z.cand[,2:t]))-(sum(ll.y.both[i,,])+sum(ll.y.left[i,,])+
-                                sum(ll.y.right[i,,])+ll.z[i,1]+sum(ll.z[,2:t])))*(back.prob/prop.prob)){
+                                                                 sum(ll.y.right[i,,])+ll.z[i,1]+sum(ll.z[,2:t])))*(back.prob/prop.prob)){
             z[i,]=zprop
             a[i,]=aprop
             gamma.prime=gamma.prime.cand
@@ -1374,7 +1411,7 @@ SCRmcmcOpenSPIM <-
         gammause=gamma
       }
       ## Now we have to update the activity centers
-      if(metamu){
+      if(ACtype=="metamu"){
         #Update within year ACs
         for (i in 1:M){
           for(l in 1:t){
@@ -1402,8 +1439,8 @@ SCRmcmcOpenSPIM <-
               ll.y.right.cand[i,,l]=dbinom(y.right[i,,l],K[l],z[i,l]*(ones[i,,l]*pd1.cand[i,,l]+twos[i,,l]*(2*pd1.cand[i,,l]-pd1.cand[i,,l]*pd1.cand[i,,l])),log=TRUE)
               ll.y.both.cand[i,,l]=dbinom(y.both[i,,l],K[l],pd2.cand[i,,l]*z[i,l],log=TRUE)
               ll.y.both.cand[i,which(X[[l]][,3]==1),l]=0 #cancel out contributions from single traps
-              ll.s2.cand<- dnorm(Scand[1],s1[i,1],sigma_t,log=TRUE)+dnorm(Scand[2],s1[i,2],sigma_t,log=TRUE)
-              if(runif(1) < exp((sum(ll.y.both.cand[i,,l])+sum(ll.y.left.cand[i,,l])+sum(ll.y.right.cand[i,,l])+ll.s2.cand) -(sum(ll.y.both[i,,l])+sum(ll.y.left[i,,l])+sum(ll.y.right[i,,l])+ll.s2[i,l]))){
+              ll.s2.cand[i,l]<- dnorm(Scand[1],s1[i,1],sigma_t,log=TRUE)+dnorm(Scand[2],s1[i,2],sigma_t,log=TRUE)
+              if(runif(1) < exp((sum(ll.y.both.cand[i,,l])+sum(ll.y.left.cand[i,,l])+sum(ll.y.right.cand[i,,l])+ll.s2.cand[i,l]) -(sum(ll.y.both[i,,l])+sum(ll.y.left[i,,l])+sum(ll.y.right[i,,l])+ll.s2[i,l]))){
                 s2[i,l,] <- Scand
                 D[i,,l] <- dtmp
                 lamd1[i,,l] <- lamd1.cand[i,,l]
@@ -1413,7 +1450,7 @@ SCRmcmcOpenSPIM <-
                 ll.y.both[i,,l]=ll.y.both.cand[i,,l]
                 ll.y.left[i,,l]=ll.y.left.cand[i,,l]
                 ll.y.right[i,,l]=ll.y.right.cand[i,,l]
-                ll.s2[i,l]=ll.s2.cand
+                ll.s2[i,l]=ll.s2.cand[i,l]
               }
             }
           }
@@ -1444,7 +1481,7 @@ SCRmcmcOpenSPIM <-
             ll.s2=ll.s2.cand
           }
         }
-      }else{#Stationary ACs
+      }else if(ACtype=="fixed"){#Stationary ACs
         for (i in 1:M) {
           Scand <- c(rnorm(1, s1[i, 1], proppars$s2x), rnorm(1, s1[i, 2], proppars$s2y))
           if(useverts==FALSE){
@@ -1497,6 +1534,125 @@ SCRmcmcOpenSPIM <-
             }
           }
         }
+      }else if(ACtype=="markov"){
+        #Update within year ACs
+        for (i in 1:M){
+          for(l in 1:t){
+            Scand=c(rnorm(1, s2[i,l,1], proppars$s2x), rnorm(1, s2[i,l,2], proppars$s2y))
+            if(useverts==FALSE){
+              inbox=Scand[1] < xlim[2] & Scand[1] > xlim[1] & Scand[2] < ylim[2] & Scand[2] > ylim[1]
+            }else{
+              inbox=inout(Scand,vertices)
+            }
+            if(inbox) {
+              dtmp=sqrt((Scand[1] - X[[l]][, 1])^2 + (Scand[2] - X[[l]][, 2])^2)
+              if(length(lam01)==1&length(sigma==1)){
+                lamd1.cand[i,1:nrow(X[[l]]),l]<- lam01*exp(-dtmp*dtmp/(2*sigma*sigma))
+                lamd2.cand[i,1:nrow(X[[l]]),l]<- lam02*exp(-dtmp*dtmp/(2*sigma*sigma))
+              }else if(length(lam01)==t&length(sigma)==1){
+                lamd1.cand[i,1:nrow(X[[l]]),l]<- lam01[l]*exp(-dtmp*dtmp/(2*sigma*sigma))
+                lamd2.cand[i,1:nrow(X[[l]]),l]<- lam02[l]*exp(-dtmp*dtmp/(2*sigma*sigma))
+              }else{
+                lamd1.cand[i,1:nrow(X[[l]]),l]<- lam01[l]*exp(-dtmp*dtmp/(2*sigma[l]*sigma[l]))
+                lamd2.cand[i,1:nrow(X[[l]]),l]<- lam02[l]*exp(-dtmp*dtmp/(2*sigma[l]*sigma[l]))
+              }
+              pd1.cand[i,,l]=1-exp(-lamd1.cand[i,,l])
+              pd2.cand[i,,l]=1-exp(-lamd2.cand[i,,l])
+              ll.y.left.cand[i,,l]=dbinom(y.left[i,,l],K[l],z[i,l]*(ones[i,,l]*pd1.cand[i,,l]+twos[i,,l]*(2*pd1.cand[i,,l]-pd1.cand[i,,l]*pd1.cand[i,,l])),log=TRUE)
+              ll.y.right.cand[i,,l]=dbinom(y.right[i,,l],K[l],z[i,l]*(ones[i,,l]*pd1.cand[i,,l]+twos[i,,l]*(2*pd1.cand[i,,l]-pd1.cand[i,,l]*pd1.cand[i,,l])),log=TRUE)
+              ll.y.both.cand[i,,l]=dbinom(y.both[i,,l],K[l],pd2.cand[i,,l]*z[i,l],log=TRUE)
+              ll.y.both.cand[i,which(X[[l]][,3]==1),l]=0 #cancel out contributions from single traps
+              if(l==1){#only ll.s2[i,1] matters
+                #time 1 to 2
+                ll.s2.cand[i,1]=dnorm(s2[i,2,1],Scand[1],sigma_t,log=TRUE)+dnorm(s2[i,2,2],Scand[2],sigma_t,log=TRUE)
+              }else if(l>1&l<t){#ll.s2[i,l-1] and ll.s2[i,l] matter
+                #time l-1 to time l
+                ll.s2.cand[i,l-1]=dnorm(Scand[1],s2[i,l-1,1],sigma_t,log=TRUE)+dnorm(Scand[2],s2[i,l-1,2],sigma_t,log=TRUE)
+                #time l to l+1
+                ll.s2.cand[i,l]=dnorm(s2[i,l+1,1],Scand[1],sigma_t,log=TRUE)+dnorm(s2[i,l+1,2],Scand[2],sigma_t,log=TRUE)
+              }else{#only ll.s2[i,t-1] matters
+                #time t-1 to t
+                ll.s2.cand[i,t-1]=dnorm(Scand[1],s2[i,t-1,1],sigma_t,log=TRUE)+dnorm(Scand[2],s2[i,t-1,2],sigma_t,log=TRUE)
+              }
+              if(runif(1) < exp((sum(ll.y.both.cand[i,,l])+sum(ll.y.left.cand[i,,l])+sum(ll.y.right.cand[i,,l])+sum(ll.s2.cand[i,])) -(sum(ll.y.both[i,,l])+sum(ll.y.left[i,,l])+sum(ll.y.right[i,,l])+sum(ll.s2[i,])))){
+                s2[i,l,] <- Scand
+                #keep up with mean AC location for ID swapping
+                means2=s2[i,,][z[i,]>0,]
+                if(sum(z[i,])==0){#if augmented individual, just average all ACs
+                  s1[i,]=colMeans(s2[i,,])
+                }else if(is.null(dim(means2))){#if only 1 z keep it
+                  s1[i,]=means2
+                }else{#otherwise, average for z=1 years
+                  s1[i,]=colMeans(means2)
+                }
+                D[i,,l] <- dtmp
+                lamd1[i,,l] <- lamd1.cand[i,,l]
+                lamd2[i,,l] <- lamd2.cand[i,,l]
+                pd1[i,,l]=pd1.cand[i,,l]
+                pd2[i,,l]=pd2.cand[i,,l]
+                ll.y.both[i,,l]=ll.y.both.cand[i,,l]
+                ll.y.left[i,,l]=ll.y.left.cand[i,,l]
+                ll.y.right[i,,l]=ll.y.right.cand[i,,l]
+                ll.s2[i,]=ll.s2.cand[i,]
+              }
+            }
+          }
+        }
+        #Update sigma_t
+        sigma_t.cand <- rnorm(1,sigma_t,proppars$sigma_t)
+        if(sigma_t.cand > 0){
+          for(l in 2:t){
+            for(i in 1:M){
+              ll.s2.cand[i,l-1]=dnorm(s2[i,l,1],s2[i,l-1,1],sigma_t.cand,log=TRUE)+dnorm(s2[i,l,2],s2[i,l-1,2],sigma_t.cand,log=TRUE)
+            }
+          }
+          if (runif(1) < exp(sum(ll.s2.cand) - sum(ll.s2))) {
+            sigma_t=sigma_t.cand
+            ll.s2=ll.s2.cand
+          }
+        }
+      }else{#independent
+        for(l in 1:t){
+          for (i in 1:M) {
+            Scand <- c(rnorm(1, s2[i,l,1], proppars$s2x), rnorm(1, s2[i,l,2], proppars$s2y))
+            if(useverts==FALSE){
+              inbox <- Scand[1] < xlim[2] & Scand[1] > xlim[1] & Scand[2] < ylim[2] & Scand[2] > ylim[1]
+            }else{
+              inbox=inout(Scand,vertices)
+            }
+            if (inbox) {
+              dtmp<- sqrt((Scand[1] - X[[l]][, 1])^2 + (Scand[2] - X[[l]][, 2])^2)
+              if(length(lam01)==1&length(sigma==1)){
+                lamd1.cand[i,,l]<- lam01*exp(-dtmp*dtmp/(2*sigma*sigma))
+                lamd2.cand[i,,l]<- lam02*exp(-dtmp*dtmp/(2*sigma*sigma))
+              }else if(length(lam01)==t&length(sigma)==1){
+                lamd1.cand[i,,l]<- lam01[l]*exp(-dtmp*dtmp/(2*sigma*sigma))
+                lamd2.cand[i,,l]<- lam02[l]*exp(-dtmp*dtmp/(2*sigma*sigma))
+              }else{
+                lamd1.cand[i,,l]<- lam01[l]*exp(-dtmp*dtmp/(2*sigma[l]*sigma[l]))
+                lamd2.cand[i,,l]<- lam02[l]*exp(-dtmp*dtmp/(2*sigma[l]*sigma[l]))
+              }
+              pd1.cand[i,,l]=1-exp(-lamd1.cand[i,,l])
+              pd2.cand[i,,l]=1-exp(-lamd2.cand[i,,l])
+              ll.y.left.cand[i,,l]=dbinom(y.left[i,,l],K[l],z[i,l]*(ones[i,,l]*pd1.cand[i,,l]+twos[i,,l]*(2*pd1.cand[i,,l]-pd1.cand[i,,l]*pd1.cand[i,,l])),log=TRUE)
+              ll.y.right.cand[i,,l]=dbinom(y.right[i,,l],K[l],z[i,l]*(ones[i,,l]*pd1.cand[i,,l]+twos[i,,l]*(2*pd1.cand[i,,l]-pd1.cand[i,,l]*pd1.cand[i,,l])),log=TRUE)
+              ll.y.both.cand[i,,l]=dbinom(y.both[i,,l],K[l],z[i,l]*pd2.cand[i,,l],log=TRUE)
+              ll.y.both.cand[i,which(X[[l]][,3]==1),l]=0
+
+              if(runif(1) < exp((sum(ll.y.both.cand[i,,l])+sum(ll.y.left.cand[i,,l])+sum(ll.y.right.cand[i,,l])) -(sum(ll.y.both[i,,l])+sum(ll.y.left[i,,l])+sum(ll.y.right[i,,l])))){
+                s2[i,l, ] <- Scand
+                D[i,,l] <- dtmp
+                lamd1[i,,l] <- lamd1.cand[i,,l]
+                lamd2[i,,l] <- lamd2.cand[i,,l]
+                pd1[i,,l]=pd1.cand[i,,l]
+                pd2[i,,l]=pd2.cand[i,,l]
+                ll.y.both[i,,l]=ll.y.both.cand[i,,l]
+                ll.y.left[i,,l]=ll.y.left.cand[i,,l]
+                ll.y.right[i,,l]=ll.y.right.cand[i,,l]
+              }
+            }
+          }
+        }
       }
 
       #Do we record output on this iteration?
@@ -1506,8 +1662,12 @@ SCRmcmcOpenSPIM <-
         zout[idx,,]<- z
         ID_Lout[idx,]=ID_L
         ID_Rout[idx,]=ID_R
-        if(metamu){
+        if(ACtype%in%c("metamu","markov")){
           out[idx,]<- c(lam01,lam02,sigma ,gamma,phi,N,sigma_t)
+          s2xout[idx,,]<- s2[,,1]
+          s2yout[idx,,]<- s2[,,2]
+        }else if (ACtype=="independent"){
+          out[idx,]<- c(lam01,lam02,sigma ,gamma,phi,N)
           s2xout[idx,,]<- s2[,,1]
           s2yout[idx,,]<- s2[,,2]
         }else{
@@ -1518,7 +1678,7 @@ SCRmcmcOpenSPIM <-
     }  # end of MCMC algorithm
 
     if(keepACs==TRUE){
-      if(metamu){
+      if(ACtype%in%c("metamu","markov","independent")){
         list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout,ID_Lout=ID_Lout,ID_Rout=ID_Rout)
       }else{
         list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout,ID_Lout=ID_Lout,ID_Rout=ID_Rout)

@@ -37,7 +37,8 @@ cellprobsOpen<- function(lamd){
 #' @author Ben Augustine
 #' @export
 simOpenSPIM <-
-  function(N=c(40,60,80),gamma=NULL,phi=rep(0.8),lam01=0.2,lam02=0.2,sigma=0.50,K=rep(10,3),X=X,t=3,M=M,sigma_t=NULL,buff=3,obstype="bernoulli",tf=NA){
+  function(N=c(40,60,80),gamma=NULL,phi=rep(0.8),lam01=0.2,lam02=0.2,sigma=0.50,K=rep(10,3),X=X,t=3,M=M,sigma_t=NULL,buff=3,
+           obstype="bernoulli",ACtype="fixed",tf=NA){
     library(abind)
     #Check for user errors
     if(length(N)==1&is.null(gamma)){
@@ -51,6 +52,12 @@ simOpenSPIM <-
     }
     if(length(X)!=t){
       stop("Must supply a X (trap locations) for each year")
+    }
+    if((ACtype=="metamu"|ACtype=="markov")&is.null(sigma_t)){
+      stop("If ACtype is metamu or markov, must specify sigma_t")
+    }
+    if(!(ACtype=="metamu"|ACtype=="markov")&!is.null(sigma_t)){
+      stop("ACtype must be metamu or markov when inputting a sigma_t")
     }
     storeparms=list(N=N,gamma=gamma,lam01=lam01,lam02=lam02,sigma=sigma,phi=phi)
     J=unlist(lapply(X,nrow))
@@ -110,14 +117,16 @@ simOpenSPIM <-
     if(length(sigma)==1){
       sigma=rep(sigma,t)
     }
-    if(is.null(sigma_t)){#no movement
+    if(ACtype=="fixed"){#no movement
+      mu<- cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff))
       for(i in 1:t){
         s[,i,]=mu
-        D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]][,1:2])
+        D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
         lamd[,,i,1]=lam01[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
         lamd[,,i,2]=lam02[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
       }
-    }else{
+    }else if(ACtype=="metamu"){
+      mu<- cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff))
       for(i in 1:t){#meta mu movement
         countout=0
         for(j in 1:M){
@@ -136,9 +145,46 @@ simOpenSPIM <-
         }
         D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
         lamd[,,i,1]=lam01[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
-        lamd[,,i,2]=lam01[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
+        lamd[,,i,2]=lam02[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
       }
+    }else if(ACtype=="markov"){
+      s[,1,]=cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff)) #initial locations
+      D[,1:nrow(X[[1]]),1]=e2dist(s[,1,],X[[1]])
+      lamd[,,1,1]=lam01[i]*exp(-D[,,1]^2/(2*sigma[i]*sigma[i]))
+      lamd[,,1,2]=lam02[i]*exp(-D[,,1]^2/(2*sigma[i]*sigma[i]))
+      for(i in 2:t){
+        countout=0
+        for(j in 1:M){
+          out=1
+          while(out==1){
+            s[j,i,1]=rnorm(1,s[j,i-1,1],sigma_t)
+            s[j,i,2]=rnorm(1,s[j,i-1,2],sigma_t)
+            if(s[j,i,1] < xlim[2]+buff & s[j,i,1] > xlim[1]-buff & s[j,i,2] < ylim[2]+buff & s[j,i,2] > ylim[1]-buff){
+              out=0
+            }
+            countout=countout+1
+            if(countout==5000){#So you don't end up in an infinite loop if you set sigma_t too large relative to state space size
+              stop("5000 ACs proposed outside of state space. Should probably reconsider settings.")
+            }
+          }
+        }
+        D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
+        lamd[,,i,1]=lam01[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
+        lamd[,,i,2]=lam02[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
+      }
+    }else if(ACtype=="independent"){
+      for(i in 1:t){
+        s[,i,]=cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff))
+        D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
+        lamd[,,i,1]=lam01[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
+        lamd[,,i,2]=lam02[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
+      }
+    }else{
+      stop("ACtype not recognized")
     }
+
+
+
     psi=N[1]/M
     #Calculate (per capita) gamma or N
     if(length(phi)==1){
@@ -208,6 +254,9 @@ simOpenSPIM <-
     }else{
       stop("observation model not recognized")
     }
+    if(ACtype=="metamu"){
+      mufull=mu
+    }
     ######Process data#############
     IDknown=which(apply(both,1,sum)>0)
     Nknown=length(IDknown)
@@ -244,7 +293,9 @@ simOpenSPIM <-
       newright<- abind(right[IDknown,,,],right[IDunknown,,,],along=1)
       newboth<- abind(both[IDknown,,,],both[IDunknown,,,],along=1)
       s=s[c(IDknown,IDunknown),,]
-      mu=mu[c(IDknown,IDunknown),]
+      if(ACtype=="metamu"){
+        mu=mu[c(IDknown,IDunknown),]
+      }
       left<- newleft
       right<- newright
       both<- newboth
@@ -348,7 +399,7 @@ simOpenSPIM <-
     }else{
       gamma=gamma
     }
-    if(is.null(sigma_t)){
+    if(ACtype!="metamu"){
       if(usetf==TRUE){
       out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,s=s,X=X,tf=tf,K=K,buff=buff,J=J,
                 EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap,simID_L=simID_L,simID_R=simID_R)
@@ -358,10 +409,10 @@ simOpenSPIM <-
       }
     }else{
       if(usetf==TRUE){
-        out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,mu=mu,s=s,X=X,tf=tf,K=K,buff=buff,J=J
+        out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,mu=mu,mufull=mufull,s=s,X=X,tf=tf,K=K,buff=buff,J=J
                 ,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap,simID_L=simID_L,simID_R=simID_R)
       }else{
-        out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,mu=mu,s=s,X=X,K=K,buff=buff,J=J
+        out<-list(left=left,right=right,both=both,IDknown=IDknown,ID_L=ID_L,ID_R=ID_R,mu=mu,mufull=mufull,s=s,X=X,K=K,buff=buff,J=J
                   ,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,Srecap=Srecap,simID_L=simID_L,simID_R=simID_R)
       }
     }
