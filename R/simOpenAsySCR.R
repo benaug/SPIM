@@ -5,7 +5,7 @@ e2dist<-function (x, y)
   matrix(dvec, nrow = nrow(x), ncol = nrow(y), byrow = F)
 }
 
-#' Simulate data from a Open population SCR study.  Update help file later.  Add polygon SS later.
+#' Simulate data from a Open population SCR study.  Update help file later.
 #' @param N a vector indicating the number of individuals to simulate. If size 1, provide a gamma to determine N in subsequent years.
 #' Otherwise, size is t, the number of years.
 #' @param lam0 a vector containing the detection function hazard rate in each year. If size 1, constant rate is assumed.
@@ -31,9 +31,9 @@ e2dist<-function (x, y)
 #' @author Ben Augustine
 #' @export
 
-simOpenSCR <-
-  function(N=c(40,60,80),gamma=NULL,phi=rep(0.8,2),lam0=rep(0.2,3),sigma=rep(0.50,3),K=rep(10,3),X=X,t=3,M=M,sigma_t=NULL,buff=3,
-           obstype="bernoulli",ACtype="fixed"){
+simOpenAsySCR <-
+  function(N=c(40,60,80),gamma=NULL,phi=rep(0.8,2),lam0=rep(0.2,3),sigma=rep(0.50,3),K=rep(10,3),X=X,t=3,M=M,sigma_t=NULL,
+           obstype="bernoulli",ACtype="fixed",discrete.s=NULL,cost=NULL,r.ad=NULL){
     #Check for user errors
     if(length(N)==1&is.null(gamma)){
       stop("Must provide gamma if length(N)==1")
@@ -47,25 +47,28 @@ simOpenSCR <-
     if(length(X)!=t){
       stop("Must supply a X (trap locations) for each year")
     }
-    if((ACtype=="metamu"|ACtype=="markov")&is.null(sigma_t)){
+    if((ACtype=="metamu"|ACtype=="markov"|ACtype=="AD")&is.null(sigma_t)){
       stop("If ACtype is metamu or markov, must specify sigma_t")
     }
-    if(!(ACtype=="metamu"|ACtype=="markov")&!is.null(sigma_t)){
-      stop("ACtype must be metamu or markov when inputting a sigma_t")
+    if(!(ACtype=="metamu"|ACtype=="markov"|ACtype=="AD")&!is.null(sigma_t)){
+      stop("ACtype must be metamu, markov, or AD when inputting a sigma_t")
+    }
+    if(ACtype=="AD"&(is.null(cost)|is.null(r.ad))){
+      stop("Must enter cost surface and r.ad if ACtype=='AD'")
+    }
+    if(is.null(discrete.s)){
+      stop("Must supply discrete.s")
+    }
+    if(is.data.frame(discrete.s)){
+      discrete.s=as.matrix(discrete.s)
     }
     storeparms=list(N=N,gamma=gamma,lam0=lam0,sigma=sigma,phi=phi)
 
     J=unlist(lapply(X,nrow))
     maxJ=max(J)
-    #Get state space extent such that buffer is at least buff on all grids
-    #minmax=rbind(apply(X[[1]],2,min),apply(X[[1]],2,max))
-    minmax=array(NA,dim=c(length(X),2,2))
-    for(i in 1:length(X)){
-      minmax[i,,]=rbind(apply(X[[i]],2,min),apply(X[[i]],2,max))
-    }
-    xylim=rbind(apply(minmax,3,min),apply(minmax,3,max))
-    xlim=xylim[,1]
-    ylim=xylim[,2]
+    xylim=cbind(apply(discrete.s,2,min),apply(discrete.s,2,max))
+    xlim=xylim[1,]
+    ylim=xylim[2,]
     s=array(NA,dim=c(M,t,2))
     D=lamd=array(NA,dim=c(M,maxJ,t))
     if(length(lam0)==1){
@@ -75,14 +78,14 @@ simOpenSCR <-
       sigma=rep(sigma,t)
     }
     if(ACtype=="fixed"){#no movement
-      mu<- cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff))
+      mu<- cbind(sample(discrete.s[,1],M, replace=TRUE), sample(discrete.s[,2],M, replace=TRUE))
       for(i in 1:t){
         s[,i,]=mu
         D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
         lamd[,,i]=lam0[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
       }
     }else if(ACtype=="metamu"){
-      mu<- cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff))
+      mu<-cbind(sample(discrete.s[,1],M, replace=TRUE), sample(discrete.s[,2],M, replace=TRUE))
       for(i in 1:t){#meta mu movement
         countout=0
         for(j in 1:M){
@@ -90,7 +93,7 @@ simOpenSCR <-
           while(out==1){
             s[j,i,1]=rnorm(1,mu[j,1],sigma_t)
             s[j,i,2]=rnorm(1,mu[j,2],sigma_t)
-            if(s[j,i,1] < xlim[2]+buff & s[j,i,1] > xlim[1]-buff & s[j,i,2] < ylim[2]+buff & s[j,i,2] > ylim[1]-buff){
+            if(s[j,i,1] < xlim[2] & s[j,i,1] > xlim[1] & s[j,i,2] < ylim[2] & s[j,i,2] > ylim[1]){
               out=0
             }
             countout=countout+1
@@ -98,12 +101,15 @@ simOpenSCR <-
               stop("5000 ACs proposed outside of state space. Should probably reconsider settings.")
             }
           }
+          #snap back to discrete AC
+          dists=sqrt((s[j,i,1]-discrete.s[,1])^2+(s[j,i,2]-discrete.s[,2])^2)
+          s[j,i,]=discrete.s[which(dists==min(dists)),]
         }
         D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
         lamd[,,i]=lam0[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
       }
     }else if(ACtype=="markov"){
-      s[,1,]=cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff)) #initial locations
+      s[,1,]=cbind(runif(M, xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #initial locations
       D[,1:nrow(X[[1]]),1]=e2dist(s[,1,],X[[1]])
       lamd[,,1]=lam0[1]*exp(-D[,,1]^2/(2*sigma[1]*sigma[1]))
       for(i in 2:t){
@@ -113,7 +119,7 @@ simOpenSCR <-
           while(out==1){
             s[j,i,1]=rnorm(1,s[j,i-1,1],sigma_t)
             s[j,i,2]=rnorm(1,s[j,i-1,2],sigma_t)
-            if(s[j,i,1] < xlim[2]+buff & s[j,i,1] > xlim[1]-buff & s[j,i,2] < ylim[2]+buff & s[j,i,2] > ylim[1]-buff){
+            if(s[j,i,1] < xlim[2] & s[j,i,1] > xlim[1] & s[j,i,2] < ylim[2] & s[j,i,2] > ylim[1]){
               out=0
             }
             countout=countout+1
@@ -121,17 +127,45 @@ simOpenSCR <-
               stop("5000 ACs proposed outside of state space. Should probably reconsider settings.")
             }
           }
+          #snap back to discrete AC
+          dists=sqrt((s[j,i,1]-discrete.s[,1])^2+(s[j,i,2]-discrete.s[,2])^2)
+          s[j,i,]=discrete.s[which(dists==min(dists)),]
         }
         D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
         lamd[,,i]=lam0[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
       }
     }else if(ACtype=="independent"){
       for(i in 1:t){
-        s[,i,]=cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff))
+        s[,i,]=cbind(sample(discrete.s[,1],M, replace=TRUE), sample(discrete.s[,2],M, replace=TRUE))
         D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
         lamd[,,i]=lam0[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
       }
-
+    }else if(ACtype=="AD"){
+      cells=matrix(NA,nrow=M,ncol=t)
+      cells[,1]=sample(1:nrow(discrete.s),M,replace=TRUE)
+      s[,1,]=discrete.s[cells[,1]]
+      D[,1:nrow(X[[1]]),1]=e2dist(s[,1,],X[[1]])
+      lamd[,,1]=lam0[1]*exp(-D[,,1]^2/(2*sigma[1]*sigma[1]))
+      for(i in 2:t){
+        if(length(cost)>1){
+          cost.d <- exp(cost[[i]] * r.ad)
+        }else{
+          cost.d <- exp(cost[[1]] * r.ad)
+        }
+        rast.d <- raster::rasterFromXYZ(cbind(discrete.s, c(cost.d)))
+        raster::projection(rast.d) <- "+proj=utm +zone=12 +datum=WGS84"
+        tr <- gdistance::transition(rast.d, transitionFunction = function(x) (1/(mean(x))), direction = 16)
+        trLayer <- gdistance::geoCorrection(tr, scl = F)
+        DD <- gdistance::costDistance(trLayer,s[,i-1,],discrete.s)
+        for(j in 1:M){
+          displace.prob <- exp(-DD[j,]^2/(2*sigma_t*sigma_t))
+          displace.prob <- c(displace.prob/sum(displace.prob))
+          cells[j,i] <- which(rmultinom(1,1,displace.prob)==1)
+          s[j,i,]=discrete.s[cells[j,i],]
+        }
+        D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
+        lamd[,,i]=lam0[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
+      }
     }else{
       stop("ACtype not recognized")
     }
@@ -140,7 +174,6 @@ simOpenSCR <-
     if(length(phi)==1){
       phi=rep(phi,t-1)
     }
-
     if(is.null(gamma)){
       gamma=rep(NA,t-1)
       for(l in 2:t){
@@ -174,7 +207,6 @@ simOpenSCR <-
       z[,i] <- rbinom(M, 1, Ez)
       a[,i] <- apply(z[,1:i]<1, 1, all)
     }
-
     #######Capture process######################
     # Simulate encounter history
     y <-array(0,dim=c(M,maxJ,t))
@@ -225,9 +257,9 @@ simOpenSCR <-
       gamma=gamma
     }
     if(ACtype!="metamu"){
-      out<-list(y=y,s=s,yfull=yfull,sfull=sfull,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,ACtype=ACtype)
+      out<-list(discrete.s=discrete.s,cost=cost,y=y,s=s,yfull=yfull,sfull=sfull,X=X,K=K,n=n,n2d=n2d,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,ACtype=ACtype)
     }else{
-      out<-list(y=y,mu=mu,s=s,yfull=yfull,sfull=sfull,mufull=mufull,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,ACtype=ACtype)
+      out<-list(discrete.s=discrete.s,cost=cost,y=y,mu=mu,s=s,yfull=yfull,sfull=sfull,mufull=mufull,X=X,K=K,n=n,n2d=n2d,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,ACtype=ACtype)
     }
     return(out)
   }

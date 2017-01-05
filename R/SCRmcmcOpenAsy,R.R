@@ -1,4 +1,4 @@
-SCRmcmcOpen <-
+SCRmcmcOpenAsy <-
   function(data,niter=2400,nburn=1200, nthin=5,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
            jointZ=TRUE,keepACs=TRUE,ACtype="fixed"){
     library(abind)
@@ -14,21 +14,8 @@ SCRmcmcOpen <-
     if(length(K)!=t){
       stop("Must supply a K for each year")
     }
-    #If using polygon state space
-    if("vertices"%in%names(data)){
-      vertices=data$vertices
-      useverts=TRUE
-      xlim=c(min(vertices[,1]),max(vertices[,1]))
-      ylim=c(min(vertices[,2]),max(vertices[,2]))
-    }else if("buff"%in%names(data)){
-      buff<- data$buff
-      xlim<- c(min(unlist(lapply(X,function(x){min(x[,1])}))),min(unlist(lapply(X,function(x){max(x[,1])}))))+c(-buff, buff)
-      ylim<- c(min(unlist(lapply(X,function(x){min(x[,2])}))),min(unlist(lapply(X,function(x){max(x[,2])}))))+c(-buff, buff)
-      vertices=rbind(c(xlim[1],ylim[1]),c(xlim[1],ylim[2]),c(xlim[2],ylim[2]),c(xlim[2],ylim[1]))
-      useverts=FALSE
-    }else{
-      stop("user must supply either 'buff' or 'vertices' in data object")
-    }
+    discrete.s=data$discrete.s
+    cost=data$cost
     ##pull out initial values
     lam0<- inits$lam0
     sigma<- inits$sigma
@@ -36,6 +23,7 @@ SCRmcmcOpen <-
     gamma=inits$gamma
     phi=inits$phi
     psi=inits$psi
+    r.ad=inits$r.ad
     if(!length(lam0)%in%c(1,t)){
       stop("Input either 1 or t initial values for lam0")
     }
@@ -48,7 +36,6 @@ SCRmcmcOpen <-
     if(!length(phi)%in%c(1,t-1)){
       stop("Input either 1 or t-1 initial values for phi")
     }
-    #Check proppars
     #Check proppars
     if(jointZ==FALSE&(length(proppars$propz)!=(t-1))){
       stop("must supply t-1 proppars for propz when using sequential sampler")
@@ -65,17 +52,39 @@ SCRmcmcOpen <-
     if(length(gamma)!=length(proppars$gamma)){
       stop("Must supply a tuning parameter for each gamma")
     }
-    if(!ACtype%in%c("fixed","independent","metamu","markov")){
-      stop("ACtype must be 'fixed','independent','metamu', or 'markov'")
+    if(!ACtype%in%c("fixed","independent","metamu","markov","AD")){
+      stop("ACtype must be 'fixed','independent','metamu', 'markov', or 'AD'")
     }
-    if(ACtype%in%c("metamu","markov")){
+    if(ACtype%in%c("metamu","markov","AD")){
       if(!"sigma_t"%in%names(proppars)){
         stop("must supply proppars$sigma_t if ACtype is metamu or markov")
       }
       if(is.null(sigma_t)){
-        stop("must supply inits$sigma_t if ACtype is metamu or markov")
+        stop("must supply inits$sigma_t if ACtype is metamu, markov, or AD")
       }
     }
+    #cost stuff
+    if(length(cost)>1){
+      cost.d=rast.d=tr=trLayer=list(t)
+      for(l in 1:t){
+        cost.d[[l]]= exp(cost[[l]]*r.ad)
+        rast.d[[l]]= raster::rasterFromXYZ(cbind(discrete.s, c(cost.d[[l]])))
+        raster::projection(rast.d[[l]]) <- "+proj=utm +zone=12 +datum=WGS84"
+        tr[[l]] <- gdistance::transition(rast.d[[l]], transitionFunction = function(x) (1/(mean(x))), direction = 16)
+        trLayer[[l]] <- gdistance::geoCorrection(tr[[l]], scl = F)
+      }
+    }else{
+      cost.d= exp(cost[[1]]*r.ad)
+      rast.d= raster::rasterFromXYZ(cbind(discrete.s, c(cost.d)))
+      raster::projection(rast.d) <- "+proj=utm +zone=12 +datum=WGS84"
+      tr <- gdistance::transition(rast.d, transitionFunction = function(x) (1/(mean(x))), direction = 16)
+      trLayer <- gdistance::geoCorrection(tr, scl = F)
+    }
+    cost.d.cand=cost.d
+    rast.d.cand=rast.d
+    tr.cand=tr
+    trLayer.cand=trLayer
+
     #augment data
     y<- abind(y,array(0, dim=c( M-dim(y)[1],maxJ, t)), along=1)
     known.vector=c(rep(1,data$n),rep(0,M-data$n))
@@ -179,40 +188,28 @@ SCRmcmcOpen <-
       for(j in 1:t){ #loop over t to get all cap locs
         trps<- rbind(trps,X[[j]][y[i,,j]>0,1:2])
       }
-      s1[i,]<- c(mean(trps[,1]),mean(trps[,2]))
+      s1[i,]=c(mean(trps[,1]),mean(trps[,2]))
+    }
+    #snap back to discrete AC
+    for(i in 1:M){
+      dists=sqrt((s1[i,1]-discrete.s[,1])^2+(s1[i,2]-discrete.s[,2])^2)
+      tmp=discrete.s[which(dists==min(dists)),]
+      if(is.null(dim(tmp))){#if only 1 min distance
+        s1[i,]<- tmp
+      }else{#if more than 1 min distance, just use first one
+        s1[i,]<- tmp[1,]
+      }
+
     }
 
-    #check to make sure everyone is in polygon
-    if("vertices"%in%names(data)){
-      vertices=data$vertices
-      useverts=TRUE
-    }else{
-      useverts=FALSE
-    }
-    if(useverts==TRUE){
-      inside=rep(NA,nrow(s1))
-      for(i in 1:nrow(s)){
-        inside[i]=inout(s1[i,],vertices)
-      }
-      idx=which(inside==FALSE)
-      if(length(idx)>0){
-        for(i in 1:length(idx)){
-          while(inside[idx[i]]==FALSE){
-            s1[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
-            inside[idx[i]]=inout(s1[idx[i],],vertices)
-          }
-        }
-      }
-    }
     #Initialize s2
     #Assign s2 to be s1 for all occasions
     s2=array(NA,dim=c(M,t,2))
     for(l in 1:t){
       s2[,l,]=s1
     }
-    if(ACtype%in%c("metamu","markov")){
+    if(ACtype%in%c("metamu","markov","AD")){
       #update s2s for guys captured each year and add noise for uncaptured guys. More consistent with sigma_t>0
-      #should be OK for markov and independent
       for(l in 1:t){
         idx=which(rowSums(y[,,l])>0) #switch for those actually caught
         for(i in 1:M){
@@ -220,11 +217,14 @@ SCRmcmcOpen <-
             trps<- X[[l]][y[i,,l]>0,1:2]
             s2[i,l,]<- c(mean(trps[,1]),mean(trps[,2]))
           }else{
-            inside=FALSE
-            while(inside==FALSE){
-              s2[i,l,]=c(rnorm(1,s1[i,1],sigma_t),rnorm(1,s1[i,2],sigma_t))
-              inside=inout(s2[i,l,],vertices)
-            }
+            s2[i,l,]=c(rnorm(1,s1[i,1],sigma_t),rnorm(1,s1[i,2],sigma_t))
+          }
+          dists=sqrt((s2[i,l,1]-discrete.s[,1])^2+(s2[i,l,2]-discrete.s[,2])^2)
+          tmp=discrete.s[which(dists==min(dists)),]
+          if(is.null(dim(tmp))){#if only 1 min distance
+            s2[i,l,]<- tmp
+          }else{#if more than 1 min distance, just use first one
+            s2[i,l,]<- tmp[1,]
           }
         }
       }
@@ -236,6 +236,35 @@ SCRmcmcOpen <-
         for(l in 2:t){
           ll.s2[,l-1]=(dnorm(s2[,l,1],s2[,l-1,1],sigma_t,log=TRUE)+dnorm(s2[,l,2],s2[,l-1,2],sigma_t,log=TRUE))
         }
+        ll.s2.cand=ll.s2
+      }else{#AD
+        ll.s2=matrix(NA,nrow=M,ncol=t-1)
+        cells=matrix(NA,nrow=M,ncol=t)
+        for(i in 1:M){
+          cells[i,1]=which(s2[i,1,1]==discrete.s[,1]&s2[i,1,2]==discrete.s[,2])
+        }
+        if(length(cost)==1){#can do all t at once
+          DD <- gdistance::costDistance(trLayer,cbind(c(s2[,,1]),c(s2[,,2])),discrete.s)
+          idx2=1
+        }
+        for(l in 2:t){
+          if(length(cost)>1){#can do all s within t at once
+            dd <- c(gdistance::costDistance(trLayer[[l]],matrix(s2[,l-1,],nrow=1,ncol=2),as.matrix(discrete.s)))
+          }else{
+            dd=DD[idx2:(idx2+(M-1)),]
+            idx2=idx2+M
+          }
+          for(i in 1:M){
+            cells[i,l]=which(s2[i,l,1]==discrete.s[,1]&s2[i,l,2]==discrete.s[,2])
+            displace.probs=exp(-dd[i,]^2/(2*sigma_t*sigma_t))
+            displace.probs=displace.probs/sum(displace.probs)
+            realized=rep(0,length(displace.probs))
+            realized[cells[i,l]]=1
+            ll.s2[i,l-1]=dmultinom(realized,1,displace.probs)
+          }
+        }
+        Scandcell=cells
+        Scand=s2
         ll.s2.cand=ll.s2
       }
     }
@@ -249,12 +278,14 @@ SCRmcmcOpen <-
             trps<- X[[l]][y[i,,l]>0,1:2]
             s2[i,l,]<- c(mean(trps[,1]),mean(trps[,2]))
           }else{
-            inside=FALSE
-            while(inside==FALSE){
-              s2[i,l,]=cbind(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
-              # dists=sqrt((s2[i,l,1]-X[[l]][,1])^2+(s2[i,l,2]-X[[l]][,2])^2)
-              inside=inout(s2[i,l,],vertices)#&(!any(dists<buff/2))
-            }
+            s2[i,l,]=cbind(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+          }
+          dists=sqrt((s2[i,l,1]-discrete.s[,1])^2+(s2[i,l,2]-discrete.s[,2])^2)
+          tmp=discrete.s[which(dists==min(dists)),]
+          if(is.null(dim(tmp))){#if only 1 min distance
+            s2[i,l,]<- tmp
+          }else{#if more than 1 min distance, just use first one
+            s2[i,l,]<- tmp[1,]
           }
         }
       }
@@ -291,6 +322,12 @@ SCRmcmcOpen <-
     if(ACtype%in%c("metamu","markov")){
       out<-matrix(NA,nrow=nstore,ncol=length(lam0)+length(sigma)+length(gamma)+length(phi)+t+1)
       colnames(out)<-c(lam0names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
+      s1xout<- s1yout<- matrix(NA,nrow=nstore,ncol=M)
+      zout<-array(NA,dim=c(nstore,M,t))
+      s2xout<- s2yout<-array(NA,dim=c(nstore,M,t))
+    }else if(ACtype=="AD"){
+      out<-matrix(NA,nrow=nstore,ncol=length(lam0)+length(sigma)+length(gamma)+length(phi)+t+2)
+      colnames(out)<-c(lam0names,sigmanames,gammanames,phinames,Nnames,"sigma_t","r.ad")
       s1xout<- s1yout<- matrix(NA,nrow=nstore,ncol=M)
       zout<-array(NA,dim=c(nstore,M,t))
       s2xout<- s2yout<-array(NA,dim=c(nstore,M,t))
@@ -750,14 +787,6 @@ SCRmcmcOpen <-
           }
         }
       }
-      # if(t>3){
-      #   #a for last year isn't updated so it does not matter if it comes back on.
-      #   sanity=any(rowSums(z)==0&rowSums(a[,-t])!=(t-1))
-      #   for(l2 in 2:(t-2)){
-      #     sanity=c(sanity,any(a[,l2]==0&a[,l2-1]==1&a[,l2+1]==1))
-      #   }
-      #   if(any(sanity)){stop("insanity")}
-      # }
       #update psi
       psi <- rbeta(1, 1+N[1], 1+M-N[1])
       ll.z[,1] <- ll.z.cand[,1] <- dbinom(z[,1], 1, psi, log=TRUE)
@@ -995,8 +1024,160 @@ SCRmcmcOpen <-
             ll.s2=ll.s2.cand
           }
         }
+      }else if(ACtype=="AD"){#AD ACs
+       #propose all Scands
+        for (i in 1:M){
+          for(l in 1:t){
+            Scand[i,l,]=c(rnorm(1, s2[i,l,1], proppars$s2x), rnorm(1, s2[i,l,2], proppars$s2y))
+            #snap
+            dists=sqrt((Scand[i,l,1]-discrete.s[,1])^2+(Scand[i,l,2]-discrete.s[,2])^2)
+            Scandcell[i,l]=which(dists==min(dists))
+            Scand[i,l,]=discrete.s[Scandcell[i,l],]
+          }
+        }
+        #calculate all DD we need ahead of time
+        DDfor <- gdistance::costDistance(trLayer,cbind(c(Scand[,1:(t-1),1]),c(Scand[,1:(t-1),2])),discrete.s)
+        DDback <- gdistance::costDistance(trLayer,cbind(c(s2[,1:(t-1),1]),c(s2[,1:(t-1),2])),discrete.s)
+        idx2=1
+        idx3=1
+        for(l in 1:t){
+          if(l<t){
+            if(length(cost)>1){#can do all s within t at once
+              ddfor <- gdistance::costDistance(trLayer[[l]],Scand[,l,],discrete.s)
+            }else{
+              ddfor=DDfor[idx2:(idx2+(M-1)),]
+              idx2=idx2+M
+            }
+          }
+          if(l>1){
+            if(length(cost)>1){#can do all s within t at once
+              ddback <- gdistance::costDistance(trLayer[[l-1]],s2[,l-1,],discrete.s)
+            }else{
+              ddback=DDback[idx3:(idx3+(M-1)),]
+              idx3=idx3+M
+            }
+          }
+        for(i in 1:M){
+            dtmp=sqrt((Scand[i,l,1] - X[[l]][, 1])^2 + (Scand[i,l,2] - X[[l]][, 2])^2)
+            if(length(lam0)==1&length(sigma==1)){
+              lamd.cand[i,1:nrow(X[[l]]),l]<- lam0*exp(-dtmp*dtmp/(2*sigma*sigma))
+            }else if(length(lam0)==t&length(sigma)==1){
+              lamd.cand[i,1:nrow(X[[l]]),l]<- lam0[l]*exp(-dtmp*dtmp/(2*sigma*sigma))
+            }else{
+              lamd.cand[i,1:nrow(X[[l]]),l]<- lam0[l]*exp(-dtmp*dtmp/(2*sigma[l]*sigma[l]))
+            }
+            pd.cand[i,,l]=1-exp(-lamd.cand[i,,l])
+            ll.y.cand[i,,l] <- dbinom(y[i,,l], K[l], pd.cand[i,,l]*z[i,l], log=TRUE)
+            if(l==1){#only ll.s2[i,1] matters
+              #time 1 to 2
+              displace.probs=exp(-ddfor[i,]^2/(2*sigma_t*sigma_t))
+              displace.probs=displace.probs/sum(displace.probs)
+              realized=rep(0,length(displace.probs))
+              realized[cells[i,l+1]]=1
+              ll.s2.cand[i,1]=dmultinom(realized,1,displace.probs)
+            }else if(l>1&l<t){#ll.s2[i,l-1] and ll.s2[i,l] matter
+              #time l-1 to time l
+              displace.probs=exp(-ddback[i,]^2/(2*sigma_t*sigma_t))
+              displace.probs=displace.probs/sum(displace.probs)
+              realized=rep(0,length(displace.probs))
+              realized[Scandcell[i,l]]=1
+              ll.s2.cand[i,1]=dmultinom(realized,1,displace.probs)
+              #time l to l+1
+              displace.probs=exp(-ddfor[i,]^2/(2*sigma_t*sigma_t))
+              displace.probs=displace.probs/sum(displace.probs)
+              realized=rep(0,length(displace.probs))
+              realized[cells[i,l+1]]=1
+              ll.s2.cand[i,l]=dmultinom(realized,1,displace.probs)
+            }else{#only ll.s2[i,t-1] matters
+              #time t-1 to t
+              displace.probs=exp(-ddback[i,]^2/(2*sigma_t*sigma_t))
+              displace.probs=displace.probs/sum(displace.probs)
+              realized=rep(0,length(displace.probs))
+              realized[Scandcell[i,l]]=1
+              ll.s2.cand[i,1]=dmultinom(realized,1,displace.probs)
+            }
+            if(runif(1) < exp((sum(ll.y.cand[i,,l])+sum(ll.s2.cand[i,])) -(sum(ll.y[i,,l])+sum(ll.s2[i,])))){
+              s2[i,l,] <- Scand[i,l,]
+              cells[i,l]=Scandcell[i,l]
+              D[i,,l] <- dtmp
+              lamd[i,,l] <- lamd.cand[i,,l]
+              pd[i,,l]=pd.cand[i,,l]
+              ll.y[i,,l]=ll.y.cand[i,,l]
+              ll.s2[i,]=ll.s2.cand[i,]
+            }
+          }
+        }
+        #Update sigma_t
+        sigma_t.cand <- rnorm(1,sigma_t,proppars$sigma_t)
+        if(sigma_t.cand > 0){
+          if(length(cost)==1){#can do all t at once
+            DD <- gdistance::costDistance(trLayer,cbind(c(s2[,,1]),c(s2[,,2])),discrete.s)
+            idx2=1
+          }
+          for(l in 2:t){
+            if(length(cost)>1){#can do all s within t at once
+              dd <- gdistance::costDistance(trLayer[[l-1]],s2[,l-1,],discrete.s)
+            }else{
+              dd=DD[idx2:(idx2+(M-1)),]
+              idx2=idx2+M
+            }
+            for(i in 1:M){
+              displace.probs=exp(-dd[i,]^2/(2*sigma_t.cand*sigma_t.cand))
+              displace.probs=displace.probs/sum(displace.probs)
+              realized=rep(0,length(displace.probs))
+              realized[cells[i,l]]=1
+              ll.s2.cand[i,l-1]=dmultinom(realized,1,displace.probs)
+            }
+          }
+          if (runif(1) < exp(sum(ll.s2.cand) - sum(ll.s2))) {
+            sigma_t=sigma_t.cand
+            ll.s2=ll.s2.cand
+          }
+        }
+        #Update r.ad
+        # r.ad.cand <- rnorm(1,r.ad,proppars$r.ad)
+        # if(r.ad.cand > 0){
+        #   #make new cost layers
+        #   if(length(cost)>1){
+        #     for(l in 1:t){
+        #       cost.d.cand[[l]]= exp(cost[[l]]*r.ad.cand)
+        #       rast.d.cand[[l]]= raster::rasterFromXYZ(cbind(discrete.s, c(cost.d.cand[[l]])))
+        #       raster::projection(rast.d.cand[[l]]) <- "+proj=utm +zone=12 +datum=WGS84"
+        #       tr.cand[[l]] <- gdistance::transition(rast.d.cand[[l]], transitionFunction = function(x) (1/(mean(x))), direction = 16)
+        #       trLayer.cand[[l]] <- gdistance::geoCorrection(tr.cand[[l]], scl = F)
+        #     }
+        #   }else{
+        #     cost.d.cand= exp(cost[[1]]*r.ad.cand)
+        #     rast.d.cand= raster::rasterFromXYZ(cbind(discrete.s, c(cost.d.cand)))
+        #     raster::projection(rast.d.cand) <- "+proj=utm +zone=12 +datum=WGS84"
+        #     tr.cand <- gdistance::transition(rast.d.cand, transitionFunction = function(x) (1/(mean(x))), direction = 16)
+        #     trLayer.cand <- gdistance::geoCorrection(tr.cand, scl = F)
+        #     DD <- gdistance::costDistance(trLayer.cand,cbind(c(s2[,,1]),c(s2[,,2])),discrete.s)
+        #     idx2=1
+        #   }
+        #   for(l in 2:t){
+        #     if(length(cost)>1){#can do all s within t at once
+        #       dd <- c(gdistance::costDistance(trLayer.cand[[l]],matrix(s2[,l-1,],nrow=1,ncol=2),as.matrix(discrete.s)))
+        #     }else{
+        #       dd=DD[idx2:(idx2+(M-1)),]
+        #       idx2=idx2+M
+        #     }
+        #     for(i in 1:M){
+        #       displace.probs=exp(-dd[i,]^2/(2*sigma_t*sigma_t))
+        #       displace.probs=displace.probs/sum(displace.probs)
+        #       realized=rep(0,length(displace.probs))
+        #       realized[cells[i,l]]=1
+        #       ll.s2.cand[i,l-1]=dmultinom(realized,1,displace.probs)
+        #     }
+        #   }
+        #   if (runif(1) < exp(sum(ll.s2.cand) - sum(ll.s2))) {
+        #     r.ad=r.ad.cand
+        #     ll.s2=ll.s2.cand
+        #     trLayer=trLayer.cand
+        #   }
+        # }
 
-      }else{#independent ACS
+      } else{#independent ACS
         for(l in 1:t){
           for (i in 1:M) {
             # if(z[i,l]==0) next
@@ -1028,7 +1209,6 @@ SCRmcmcOpen <-
           }
         }
       }
-
       #Do we record output on this iteration?
       if(iter>(nburn)&iter%%nthin==0){
         s1xout[idx,]<- s1[,1]
@@ -1038,7 +1218,11 @@ SCRmcmcOpen <-
           out[idx,]<- c(lam0,sigma ,gamma,phi,N,sigma_t)
           s2xout[idx,,]<- s2[,,1]
           s2yout[idx,,]<- s2[,,2]
-        }else if (ACtype=="independent"){
+        }else if(ACtype=="AD"){
+          out[idx,]<- c(lam0,sigma ,gamma,phi,N,sigma_t,r.ad)
+          s2xout[idx,,]<- s2[,,1]
+          s2yout[idx,,]<- s2[,,2]
+          }else if (ACtype=="independent"){
           out[idx,]<- c(lam0,sigma ,gamma,phi,N)
           s2xout[idx,,]<- s2[,,1]
           s2yout[idx,,]<- s2[,,2]
@@ -1050,7 +1234,7 @@ SCRmcmcOpen <-
     }  # end of MCMC algorithm
 
     if(keepACs==TRUE){
-      if(ACtype%in%c("metamu","markov","independent")){
+      if(ACtype%in%c("metamu","markov","independent","AD")){
         list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout)
       }else{
         list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout)
