@@ -54,7 +54,7 @@ SCRmcmcOpenRcpp <-
       stop("must supply t-1 proppars for propz when using sequential sampler")
     }
     if(jointZ==TRUE&("propz"%in%names(proppars))){
-      warning("ignoring propz because z joint z sampler specified")
+      warning("ignoring propz because joint z sampler specified")
     }
     if(jointZ==TRUE&(!"propz"%in%names(proppars))){#have to feed something to Rcpp
       proppars$propz=c(10,10)
@@ -68,15 +68,15 @@ SCRmcmcOpenRcpp <-
     if(length(gamma)!=length(proppars$gamma)){
       stop("Must supply a tuning parameter for each gamma")
     }
-    if(!ACtype%in%c("fixed","independent","metamu","markov")){
-      stop("ACtype must be 'fixed','independent','metamu', or 'markov'")
+    if(!ACtype%in%c("fixed","independent","metamu","metamu2","markov")){
+      stop("ACtype must be 'fixed','independent','metamu', 'metamu2' or 'markov'")
     }
-    if(ACtype%in%c("metamu","markov")){
+    if(ACtype%in%c("metamu","metamu2","markov")){
       if(!"sigma_t"%in%names(proppars)){
-        stop("must supply proppars$sigma_t if ACtype is metamu or markov")
+        stop("must supply proppars$sigma_t if ACtype is metamu, metamu2, or markov")
       }
       if(is.null(sigma_t)){
-        stop("must supply inits$sigma_t if ACtype is metamu or markov")
+        stop("must supply inits$sigma_t if ACtype is metamu, metamu2 or markov")
       }
     }
     #augment data
@@ -213,7 +213,7 @@ SCRmcmcOpenRcpp <-
     for(l in 1:t){
       s2[,l,]=s1
     }
-    if(ACtype%in%c("metamu","markov")){
+    if(ACtype%in%c("metamu","metamu2","markov")){
       #update s2s for guys captured each year and add noise for uncaptured guys. More consistent with sigma_t>0
       #should be OK for markov and independent
       for(l in 1:t){
@@ -335,7 +335,7 @@ SCRmcmcOpenRcpp <-
     }
     each=unlist(lapply(inits,length))[1:4]
     npar=sum(each)+t
-    if(ACtype%in%c("metamu","markov")){
+    if(ACtype%in%c("metamu","metamu2","markov")){
       npar=npar+1
     }
     #So these aren't modified by Rcpp
@@ -349,9 +349,12 @@ SCRmcmcOpenRcpp <-
       ACtype=2
     }else if(ACtype=="markov"){
       ACtype=3
-    }else{
+    }else if(ACtype=="independent"){
       ACtype=4#independent
+    }else{#metamu2
+      ACtype=5
     }
+    
     store=mcmc_Open(lam0in,  sigmain,  gammain, gamma.prime,  phiin, D,lamd, y, z, a,s1,s2,
                     ACtype, useverts, vertices, xlim, ylim, known.matrix, Xidx, Xcpp, K, Ez,  psi,
                     N, proppars$lam0, proppars$sigma, proppars$propz,  proppars$gamma, proppars$s1x,  proppars$s1y,
@@ -412,13 +415,13 @@ SCRmcmcOpenRcpp <-
       phinames="phi"
     }
     Nnames=paste("N",1:t,sep="")
-    if(ACtype%in%c(2,3)){
+    if(ACtype%in%c(2,3,5)){
       colnames(out)<-c(lam0names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
     }else{
       colnames(out)<-c(lam0names,sigmanames,gammanames,phinames,Nnames)
     }
     if(keepACs==TRUE){
-      if(ACtype%in%c(2,3,4)){
+      if(ACtype%in%c(2,3,4,5)){
         list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout)
       }else{
         list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout)

@@ -65,8 +65,8 @@ SCRmcmcOpen <-
     if(length(gamma)!=length(proppars$gamma)){
       stop("Must supply a tuning parameter for each gamma")
     }
-    if(!ACtype%in%c("fixed","independent","metamu","markov")){
-      stop("ACtype must be 'fixed','independent','metamu', or 'markov'")
+    if(!ACtype%in%c("fixed","independent","metamu","metamu2","markov")){
+      stop("ACtype must be 'fixed','independent','metamu', 'metamu2', or 'markov'")
     }
     if(ACtype%in%c("metamu","markov")){
       if(!"sigma_t"%in%names(proppars)){
@@ -210,7 +210,7 @@ SCRmcmcOpen <-
     for(l in 1:t){
       s2[,l,]=s1
     }
-    if(ACtype%in%c("metamu","markov")){
+    if(ACtype%in%c("metamu","metamu2","markov")){
       #update s2s for guys captured each year and add noise for uncaptured guys. More consistent with sigma_t>0
       #should be OK for markov and independent
       for(l in 1:t){
@@ -228,7 +228,7 @@ SCRmcmcOpen <-
           }
         }
       }
-      if(ACtype=="metamu"){
+      if(ACtype%in%c("metamu","metamu2")){
         ll.s2=(dnorm(s2[,,1],s1[,1],sigma_t,log=TRUE)+dnorm(s2[,,2],s1[,2],sigma_t,log=TRUE))
         ll.s2.cand=ll.s2
       }else if(ACtype=="markov"){
@@ -288,7 +288,7 @@ SCRmcmcOpen <-
       phinames="phi"
     }
     Nnames=paste("N",1:t,sep="")
-    if(ACtype%in%c("metamu","markov")){
+    if(ACtype%in%c("metamu","metamu2","markov")){
       out<-matrix(NA,nrow=nstore,ncol=length(lam0)+length(sigma)+length(gamma)+length(phi)+t+1)
       colnames(out)<-c(lam0names,sigmanames,gammanames,phinames,Nnames,"sigma_t")
       s1xout<- s1yout<- matrix(NA,nrow=nstore,ncol=M)
@@ -837,17 +837,21 @@ SCRmcmcOpen <-
         gammause=gamma
       }
       ## Now we have to update the activity centers
-      if(ACtype=="metamu"){
+      if(ACtype%in%c("metamu","metamu2")){
         #Update within year ACs
         for (i in 1:M){
           for(l in 1:t){
             Scand=c(rnorm(1, s2[i,l,1], proppars$s2x), rnorm(1, s2[i,l,2], proppars$s2y))
-            if(useverts==FALSE){
-              inbox=Scand[1] < xlim[2] & Scand[1] > xlim[1] & Scand[2] < ylim[2] & Scand[2] > ylim[1]
-            }else{
-              inbox=inout(Scand,vertices)
+            if(ACtype=="metamu"){
+              if(useverts==FALSE){
+                inbox=Scand[1] < xlim[2] & Scand[1] > xlim[1] & Scand[2] < ylim[2] & Scand[2] > ylim[1]
+              }else{
+                inbox=inout(Scand,vertices)
+              }
+            }else{#don't force them to stay in
+              inbox=TRUE
             }
-            if(inbox) {
+            if(inbox){
               dtmp=sqrt((Scand[1] - X[[l]][, 1])^2 + (Scand[2] - X[[l]][, 2])^2)
               if(length(lam0)==1&length(sigma==1)){
                 lamd.cand[i,1:nrow(X[[l]]),l]<- lam0*exp(-dtmp*dtmp/(2*sigma*sigma))
@@ -1034,7 +1038,7 @@ SCRmcmcOpen <-
         s1xout[idx,]<- s1[,1]
         s1yout[idx,]<- s1[,2]
         zout[idx,,]<- z
-        if(ACtype%in%c("metamu","markov")){
+        if(ACtype%in%c("metamu","metamu2","markov")){
           out[idx,]<- c(lam0,sigma ,gamma,phi,N,sigma_t)
           s2xout[idx,,]<- s2[,,1]
           s2yout[idx,,]<- s2[,,2]
@@ -1050,7 +1054,7 @@ SCRmcmcOpen <-
     }  # end of MCMC algorithm
 
     if(keepACs==TRUE){
-      if(ACtype%in%c("metamu","markov","independent")){
+      if(ACtype%in%c("metamu2","metamu","markov","independent")){
         list(out=out, s1xout=s1xout, s1yout=s1yout,s2xout=s2xout, s2yout=s2yout, zout=zout)
       }else{
         list(out=out, s1xout=s1xout, s1yout=s1yout, zout=zout)

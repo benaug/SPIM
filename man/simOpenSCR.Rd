@@ -32,15 +32,17 @@ the number of traps in each year.}
 
 \item{M}{an integer indicating the level of data augmentation to use during simulation.}
 
-\item{sigma_t}{a numeric indicating the between year spatial scale parameter for ACtypes "metamu" and "markov"}
+\item{sigma_t}{a numeric indicating the between year spatial scale parameter for ACtypes "metamu" "metamu2", and "markov"}
 
 \item{buff}{the distance to buffer the trapping array in the X and Y dimensions to produce the state space}
 
 \item{obstype}{observation type, either "bernoulli" or "poisson"}
 
 \item{ACtype}{Type of activity centers.  "fixed" don't move between years, "metamu" assume a bivariate normal distribution
-with a meta mu and sigma_t, "markov" assumes activity centers in year t+1 is a bivariate normal draw centered around the
-activity center in year t, and "independent" assumes animals randomly mix between years.}
+with a meta mu and sigma_t with yearly activity centers required to stay inside the state space , "metamu2", is 
+the same as "metamu" except only meta mus are required to stay inside the state space.  markov" assumes activity
+centers in year t+1 is a bivariate normal draw centered around the activity center in year t (but must stay within
+the state space), and "independent" assumes animals randomly mix between years.}
 }
 \value{
 a list containing the capture history, activity centers, trap object, and several other data objects and summaries.

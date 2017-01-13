@@ -1,5 +1,4 @@
-e2dist<-function (x, y)
-{
+e2dist<-function (x, y){
   i <- sort(rep(1:nrow(y), nrow(x)))
   dvec <- sqrt((x[, 1] - y[i, 1])^2 + (x[, 2] - y[i, 2])^2)
   matrix(dvec, nrow = nrow(x), ncol = nrow(y), byrow = F)
@@ -22,6 +21,7 @@ e2dist<-function (x, y)
 
 simgenSPIM <-
   function(N=50,lam0=0.2,sigma=0.50,K=10,X=X,buff=2,pID=0.5,pconstrain=0.3,obstype="bernoulli"){
+    library(abind)
     #######Capture process######################
     # # simulate a population of activity centers
     s<- cbind(runif(N, min(X[,1])-buff,max(X[,1])+buff), runif(N,min(X[,2])-buff,max(X[,2])+buff))
@@ -72,11 +72,28 @@ simgenSPIM <-
       }
     }
     if(sum(yUnk)>0){
-      caps=which(yUnk==1,arr.ind=TRUE)
+      caps=which(yUnk>0,arr.ind=TRUE)
       nobs=nrow(caps)
       yUnkobs=array(0,dim=c(nobs,J,K))
       for(i in 1:nobs){
-        yUnkobs[i,caps[i,2],caps[i,3]]=1
+        yUnkobs[i,caps[i,2],caps[i,3]]=yUnk[caps[i,1],caps[i,2],caps[i,3]]
+      }
+      if(obstype=="poisson"){
+        #Break apart counts into separate histories
+        caps2=which(yUnkobs>1,arr.ind=TRUE)
+        if(nrow(caps2)>0){
+          for(i in 1:nrow(caps2)){
+            ndeal=yUnkobs[caps2[i,1],caps2[i,2],caps2[i,3]]
+            #Turn first history to count of 1
+            yUnkobs[caps2[i,1],caps2[i,2],caps2[i,3]]=1
+            #then append the rest as single obs to data set
+            for(j in 1:(ndeal-1)){
+              yUnkobs=abind(yUnkobs,yUnkobs[caps2[i,1],,],along=1)
+              caps=rbind(caps,caps2[i,])
+              nobs=nobs+1
+            }
+          }
+        }
       }
       #Find constraints based on all known identities
       constraints=matrix(1,nrow=nobs,ncol=nobs)

@@ -231,7 +231,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
   //ll.s2
   NumericMatrix ll_s2(M,t);
   NumericMatrix ll_s2_cand(M,t);
-  if(ACtype==2){
+  if((ACtype==2)|(ACtype==5)){
     for(int l=0; l<t; l++){
       for(int i=0; i<M; i++) { //X and Y normal log-likelihood simplified
         ll_s2(i,l)=-log(pow(sigma_t(0),2.0))-(1/(2*pow(sigma_t(0),2.0)))*(pow(s2(i,l,0)-s1(i,0),2.0)+pow(s2(i,l,1)-s1(i,1),2.0));
@@ -1206,16 +1206,20 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
       warncount+=warn(i);
     }
     //// Now we have to update the activity centers//////////////////
-    if(ACtype==2){//metamu
+    if((ACtype==2)|(ACtype==5)){//metamu
       // Update within year ACs
       for(int i=0; i<M; i++) {
         for(int l=0; l<t; l++) {
           ScandX=Rcpp::rnorm(1,s2(i,l,0),props2x);
           ScandY=Rcpp::rnorm(1,s2(i,l,1),props2y);
-          if(useverts==FALSE){
-            inbox=(ScandX<xlim(1)) & (ScandX>xlim(0)) & (ScandY<ylim(1)) & (ScandY>ylim(0));
+          if(ACtype==2){
+            if(useverts==FALSE){
+              inbox=(ScandX<xlim(1)) & (ScandX>xlim(0)) & (ScandY<ylim(1)) & (ScandY>ylim(0));
+            }else{
+              inbox=inoutCppOpen(ScandX,ScandY,vertices);
+            }
           }else{
-            inbox=inoutCppOpen(ScandX,ScandY,vertices);
+            inbox(0)=TRUE;
           }
           if(inbox(0)){
             //sum ll across j for each i and l
@@ -1227,7 +1231,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
               dtmp(j,l)=pow( pow(ScandX(0) - Xcpp(l,j,0), 2.0) + pow(ScandY(0)-Xcpp(l,j,1), 2.0), 0.5 );
               lamdcand(i,j,l)=lam0use(l)*exp(-dtmp(j,l)*dtmp(j,l)/(2*sigmause(l)*sigmause(l)));
               pdcand(i,j,l)=1-exp(-lamdcand(i,j,l));
-              ll_y_cand(i,j,l)=z(i,l)*(y(i,j,l)*log(pdcand(i,j,l))+(K[l]-y(i,j,l))*log(1-pdcand(i,j,l)));
+              ll_y_cand(i,j,l)=z(i,l)*(y(i,j,l)*log(pdcand(i,j,l))+(K(l)-y(i,j,l))*log(1-pdcand(i,j,l)));
               if(ll_y_cand(i,j,l)==ll_y_cand(i,j,l)){
                 llycandsum+=ll_y_cand(i,j,l);
               }
@@ -1505,12 +1509,12 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         out(iteridx,idx)=sigma(l);
         idx=idx+1;
       }
-      //fill in lam0
+      //fill in gamma
       for(int l=0; l<each(2); l++){
         out(iteridx,idx)=gamma(l);
         idx=idx+1;
       }
-      //fill in lam0
+      //fill in pki
       for(int l=0; l<each(3); l++){
         out(iteridx,idx)=phi(l);
         idx=idx+1;
@@ -1520,7 +1524,7 @@ List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma,Nume
         out(iteridx,idx)=N(l);
         idx=idx+1;
       }
-      if((ACtype==2)|(ACtype==3)){
+      if((ACtype==2)|(ACtype==3)|(ACtype==5)){
         out(iteridx,idx)=sigma_t(0);
       }
       iteridx=iteridx+1;
@@ -3936,7 +3940,7 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
       iteridx=iteridx+1;
     }
   }
-  List to_return(20);
+  List to_return(10);
   to_return[0] = out;
   to_return[1] = s1xout;
   to_return[2] = s1yout;
@@ -3946,17 +3950,8 @@ List mcmc_Open_SPIM(NumericVector lam01,NumericVector lam02, NumericVector sigma
   to_return[6] = ID_Lout;
   to_return[7] = ID_Rout;
   to_return[8] = warn;
-  to_return[9] = llyLcandsum;
-  to_return[10] = llyLsum;
-  to_return[11] = llyRsum;
-  to_return[12] = llzsum;
-  to_return[13]=swapped;
-  to_return[14]=swappedR;
-  to_return[15]=cancel;
-  to_return[16]=knownmatrix;
-  to_return[17]=yleft;
-  to_return[18]=yright;
-  to_return[19]=yboth;
+  to_return[9] = ll_s2;
+  
 
   return to_return;
 }

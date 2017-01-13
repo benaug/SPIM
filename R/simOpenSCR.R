@@ -22,9 +22,11 @@ e2dist<-function (x, y)
 #' @param buff the distance to buffer the trapping array in the X and Y dimensions to produce the state space
 #' @param obstype observation type, either "bernoulli" or "poisson"
 #' @param ACtype Type of activity centers.  "fixed" don't move between years, "metamu" assume a bivariate normal distribution
-#' with a meta mu and sigma_t, "markov" assumes activity centers in year t+1 is a bivariate normal draw centered around the
-#' activity center in year t, and "independent" assumes animals randomly mix between years.
-#' @param sigma_t a numeric indicating the between year spatial scale parameter for ACtypes "metamu" and "markov"
+#' with a meta mu and sigma_t with yearly activity centers required to stay inside the state space , "metamu2", is 
+#' the same as "metamu" except only meta mus are required to stay inside the state space.  markov" assumes activity
+#' centers in year t+1 is a bivariate normal draw centered around the activity center in year t (but must stay within
+#' the state space), and "independent" assumes animals randomly mix between years.
+#' @param sigma_t a numeric indicating the between year spatial scale parameter for ACtypes "metamu" "metamu2", and "markov"
 #' @param M an integer indicating the level of data augmentation to use during simulation.
 #' @return a list containing the capture history, activity centers, trap object, and several other data objects and summaries.
 #' @description This function simulates data from an open population SCR model.
@@ -47,11 +49,11 @@ simOpenSCR <-
     if(length(X)!=t){
       stop("Must supply a X (trap locations) for each year")
     }
-    if((ACtype=="metamu"|ACtype=="markov")&is.null(sigma_t)){
-      stop("If ACtype is metamu or markov, must specify sigma_t")
+    if((ACtype=="metamu"|ACtype=="metamu2"|ACtype=="markov")&is.null(sigma_t)){
+      stop("If ACtype is metamu, metamu2, or markov, must specify sigma_t")
     }
-    if(!(ACtype=="metamu"|ACtype=="markov")&!is.null(sigma_t)){
-      stop("ACtype must be metamu or markov when inputting a sigma_t")
+    if(!(ACtype=="metamu"|ACtype=="metamu2"|ACtype=="markov")&!is.null(sigma_t)){
+      stop("ACtype must be metamu, metamu2, or markov when inputting a sigma_t")
     }
     storeparms=list(N=N,gamma=gamma,lam0=lam0,sigma=sigma,phi=phi)
 
@@ -102,6 +104,17 @@ simOpenSCR <-
         D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
         lamd[,,i]=lam0[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
       }
+    }else if(ACtype=="metamu2"){
+      mu<- cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff))
+      for(i in 1:t){#meta mu movement, only meta mus stay in SS
+        for(j in 1:M){
+          s[j,i,1]=rnorm(1,mu[j,1],sigma_t)
+          s[j,i,2]=rnorm(1,mu[j,2],sigma_t)
+        }
+        D[,1:nrow(X[[i]]),i]=e2dist(s[,i,],X[[i]])
+        lamd[,,i]=lam0[i]*exp(-D[,,i]^2/(2*sigma[i]*sigma[i]))
+      }
+    
     }else if(ACtype=="markov"){
       s[,1,]=cbind(runif(M, xlim[1]-buff,xlim[2]+buff), runif(M,ylim[1]-buff,ylim[2]+buff)) #initial locations
       D[,1:nrow(X[[1]]),1]=e2dist(s[,1,],X[[1]])
@@ -200,20 +213,20 @@ simOpenSCR <-
     }
     sfull=s
     yfull=y
-    if(ACtype=="metamu"){
+    if(ACtype%in%c("metamu","metamu2")){
       mufull=mu
     }
     caps=apply(y,1,sum)
     idx=order(caps,decreasing=TRUE)
     y=y[idx,,]
     s=s[idx,,]
-    if(ACtype=="metamu"){
+    if(ACtype%in%c("metamu","metamu2")){
       mu=mu[idx,]
     }
     keep=which(rowSums(y)>0)
     y=y[keep,,]
     s=s[keep,,]
-    if(ACtype=="metamu"){
+    if(ACtype%in%c("metamu","metamu2")){
       mu=mu[keep,]
     }
     n=sum(caps>0)
@@ -224,7 +237,7 @@ simOpenSCR <-
     }else{
       gamma=gamma
     }
-    if(ACtype!="metamu"){
+    if(!ACtype%in%c("metamu","metamu2")){
       out<-list(y=y,s=s,yfull=yfull,sfull=sfull,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,ACtype=ACtype)
     }else{
       out<-list(y=y,mu=mu,s=s,yfull=yfull,sfull=sfull,mufull=mufull,X=X,K=K,n=n,n2d=n2d,buff=buff,J=J,EN=N,N=colSums(z),z=z,gamma=gamma,phi=storeparms$phi,obstype=obstype,ACtype=ACtype)

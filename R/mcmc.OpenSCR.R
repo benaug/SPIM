@@ -14,7 +14,8 @@
 #' distributed across the state space, implying no dependence of activity centers between years. "markov" assumes activity centers in the
 #' first year are uniformly distributed across the state space and activity centers in year l is a bivariate normal draw from N(s_{i,l-1},sigma_t).
 #' "metamu" assumes animals have meta activity centers which are distributed uniformly across the landscape and the realized yearly activity
-#' centers are a bivariate normal draw from N(mu_i,sigma_t).
+#' centers are a bivariate normal draw from N(mu_i,sigma_t), but must stay in the state space.  "metamu2" enforces the metamus to stay in
+#' the state space, but the yearly ACs may leave.
 #'
 #' @return  a list with the posteriors for the open population SCR parameters (out), s, and z
 #' @author Ben Augustine, Richard Chandler
@@ -45,14 +46,11 @@
 #' The joint update always mixes better, but takes longer as t increases.
 #'
 #'A note on the activity center models. I think little is known about data requirements for the more complex models at this point or
-#'how consequential it is to hold them fixed when they do indeed move between years.  Anectodally, the metamu and markov models
-#'underestimate sigma_t when there is even moderate population turnover between years.  I think you need to observe a certain number
-#'of movements, which happens when survival is high and the number of years is large.  In any case, when the data is insufficient,
-#'sigma_t is underestimated and population size in all years is underestimated.  However, estimates of phi and gamma appear unbiased.
-#'Independent activity centers between years is probably not a good model with sparse data, given that you need to estimate activity
-#'centers for all individuals in all years with not information being shared between years.  My intuition is that it is safer to put
-#'some structure on the activity centers between years than to assume they are fixed or independent.  Will test out all this via
-#'simulation at some point.
+#'how consequential it is to hold them fixed when they do indeed move between years.  Anectodally, the "metamu" and "markov" models
+#'underestimate sigma_t because they force yearly activity centers to remain in the state space.  "metamu2" lets the yearly
+#'ACs leave the state space, but they are still associated with the metamus that stay in the state space.  One could let the ACs
+#'leave the state space in the Markov model, but then density would decrease through time, which seems problematic.  The 
+#'metamu2 model seems most sensible to me.  Email me if you have any other sensible models.
 #'
 #' @examples
 #' \dontrun{
@@ -146,14 +144,14 @@
 #'summary(mcmc(out$out))
 #'
 #'#Finally, let's set everything back to fixed and do mobile activty centers between years
-#'#We're using a bivariate normal "metamu" model. I think it's actually estimating sigma_t^2. Need to fix this.
+#'#We're using a bivariate normal "metamu2" model.
 #'t=3
 #'N=100
 #'p0=0.5
 #'lam0=-log(1-p0)
 #'sigma=0.750
 #'sigma_t=0.7#We'll use this to simulate mobile activity centers
-#'ACtype="metamu"
+#'ACtype="metamu2"
 #'phi=0.7
 #'gamma=0.3
 #'buff=4 #increase buffer to not constrain movement as much
