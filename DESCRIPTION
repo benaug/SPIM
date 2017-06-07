@@ -5,9 +5,9 @@ Version: 0.1
 Date: 2015-08-25
 Author: Ben Augustine and Andy Royle
 Maintainer: Ben Augustine <baugusti@vt.edu>
-Description: Models fit:  SPIM, SCR0, naive independence estimator for partial identity.  Rectangular or polygon continuous state space.  With or without a trap functionality file.  At the moment, this is my personal package containing models I'm working on, but may be of wider interest.
+Description: Models fit:  SPIM, Open population SPIM, SCR0, naive independence estimator for partial identity.  Rectangular or polygon continuous state space.  With or without a trap functionality file.  At the moment, this is my personal package containing models I'm working on, but may be of wider interest.
 License: GPL-2
 LazyData: TRUE
 Imports: Rcpp (>= 0.12.3), RcppArmadillo (>= 0.6.600.4.0)
 LinkingTo: Rcpp, RcppArmadillo
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

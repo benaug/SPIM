@@ -1,5 +1,5 @@
 SCR2DNAmcmc <-
-function(data,niter=2400,nburn=1200, nthin=5, M = 200,sharesig=FALSE, inits=inits,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
+function(data,niter=2400,nburn=1200, nthin=5, M = 200,sharesig=TRUE, inits=inits,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
 ###
 if(sharesig==FALSE){
   if(length(proppars$sigma)!=2|length(inits$sigma)!=2){
@@ -21,8 +21,10 @@ J1<-nrow(X1)
 J2<-nrow(X2)
 #Remove guys not captured.
 rem=which(rowSums(y1)==0&rowSums(y2)==0)
-y1=y1[-rem,,]
-y2=y2[-rem,,]
+if(length(rem)>0){
+  y1=y1[-rem,,]
+  y2=y2[-rem,,]
+}
 n<- dim(y1)[1]
 
 #If using polygon state space
@@ -48,9 +50,9 @@ sigma<- inits$sigma
 
 #Augment data and make initial complete data set
 if(length(dim(y1))==3){
-  K1<- dim(y1)[2]
-  y1<- abind(y1,array(0, dim=c( M-dim(y1)[1],K1, J1)), along=1)
-  y12D=apply(y1,c(1,3),sum)
+  K1<- dim(y1)[3]
+  y1<- abind(y1,array(0, dim=c( M-dim(y1)[1],J1, K1)), along=1)
+  y12D=apply(y1,c(1,2),sum)
 }else if(length(dim(y1)==2)){
   if(is.na(K)){
     stop("if y is 2D, must supply K")
@@ -60,9 +62,9 @@ if(length(dim(y1))==3){
   stop("y must be either 2D or 3D")
 }
 if(length(dim(y2))==3){
-  K2<- dim(y2)[2]
-  y2<- abind(y2,array(0, dim=c( M-dim(y2)[1],K2, J2)), along=1)
-  y22D=apply(y2,c(1,3),sum)
+  K2<- dim(y2)[3]
+  y2<- abind(y2,array(0, dim=c( M-dim(y2)[1],J2, K2)), along=1)
+  y22D=apply(y2,c(1,2),sum)
 }else if(length(dim(y2)==2)){
   if(is.na(K)){
     stop("if y is 2D, must supply K")
@@ -82,7 +84,7 @@ z[sample(which(z==0),sum(z==0)/2)]=1 #switch some uncaptured z's to 1.  half is 
 s<- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2])) #assign random locations
 idx=which(known.vector==1) #switch for those actually caught
 for(i in idx){
-  trps<- c(X1[y12D[i,]>0,1:2],X2[y22D[i,]>0,1:2])
+  trps<- rbind(X1[y12D[i,]>0,1:2],X2[y22D[i,]>0,1:2])
   trps<-matrix(trps,ncol=2,byrow=FALSE)
   s[i,]<- c(mean(trps[,1]),mean(trps[,2]))
 }
@@ -186,7 +188,7 @@ for(i in 1:niter){
     }
     #update sigma 2
     sigma.cand<- rnorm(1,sigma[2],proppars$sigma[2])
-    if(sigma.cand > 0){
+    if((sigma.cand > 0) & (sigma.cand<25000)){###informative prior
       lamd2.cand<- lam02*exp(-D2*D2/(2*sigma.cand*sigma.cand))
       lik.new<-   sum( func(lamd1,lamd2.cand,y12D,y22D,K1,K2,z,X1,X2) )
       if(runif(1) < exp(lik.new -lik.curr)){

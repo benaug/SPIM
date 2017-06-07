@@ -51,4 +51,3 @@ This function simulates data from an open population SCR model.
 \author{
 Ben Augustine
 }
-

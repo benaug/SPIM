@@ -39,7 +39,7 @@ e2dist<-function (x, y){
 #' @export
 
 simgenSPIM <-
-  function(N=50,lam0=0.2,sigma=0.50,K=10,X=X,buff=2,pID=0.5,pgroup=0.3,pconstrain=0.3,obstype="poisson"){
+  function(N=50,lam0=0.2,sigma=0.50,K=10,X=X,buff=2,pID=0.5,theta=0.3,pconstrain=0.3,obstype="poisson"){
     library(abind)
     #######Capture process######################
     # # simulate a population of activity centers
@@ -97,60 +97,62 @@ simgenSPIM <-
     }
     if(sum(yUnk)>0){
       caps=which(yUnk>0,arr.ind=TRUE)
-      unkIDs=caps[,1]
-      nobs=nrow(caps)
-      yUnkobs=array(0,dim=c(nobs,J,K))
-      for(i in 1:nobs){
-        yUnkobs[i,caps[i,2],caps[i,3]]=yUnk[caps[i,1],caps[i,2],caps[i,3]]
-      }
-      if(obstype=="poisson"){
-        #Break apart counts into separate histories
-        caps2=which(yUnkobs>1,arr.ind=TRUE)
-        if(nrow(caps2)>0){
-          for(i in 1:nrow(caps2)){
-            ndeal=yUnkobs[caps2[i,1],caps2[i,2],caps2[i,3]]
-            #Turn first history to count of 1
-            yUnkobs[caps2[i,1],caps2[i,2],caps2[i,3]]=1
-            #then append the rest as single obs to data set
-            for(j in 1:(ndeal-1)){
-              yUnkobs=abind(yUnkobs,yUnkobs[caps2[i,1],,],along=1)
-              caps=rbind(caps,caps[caps2[i,1],1])
-              nobs=nobs+1
+      unkIDs=c()
+      yUnkobs=array(0,dim=c(0,J,K))
+      if(theta>0){#Break apart yUnk
+        idx2=1
+        for(i in 1:nrow(yUnk)){
+          maxbreak=sum(yUnk[i,,])-1#number of possible breaks
+          B=rbinom(1,maxbreak,theta)#number of breaks
+          if(B>0){
+            # deal=maxbreak+1-(B+1)
+            # C=rmultinom(1,deal,rep(1/(B+1),B+1))
+            guys=which(yUnk[i,,]>0)#indices with counts
+            guys=rep(guys,times=yUnk[i,,][guys])#break apart poisson counts, too
+            if(length(guys)>1){
+              guys2=sample(guys,length(guys))#shuffled sample numbers
+            }else{
+              guys2=guys
             }
+            # idx=rep(1:(B+1),times=C+1)
+          
+            #make an index to break guys into B+1 groups
+            if(length(guys2)==(B+1)){#if there are as many samples as groups, sample without replacement
+              idx=sample(1:(B+1),length(guys2),replace=FALSE)
+            }else{#otherwise, need to make sure all samples occur at least once, then sample with replacement
+              idx=c(1:(B+1),sample(1:(B+1),length(guys2)-B-1,replace=TRUE))#make sure all members of 1:(B+1) occur
+              idx=idx[sample(1:length(idx),length(idx))]#shuffle this vector before selecting index
+            }
+            
+            for(j in 1:(B+1)){#use idx to subset out into B+1 groups
+              yUnkobs=abind(yUnkobs,matrix(0,nrow=J,ncol=K),along=1)
+              # yUnkobs[idx2,,][guys2[idx==j]]=1
+              guys3=guys2[idx==j]
+              for(k in 1:length(idx)){
+                yUnkobs[idx2,,][guys3[k]]=yUnkobs[idx2,,][guys3[k]]+1
+
+              }
+              idx2=idx2+1
+              unkIDs=c(unkIDs,i)
+            }
+          }else{
+            yUnkobs=abind(yUnkobs,matrix(0,nrow=J,ncol=K),along=1)
+            yUnkobs[idx2,,]=yUnk[i,,]
+            idx2=idx2+1
+            unkIDs=c(unkIDs,i)
           }
-          unkIDs=caps[,1]
         }
+      }else{
+        unkIDs=1:nrow(yUnk)
+        yUnkobs=yUnk
       }
-      if(pgroup>0){#randomly associate some samples back together
-        ngroup=round(sum(yUnk)*pgroup)#number of these events to associate together
-        if(ngroup==0){
-          warning("pgroup too small to produce any groupings")
-        }
-        while(ngroup>0){
-          #randomly choose a sample
-          guy=sample(1:length(unkIDs),1)#index of caps to pick
-          who=caps[guy,1]#which guys is this
-          whoelse=which(caps[,1]==who)#does this guy have other samples that could be combined?
-          whoelse=whoelse[-which(whoelse==guy)]#remove yourself from consideration
-          if(length(whoelse)>0){#if so...
-            whochoose=sample(1:length(whoelse),1)
-            guychoose=whoelse[whochoose]
-            yUnkobs[guy,,]=yUnkobs[guy,,]+yUnkobs[guychoose,,]#combine samples
-            yUnkobs=yUnkobs[-guychoose,,]#delete second guy from data
-            caps=caps[-guychoose,]#remove second guy from caps
-            unkIDs=unkIDs[-guychoose]#remove second guy from unkIDs
-            ngroup=ngroup-1
-          }
-          if(length(unkIDs)==nrow(yUnk)){#everyone matched
-            break
-          }
-        }
-      }
+      
+     
       #Find constraints based on all known identities
       nobs=nrow(yUnkobs)#changes if some samples associated
       constraints=matrix(1,nrow=nobs,ncol=nobs)
       for(i in 1:nobs){
-        constraints[i,which(caps[,1]!=caps[i,1])]=0
+        constraints[i,unkIDs!=unkIDs[i]]=0
       }
       if(pconstrain>0){
         nconstrain=round(pconstrain*nobs^2)

@@ -39,4 +39,3 @@ for user-provided polygonal state spaces will be added in the future.
 \author{
 Ben Augustine
 }
-

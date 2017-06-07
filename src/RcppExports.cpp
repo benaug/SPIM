@@ -19,59 +19,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// mcmc_Open
-List mcmc_Open(NumericVector lam0, NumericVector sigma, NumericVector gamma, NumericVector gammaprime, NumericVector phi, arma::cube D, arma::cube lamd, arma::cube y, IntegerMatrix z, IntegerMatrix a, NumericMatrix s1, arma::cube s2, int ACtype, bool useverts, NumericMatrix vertices, NumericVector xlim, NumericVector ylim, IntegerMatrix knownmatrix, IntegerVector Xidx, arma::cube Xcpp, IntegerVector K, NumericMatrix Ez, double psi, IntegerVector N, NumericVector proplam0, NumericVector propsig, NumericVector propz, NumericVector propgamma, double props1x, double props1y, double props2x, double props2y, double propsigma_t, NumericVector sigma_t, int niter, int nburn, int nthin, int npar, IntegerVector each, bool jointZ, IntegerMatrix zpossible, IntegerMatrix apossible, IntegerMatrix cancel);
-RcppExport SEXP SPIM_mcmc_Open(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP gammaSEXP, SEXP gammaprimeSEXP, SEXP phiSEXP, SEXP DSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP zSEXP, SEXP aSEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP ACtypeSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP knownmatrixSEXP, SEXP XidxSEXP, SEXP XcppSEXP, SEXP KSEXP, SEXP EzSEXP, SEXP psiSEXP, SEXP NSEXP, SEXP proplam0SEXP, SEXP propsigSEXP, SEXP propzSEXP, SEXP propgammaSEXP, SEXP props1xSEXP, SEXP props1ySEXP, SEXP props2xSEXP, SEXP props2ySEXP, SEXP propsigma_tSEXP, SEXP sigma_tSEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP nparSEXP, SEXP eachSEXP, SEXP jointZSEXP, SEXP zpossibleSEXP, SEXP apossibleSEXP, SEXP cancelSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type lam0(lam0SEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type sigma(sigmaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type gamma(gammaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type gammaprime(gammaprimeSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
-    Rcpp::traits::input_parameter< arma::cube >::type D(DSEXP);
-    Rcpp::traits::input_parameter< arma::cube >::type lamd(lamdSEXP);
-    Rcpp::traits::input_parameter< arma::cube >::type y(ySEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type z(zSEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type a(aSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type s1(s1SEXP);
-    Rcpp::traits::input_parameter< arma::cube >::type s2(s2SEXP);
-    Rcpp::traits::input_parameter< int >::type ACtype(ACtypeSEXP);
-    Rcpp::traits::input_parameter< bool >::type useverts(usevertsSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type vertices(verticesSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type xlim(xlimSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type ylim(ylimSEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type knownmatrix(knownmatrixSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type Xidx(XidxSEXP);
-    Rcpp::traits::input_parameter< arma::cube >::type Xcpp(XcppSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type K(KSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Ez(EzSEXP);
-    Rcpp::traits::input_parameter< double >::type psi(psiSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type N(NSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type proplam0(proplam0SEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type propsig(propsigSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type propz(propzSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type propgamma(propgammaSEXP);
-    Rcpp::traits::input_parameter< double >::type props1x(props1xSEXP);
-    Rcpp::traits::input_parameter< double >::type props1y(props1ySEXP);
-    Rcpp::traits::input_parameter< double >::type props2x(props2xSEXP);
-    Rcpp::traits::input_parameter< double >::type props2y(props2ySEXP);
-    Rcpp::traits::input_parameter< double >::type propsigma_t(propsigma_tSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type sigma_t(sigma_tSEXP);
-    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP);
-    Rcpp::traits::input_parameter< int >::type nthin(nthinSEXP);
-    Rcpp::traits::input_parameter< int >::type npar(nparSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type each(eachSEXP);
-    Rcpp::traits::input_parameter< bool >::type jointZ(jointZSEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type zpossible(zpossibleSEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type apossible(apossibleSEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type cancel(cancelSEXP);
-    rcpp_result_gen = Rcpp::wrap(mcmc_Open(lam0, sigma, gamma, gammaprime, phi, D, lamd, y, z, a, s1, s2, ACtype, useverts, vertices, xlim, ylim, knownmatrix, Xidx, Xcpp, K, Ez, psi, N, proplam0, propsig, propz, propgamma, props1x, props1y, props2x, props2y, propsigma_t, sigma_t, niter, nburn, nthin, npar, each, jointZ, zpossible, apossible, cancel));
-    return rcpp_result_gen;
-END_RCPP
-}
 // mcmc_Open_SPIM
 List mcmc_Open_SPIM(NumericVector lam01, NumericVector lam02, NumericVector sigma, NumericVector gamma, NumericVector gammaprime, NumericVector phi, arma::cube D, arma::cube lamd1, arma::cube lamd2, arma::cube yboth, arma::cube yleft, arma::cube yright, IntegerMatrix z, IntegerMatrix a, NumericMatrix s1, arma::cube s2, bool metamu, bool useverts, NumericMatrix vertices, NumericVector xlim, NumericVector ylim, IntegerMatrix knownmatrix, IntegerVector Xidx, arma::cube Xcpp, IntegerVector K, NumericMatrix Ez, double psi, IntegerVector N, NumericVector proplam01, NumericVector proplam02, NumericVector propsig, NumericVector propz, NumericVector propgamma, double props1x, double props1y, double props2x, double props2y, double propsigma_t, NumericVector sigma_t, int niter, int nburn, int nthin, int npar, IntegerVector each, bool jointZ, IntegerMatrix zpossible, IntegerMatrix apossible, IntegerMatrix cancel, IntegerVector ID_L, IntegerVector ID_R, IntegerMatrix ones, IntegerMatrix twos, LogicalVector updates, int swap, int swaptol, int Nfixed, arma::cube left, arma::cube right);
 RcppExport SEXP SPIM_mcmc_Open_SPIM(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP gammaSEXP, SEXP gammaprimeSEXP, SEXP phiSEXP, SEXP DSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP aSEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP metamuSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP knownmatrixSEXP, SEXP XidxSEXP, SEXP XcppSEXP, SEXP KSEXP, SEXP EzSEXP, SEXP psiSEXP, SEXP NSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigSEXP, SEXP propzSEXP, SEXP propgammaSEXP, SEXP props1xSEXP, SEXP props1ySEXP, SEXP props2xSEXP, SEXP props2ySEXP, SEXP propsigma_tSEXP, SEXP sigma_tSEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP nparSEXP, SEXP eachSEXP, SEXP jointZSEXP, SEXP zpossibleSEXP, SEXP apossibleSEXP, SEXP cancelSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP onesSEXP, SEXP twosSEXP, SEXP updatesSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP NfixedSEXP, SEXP leftSEXP, SEXP rightSEXP) {
@@ -1100,4 +1047,52 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(MCMC2(lam01, lam02, sigma, beta0, beta1, yboth, yleft, yright, z, X, K, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, scell, psi, grid, cellArea, EN, proplam01, proplam02, propsigma, propbeta0, propbeta1, propsx, propsy, niter, nburn, nthin, updates));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"SPIM_inoutCppOpen", (DL_FUNC) &SPIM_inoutCppOpen, 3},
+    {"SPIM_mcmc_Open_SPIM", (DL_FUNC) &SPIM_mcmc_Open_SPIM, 58},
+    {"SPIM_inoutCpp", (DL_FUNC) &SPIM_inoutCpp, 3},
+    {"SPIM_SCRlik", (DL_FUNC) &SPIM_SCRlik, 4},
+    {"SPIM_calclamd", (DL_FUNC) &SPIM_calclamd, 3},
+    {"SPIM_updateDfun", (DL_FUNC) &SPIM_updateDfun, 8},
+    {"SPIM_updatePsi", (DL_FUNC) &SPIM_updatePsi, 7},
+    {"SPIM_updateACs", (DL_FUNC) &SPIM_updateACs, 13},
+    {"SPIM_MCMC1", (DL_FUNC) &SPIM_MCMC1, 21},
+    {"SPIM_SCRliktf", (DL_FUNC) &SPIM_SCRliktf, 4},
+    {"SPIM_MCMC1tf", (DL_FUNC) &SPIM_MCMC1tf, 21},
+    {"SPIM_fulllik", (DL_FUNC) &SPIM_fulllik, 8},
+    {"SPIM_updateparms", (DL_FUNC) &SPIM_updateparms, 12},
+    {"SPIM_swapC", (DL_FUNC) &SPIM_swapC, 17},
+    {"SPIM_updatePsi2", (DL_FUNC) &SPIM_updatePsi2, 11},
+    {"SPIM_updateACs2", (DL_FUNC) &SPIM_updateACs2, 17},
+    {"SPIM_MCMC", (DL_FUNC) &SPIM_MCMC, 33},
+    {"SPIM_fullliktf", (DL_FUNC) &SPIM_fullliktf, 8},
+    {"SPIM_MCMCtf", (DL_FUNC) &SPIM_MCMCtf, 34},
+    {"SPIM_fullliktf2", (DL_FUNC) &SPIM_fullliktf2, 8},
+    {"SPIM_MCMCtf2", (DL_FUNC) &SPIM_MCMCtf2, 33},
+    {"SPIM_fulllikInd", (DL_FUNC) &SPIM_fulllikInd, 12},
+    {"SPIM_fulllikInd1D", (DL_FUNC) &SPIM_fulllikInd1D, 13},
+    {"SPIM_updateparmsInd", (DL_FUNC) &SPIM_updateparmsInd, 17},
+    {"SPIM_updatePsiInd", (DL_FUNC) &SPIM_updatePsiInd, 16},
+    {"SPIM_updateACsInd", (DL_FUNC) &SPIM_updateACsInd, 23},
+    {"SPIM_MCMCInd", (DL_FUNC) &SPIM_MCMCInd, 32},
+    {"SPIM_fulllikInd2", (DL_FUNC) &SPIM_fulllikInd2, 8},
+    {"SPIM_fulllikInd1D2", (DL_FUNC) &SPIM_fulllikInd1D2, 8},
+    {"SPIM_updateparmsInd2", (DL_FUNC) &SPIM_updateparmsInd2, 12},
+    {"SPIM_updatePsiInd2", (DL_FUNC) &SPIM_updatePsiInd2, 12},
+    {"SPIM_updateACsInd2", (DL_FUNC) &SPIM_updateACsInd2, 16},
+    {"SPIM_MCMCInd2", (DL_FUNC) &SPIM_MCMCInd2, 27},
+    {"SPIM_fulllikInd3", (DL_FUNC) &SPIM_fulllikInd3, 11},
+    {"SPIM_fulllikInd1D3", (DL_FUNC) &SPIM_fulllikInd1D3, 11},
+    {"SPIM_MCMCInd3", (DL_FUNC) &SPIM_MCMCInd3, 35},
+    {"SPIM_upbeta", (DL_FUNC) &SPIM_upbeta, 10},
+    {"SPIM_MCMC1b", (DL_FUNC) &SPIM_MCMC1b, 26},
+    {"SPIM_MCMC2", (DL_FUNC) &SPIM_MCMC2, 37},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_SPIM(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }

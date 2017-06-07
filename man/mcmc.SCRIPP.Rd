@@ -32,4 +32,3 @@ Run MCMC algorithm for SCR model with inhomogenous density and 1 categorical den
 \author{
 Ben Augustine
 }
-

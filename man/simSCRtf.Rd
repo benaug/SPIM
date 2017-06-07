@@ -37,4 +37,3 @@ multiple cameras at a site like the 2side simulation code.  A trap is either on 
 \author{
 Ben Augustine
 }
-

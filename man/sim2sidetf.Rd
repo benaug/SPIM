@@ -44,4 +44,3 @@ the importance of using the 2D trap operation file.
 \author{
 Ben Augustine
 }
-

@@ -30,4 +30,3 @@ Binomial observation model.  Will generalize later.
 \author{
 Ben Augustine
 }
-

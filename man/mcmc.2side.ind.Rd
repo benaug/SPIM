@@ -43,4 +43,3 @@ proppars needs elements for lam01 and lam02 if there are some double camera stat
 \author{
 Ben Augustine, Andy Royle
 }
-

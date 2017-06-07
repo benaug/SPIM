@@ -41,4 +41,3 @@ space.
 \author{
 Ben Augustine, Andy Royle
 }
-

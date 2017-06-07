@@ -52,4 +52,3 @@ sim2side.plot(data)
 \author{
 Ben Augustine
 }
-

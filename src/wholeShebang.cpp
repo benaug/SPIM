@@ -6384,3 +6384,4 @@ List MCMC2(double lam01,double lam02, double sigma,double beta0, double beta1,
   to_return[5] = zout;
   return to_return;
 }
+
