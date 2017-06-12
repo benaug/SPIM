@@ -1,4 +1,4 @@
-#' Format encounter data for SPIM, open population SPIM, regular SCR, or open population SCR
+#' Format encounter data for SPIM or regular SCR. Open SPIM to be added.
 #' @param input a data frame with columns ID, trap, occ, and type.  Each capture event has its own row with individual ID, capture
 #' occasion, trap number, and capture type (B, L, or R) (for the SPIM model only)
 #' @param K the integer number of capture occasions
@@ -6,6 +6,12 @@
 #' @param IDknown the vector listing the complete indentity individuals, 1:nC.  Leave blank or set to NA if no identities are complete. Not applicable for regular SCR.
 #' @param buff the distance to buffer the trapping array in the X and Y dimensions to produce the state space
 #' @param vertices a matrix of n_verts X 2 X and Y locations for the vertices of a polygon state space
+#' @param tf a vector or matrix indicating trap operation. If not accounting for operation across occasions, 
+#' tf is a 1 x J vector indicating the number of occasions each trap was operational.  In this scenario,
+#' single or double camera stations are either on or off.  If accounting for operation across occasions, tf is a
+#' J x K matrix with entries 2 if 2 cameras were operational, 1 if a single camera was operational, and 0 if no
+#' cameras were operational.
+#' @param model a character indicating which model to construct the data for. Current options are "SCR" and "2side"
 #' @author Ben Augustine
 #' @description This function formats the input object into a data set in the necessary format to run the spatial partial ID model.  You should
 #' number the nC complete identity individuals as 1:nC with individuals that had a both capture numbered 1:nB and any other complete identity
@@ -22,25 +28,29 @@
 #' input=data.frame(ID=ID,trap=trap,occ=occ,type=type)
 #' data=build.data(input,X=X,K=5,IDknown=1:2,buff=2,model="2side")
 #'
-#' #SPIM Less trivial example from single camera trap study
+#' #SPIM Less trivial example from hybrid camera trap study
 #' data(singlecamInput)
 #' singlecamInput$input
 #' data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,IDknown=NA,buff=singlecamInput$buff,model="2side")
 #' str(data)
+#' 
+#' #SPIM hybrid cameras with 2-D trap file and vertices
+#' data(hybridcamInput)
+#' vertices=rbind(c(1,1),c(1,10),c(10,10),c(10,1),c(1,1)) #must close vertices back to starting point
+#' data=build.data(hybridcamInput$input,X=hybridcamInput$X,K=6,IDknown=1:12,buff=2,model="2side",
+#' vertices=vertices,tf=hybridcamInput$tf)
+#' str(data)
+#'
+#' #SPIM 
 #'
 #' #Regular SCR data
 #' data(singlecamInput)
 #' singlecamInput$input
 #' data=build.data(singlecamInput$input,X=singlecamInput$X,K=singlecamInput$K,buff=singlecamInput$buff,model="SCR")
 #' str(data)
-#'
-#' #Regular SCR Open population
-#' data(Opendata)
-#' data=build.data(Opendata$y,Opendata$K,Opendata$X,buff=Opendata$buff,model="OpenSCR")
-#' str(data)
 #'}
 
-build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
+build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side",tf=NA){
   #Check to see if IDs ordered correctly
   if(model=="2side"){
     n=max(input[,1])
@@ -125,6 +135,10 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
     }else{
       stop("User must input a buffer or polygon vertices")
     }
+    #trap file
+    if(!is.na(tf[1])){
+      data$tf=tf
+    }
   }else if(model=="SCR"){
     n=max(input[,1])
     J=nrow(X)
@@ -138,6 +152,9 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side"){
       data=list(y=y,X=X,n=n,K=K,buff=buff)
     }else{
       stop("User must input a buffer or polygon vertices")
+    }
+    if(!is.na(tf[1])){
+      data$tf=tf
     }
   }else if(model=="OpenSCR"){
     n=max(input[,1])

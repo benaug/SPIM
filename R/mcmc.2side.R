@@ -23,6 +23,11 @@
 #' 6. either buff or vertices.  buff is the fixed buffer for the traps to produce the state space.  It is applied to the minimum and maximum
 #' X and Y locations, producing a square or rectangular state space.  vertices is a matrix with the X and Y coordinates of a polygonal state
 #' space.
+#' 7. an optional tf ,a vector or matrix indicating trap operation. If not accounting for operation across occasions, 
+#' tf is a 1 x J vector indicating the number of occasions each trap was operational.  In this scenario,
+#' single or double camera stations are either on or off.  If accounting for operation across occasions, tf is a
+#' J x K matrix with entries 2 if 2 cameras were operational, 1 if a single camera was operational, and 0 if no
+#' cameras were operational.
 #' @examples
 #' \dontrun{N=50
 #'p01=0.13
@@ -61,8 +66,8 @@ mcmc.2side <-
     if(Rcpp==TRUE){ #Do we use Rcpp?
       if("tf"%in%names(data)){ #Do we have a trap operation file?
         if(length(dim(data$tf))==2){ #Is trap file 2D?
-          if(!any(data$tf)==2){
-            stop("Collapse 2-D trap file to 1-D vector of counts for days on at each trap")
+          if(!any(data$tf==2)){
+            stop("Collapse 2-D trap file to 1-D vector of counts for days on at each trap because there are no 2's in the current tf")
           }
           out2=mcmc.2sidetfFullRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
                                     proppars=proppars,keepACs=keepACs)
