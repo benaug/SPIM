@@ -1,3 +1,25 @@
+#' Run MCMC algorithm for basic SCR model with 2 observation processes that may or may not share sigma parameters
+#' @param data a list produced by simSCR2DNA or in the same format
+#' @param niter number of MCMC iterations to run
+#' @param  nburn number of MCMC iterations to discard as burn in
+#' @param nthin MCMC thinning parameter. Record output on every nthin iterations.  nthin=1 corresponds to no thinning
+#' @param M The size of the augmented superpopulation
+#' @param inits a list of user-supplied initial values.  inits=list(psi=psi,lam01=lam01,lam02=lam02,sigma=sigma)
+#' where sigma is of length 2 if sharesig=FALSE
+#' @param proppars a list of tuning parameters for the proposal distributions
+#' @param keepACs a logical indicating whether or not to keep the posteriors for z and s
+#' @return  a list with the posteriors for the SCR parameters (out), s, z
+#' @author Ben Augustine
+#' @description This function runs the MCMC algorithm for the basic SCR model with 2 observation processes.  The data list should have the following elements:
+#' 1.  y1, a n x J x K capture history
+#' 2.  y2, another n x J x K capture history
+#' 3.  X1,  a matrix with the X and Y trap locations in the first two columns that corresponds to y1
+#' 4.  X2,  a matrix with the X and Y trap locations in the first two columns that corresponds to y2
+#' 5. either buff or vertices.  buff is the fixed buffer for the traps to produce the state space.  It is applied to the minimum and maximum
+#' X and Y locations, producing a square or rectangular state space.  vertices is a matrix with the X and Y coordinates of a polygonal state
+#' space.
+#' @export
+
 SCR2DNAmcmc <-
 function(data,niter=2400,nburn=1200, nthin=5, M = 200,sharesig=TRUE, inits=inits,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE){
 ###

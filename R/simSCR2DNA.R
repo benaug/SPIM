@@ -1,4 +1,4 @@
-#' Simulate data from a SCR study with DNA collected from scat and hair snares (update help later)
+#' Simulate data from a SCR study with DNA collected from scat and hair snares
 #' @param N a vector indicating the number of individuals to simulate
 #' @param lam01 the hair snare detection function hazard rate
 #' @param lam0b the hair snare detection function hazard rate after capture at a trap

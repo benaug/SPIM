@@ -13,12 +13,48 @@ nburn=1
 nthin=1
 xlim<- c(1,10)
 ylim<- c(1,10)
+vertices=rbind(c(1,10),c(10,10),c(10,1),c(1,1),c(1,10))
 X<- expand.grid(3:8,3:8)
 #Add number of detectors
 X=cbind(X,1)
 X[which(X[,2]%in%c(4,7)),3]=2
 #Simulate some data
 data=sim2side(N=N,lam01=lam01,lam02=lam02,sigma=sigma,K=K,X=X,buff=buff)
+
+
+####make another build data example
+hybridcamInput=data
+bothcaps=which(data$both>0,arr.ind=TRUE)
+leftcaps=which(data$left>0,arr.ind=TRUE)
+rightcaps=which(data$right>0,arr.ind=TRUE)
+nboth=nrow(bothcaps)
+nleft=nrow(leftcaps)
+nright=nrow(rightcaps)
+n=nboth+nleft+nright
+hybridcamInput$input=data.frame(ID=rep(0,n),traps=rep(0,n),occ=rep(0,n),type=rep("a",n))
+idx=1
+for(i in 1:nboth){
+  hybridcamInput$input[idx,1:3]=c(bothcaps[i,1],bothcaps[i,4],bothcaps[i,3])
+  idx=idx+1
+}
+for(i in 1:nleft){
+  hybridcamInput$input[idx,1:3]=c(leftcaps[i,1],leftcaps[i,4],leftcaps[i,3])
+  idx=idx+1
+}
+for(i in 1:nright){
+  hybridcamInput$input[idx,1:3]=c(rightcaps[i,1],rightcaps[i,4],rightcaps[i,3])
+  idx=idx+1
+}
+hybridcamInput$input$type=c(rep("B",nboth),rep("L",nleft),rep("R",nright))
+
+save(hybridcamInput,file="hybridcamInput.RData")
+
+vertices=rbind(c(1,1),c(1,10),c(10,10),c(10,1),c(1,1))
+
+data2=build.data(hybridcamInput$input,X=hybridcamInput$X,K=6,IDknown=1:12,buff=2,model="2side",
+                 vertices=vertices, tf=hybridcamInput$tf)
+
+
 sim2side.plot(data,plottimes=c(1,3,5))
 
 inits=list(psi=0.5,lam01=lam01,lam02=lam02,sigma=sigma)
@@ -28,7 +64,7 @@ inits=list(psi=0.5,lam01=lam01,lam02=lam02,sigma=sigma)
 
 
 a=Sys.time()
-store=mcmc.2side(data,niter=niter,nburn=nburn,nthin=nthin, M = 100,inits=inits,swap=10,keepACs=TRUE,Rcpp=TRUE)
+store=mcmc.2side(data2,niter=niter,nburn=nburn,nthin=nthin, M = 100,inits=inits,swap=10,keepACs=TRUE,Rcpp=TRUE)
 #store=mcmc.2side.ind(data,niter=niter,nburn=nburn,nthin=nthin, M = 100,inits=inits,keepACs=TRUE,Rcpp=TRUE)
 b=Sys.time()
 b-a
@@ -74,12 +110,12 @@ colMeans(store$out[500:999,])
 
 
 ##Test SCR0
-N=100
-p0=0.13
+N=10
+p0=0.1
 lam0=-log(1-p0)
-sigma=0.50
+sigma=1
 K=5
-buff=2
+buff=3
 niter=1000 #should run more than this and discard a burn in
 nburn=1
 nthin=1
@@ -88,11 +124,11 @@ ylim<- c(1,10)
 X<- expand.grid(3:8,3:8)
 
 data=simSCR(N=N,lam0=lam0,sigma=sigma,K=K,X=X,buff=buff)
-
+rowSums(data$y)
 
 inits=list(psi=0.5,lam0=lam0,sigma=sigma)
-store=mcmc.SCR(data,niter=1000,nburn,nthin, inits,M = 120,Rcpp=TRUE)
-
+store=mcmc.SCR(data,niter=2000,nburn,nthin,K=K, inits=inits,M = 120,Rcpp=TRUE)
+plot(mcmc(store$out))
 
 
 
