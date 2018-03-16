@@ -121,7 +121,7 @@
 mcmc.CatSPIM <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
-           keepACs=TRUE,keepGamma=TRUE,IDup="Gibbs"){
+           keepACs=FALSE,keepGamma=FALSE,keepG=FALSE,IDup="Gibbs"){
     ###
     library(abind)
     y.obs<-data$y.obs
@@ -235,7 +235,11 @@ mcmc.CatSPIM <-
       if(idx>M){
         stop("Need to raise M to initialize y.true")
       }
-      traps=which(rowSums(y.obs[i,,])>0)
+      if(K>1){
+        traps=which(rowSums(y.obs[i,,])>0)
+      }else{
+        traps=which(y.obs[i,,]>0)
+      }
       y.true2D=apply(y.true,c(1,2),sum)
       if(length(traps)==1){
         cand=which(y.true2D[,traps]>0)#guys caught at same traps
@@ -349,6 +353,9 @@ mcmc.CatSPIM <-
         gammaOut[[i]]=matrix(NA,nrow=nstore,ncol=nlevels[i])
         colnames(gammaOut[[i]])=paste("Lo",i,"G",1:nlevels[i],sep="")
       }
+    }
+    if(keepG){
+      Gout=array(NA,dim=c(niter,M,ncat))
     }
     
     
@@ -594,19 +601,27 @@ mcmc.CatSPIM <-
             gammaOut[[k]][idx,]=gamma[[k]]
           }
         }
+        if(keepG){
+          Gout[idx,,]=G.true
+        }
         out[idx,]<- c(lam0,sigma ,sum(z),length(unique(ID)),psi)
         idx=idx+1
       }
     }  # end of MCMC algorithm
     
     if(keepACs&keepGamma){
-      list(out=out, sxout=sxout, syout=syout, zout=zout,IDout=IDout,gammaOut=gammaOut)
+      out2=list(out=out, sxout=sxout, syout=syout, zout=zout,IDout=IDout,gammaOut=gammaOut)
     }else if(keepACs&!keepGamma){
-      list(out=out, sxout=sxout, syout=syout, zout=zout,IDout=IDout)
+      out2=list(out=out, sxout=sxout, syout=syout, zout=zout,IDout=IDout)
     }else if(!keepACs&keepGamma){
-      list(out=out,gammaOut=gammaOut)
+      out2=list(out=out,gammaOut=gammaOut)
     }else{ 
-      list(out=out)
+      out2=list(out=out)
     }
+    if(keepG){
+      out2[[length(out2)+1]]=Gout
+      names(out2)[length(out2)]="Gout"
+    }
+    out2
   }
 

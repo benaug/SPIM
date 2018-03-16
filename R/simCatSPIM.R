@@ -49,6 +49,9 @@ simCatSPIM <-
     caught=which(apply(y,c(1),sum)>0)
     y.true=y
     y=y[caught,,]
+    if(K==1){
+      y=array(y,dim=c(dim(y),1))
+    }
     n=length(caught)
     n.samples=sum(y)
     G.cap=matrix(NA,nrow=n.samples,ncol=ncat)
