@@ -40,53 +40,24 @@ simSCRtf <-
       }
     }
     # Simulate encounter history
-    y <-array(0,dim=c(N,K,J))
+    y <-array(0,dim=c(N,J,K))
     if(obstype=="bernoulli"){
       pd=cellprobsSCR(lamd)
-      if(lam0b==0){ #if no behavioral response
         for(i in 1:N){
           for(j in 1:J){
             for(k in 1:K){
-              y[i,k,j]=rbinom(1,1,pd[i,j]*onoff[j,k])
+              y[i,j,k]=rbinom(1,1,pd[i,j]*onoff[j,k])
             }
           }
         }
-      }else{
-        if((-lam0b)>lam0){stop("-b must be > lam0")}
-        lamdb=(lam0+lam0b)*exp(-D*D/(2*sigma*sigma))
-        pdb=cellprobsSCR(lamdb)
-        state=matrix(0,nrow=N,ncol=J) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
-        for(i in 1:N){
-          for(j in 1:J){
-            for(k in 1:K){
-              y[i,k,j]=rbinom(1,1,(pd[i,j]*(1-state[i,j])+pdb[i,j]*state[i,j])*onoff[j,k])
-              state[i,j]=max(state[i,j],y[i,k,j])  #update state
-            }
-          }
-        }
-      }
     }else if(obstype=="poisson"){
-      if(lam0b==0){ #if no behavioral response
         for(i in 1:N){
           for(j in 1:J){
             for(k in 1:K){
-              y[i,k,j]=rbinom(1,1,lamd[i,j]*onoff[j,k])
+              y[i,j,k]=rbinom(1,1,lamd[i,j]*onoff[j,k])
             }
           }
         }
-      }else{
-        if((-lam0b)>lam0){stop("-b must be > lam0")}
-        lamdb=(lam0+lam0b)*exp(-D*D/(2*sigma*sigma))
-        state=matrix(0,nrow=N,ncol=J) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
-        for(i in 1:N){
-          for(j in 1:J){
-            for(k in 1:K){
-              y[i,k,j]=rpois(1,(lamd[i,j]*(1-state[i,j])+lamdb[i,j]*state[i,j])*onoff[j,k])
-              state[i,j]=max(state[i,j],y[i,k,j])  #update cap
-            }
-          }
-        }
-      }
     }else{
       stop("observation model not recognized")
     }
@@ -95,7 +66,8 @@ simSCRtf <-
     y=y[idx,,]
     s=s[idx,]
     n=sum(caps>0)
-    y=y[rowSums(data$y)>0,,]
-    out<-list(y=y,s=s,X=X, K=K,n=n,buff=buff,tf=onoff,obstype=obstype)
+    y=y[rowSums(y)>0,,]
+    tf=rowSums(onoff)
+    out<-list(y=y,s=s,X=X, K=K,n=n,buff=buff,tf=tf,obstype=obstype)
     return(out)
   }

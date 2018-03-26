@@ -6,7 +6,7 @@
 #' @param M The size of the augmented superpopulation
 #' @param inits a list of user-supplied initial values.  inits=list(psi=psi,lam0=lam0,sigma=sigma)
 #' @param proppars a list of tuning parameters for the proposal distributions
-#' @param keepACs a logical indicating whether or not to keep the posteriors for z and s
+#' @param storeLatent a logical indicating whether or not to keep the posteriors for z and s
 #' @param Rcpp a logical indicating whether or not to use Rcpp
 #' @return  a list with the posteriors for the SCR parameters (out), s, z
 #' @author Ben Augustine, Andy Royle
@@ -19,21 +19,13 @@
 #' @export
 
 mcmc.SCR <-
-function(data,niter=2400,nburn=1200, nthin=5, K=NA,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE,Rcpp=TRUE){
+function(data,niter=2400,nburn=1200, nthin=5,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=TRUE,Rcpp=TRUE){
   if(Rcpp==TRUE){ #Do we use Rcpp?
-    if("tf"%in%names(data)){ #Do we have a trap operation file?
-      out2=SCRmcmctfRcpp(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
-    }else{#No trap file
-      out2=SCRmcmcRcpp(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
-    }
+    out2=SCRmcmcRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
   }else{#Don't use Rcpp
-    if("tf"%in%names(data)){ #Do we have a trap operation file?
-      out2=SCRmcmctf(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
-    }else{#No trap file
-      out2=SCRmcmc(data,K=K,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
-    }
+    out2=SCRmcmc(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
   }
-  if(keepACs==TRUE){
+  if(storeLatent==TRUE){
     list(out=out2$out, sxout=out2$sxout, syout=out2$syout, zout=out2$zout, ID_Lout=out2$ID_Lout,ID_Rout=out2$ID_Rout)
   }else{
     list(out=out2$out)

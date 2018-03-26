@@ -32,7 +32,7 @@ cellprobsSCR<- function(lamd){
 #' @export
 
 simSCR <-
-  function(N=120,lam0=0.2,lam0b=0,sigma=0.50,K=10,X=X,buff=3,obstype="bernoulli"){
+  function(N=120,lam0=0.2,sigma=0.50,K=10,X=X,buff=3,obstype="bernoulli"){
     #######Capture process######################
     # # simulate a population of activity centers
     s<- cbind(runif(N, min(X[,1])-buff,max(X[,1])+buff), runif(N,min(X[,2])-buff,max(X[,2])+buff))
@@ -40,48 +40,21 @@ simSCR <-
     lamd<- lam0*exp(-D*D/(2*sigma*sigma))
     J<- nrow(X)
     # Simulate encounter history
-    y <-array(0,dim=c(N,K,J))
+    y <-array(0,dim=c(N,J,K))
     if(obstype=="bernoulli"){
       pd=cellprobsSCR(lamd)
-      if(lam0b==0){ #if no behavioral response
-        for(i in 1:N){
-          for(j in 1:J){
-            for(k in 1:K){
-              y[i,k,j]=rbinom(1,1,pd[i,j])
-            }
-          }
-        }
-      }else{
-        lamdb=lam0b*exp(-D*D/(2*sigma*sigma))
-        pdb=cellprobsSCR(lamdb)
-        state=matrix(0,nrow=N,ncol=J) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
-        for(i in 1:N){
-          for(j in 1:J){
-            for(k in 1:K){
-              y[i,k,j]=rbinom(1,1,pd[i,j]*(1-state[i,j])+pdb[i,j]*state[i,j])
-              state[i,j]=max(state[i,j],y[i,k,j])  #update state
-            }
+      for(i in 1:N){
+        for(j in 1:J){
+          for(k in 1:K){
+            y[i,j,k]=rbinom(1,1,pd[i,j])
           }
         }
       }
     }else if(obstype=="poisson"){
-      if(lam0b==0){ #if no behavioral response
-        for(i in 1:N){
-          for(j in 1:J){
-            for(k in 1:K){
-              y[i,k,j]=rpois(1,lamd[i,j])
-            }
-          }
-        }
-      }else{
-        lamdb=lam0b*exp(-D*D/(2*sigma*sigma))
-        state=matrix(0,nrow=N,ncol=J) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
-        for(i in 1:N){
-          for(j in 1:J){
-            for(k in 1:K){
-              y[i,k,j]=rpois(1,lamd[i,j]*(1-state[i,j])+lamdb[i,j]*state[i,j])
-              state[i,j]=max(state[i,j],y[i,k,j])  #update cap
-            }
+      for(i in 1:N){
+        for(j in 1:J){
+          for(k in 1:K){
+            y[i,j,k]=rpois(1,lamd[i,j])
           }
         }
       }
@@ -95,7 +68,7 @@ simSCR <-
     n=sum(caps>0)
     y=y[rowSums(y)>0,,]
     #Count spatial recaps
-    y2D=apply(y,c(1,3),sum)
+    y2D=apply(y,c(1,2),sum)
     scaps=rowSums(1*(y2D>0))
     scaps[scaps>0]=scaps[scaps>0]-1
     nscap=sum(scaps>0)

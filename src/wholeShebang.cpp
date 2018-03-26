@@ -64,11 +64,7 @@ bool inoutCpp(NumericVector sx,NumericVector sy,NumericMatrix vertices) {
   }
   return to_return;
 }
-
-
-
-////////////////////////////////////////Basic SCR model///////////////////////////////////////////////
-
+///////////////////Basic SCR steps to eliminate///////
 //likelihood calculation
 #include <Rcpp.h>
 using namespace Rcpp;
@@ -137,7 +133,7 @@ List updateDfun(double lam0, double sigma, NumericMatrix lamd,
   NumericVector rand2;
   NumericMatrix lamdcand;
   double explldiff;
-
+  
   //Update lam0
   rand=Rcpp::rnorm(1,lam0,0.05);
   if(rand(0) > 0){
@@ -152,7 +148,7 @@ List updateDfun(double lam0, double sigma, NumericMatrix lamd,
       likcurr=liknew;
     }
   }
-
+  
   //Update sigma
   rand=Rcpp::rnorm(1,sigma,0.1);
   if(rand(0) > 0){
@@ -179,7 +175,7 @@ List updateDfun(double lam0, double sigma, NumericMatrix lamd,
 using namespace Rcpp;
 // [[Rcpp::export]]
 List updatePsi(IntegerVector z, IntegerVector knownvector,NumericMatrix lamd,
-                 NumericMatrix y,IntegerMatrix X, int K,double psi) {
+               NumericMatrix y,IntegerMatrix X, int K,double psi) {
   RNGScope scope;
   //Preallocate
   int M = z.size();
@@ -253,7 +249,7 @@ List updateACs(IntegerVector z, NumericMatrix s, IntegerVector xlim,IntegerVecto
   NumericMatrix snew=Rcpp::clone(s);
   NumericMatrix Dnew=Rcpp::clone(D);
   NumericMatrix lamdnew=Rcpp::clone(lamd);
-
+  
   //  Update activity centers
   for(int i=0; i<M; i++) {
     ScandX=Rcpp::rnorm(1,s(i,0),.2);
@@ -269,81 +265,77 @@ List updateACs(IntegerVector z, NumericMatrix s, IntegerVector xlim,IntegerVecto
       if(z[i]==1){ //if in pop, otherwise keep update
         v=0;
         vcand=0;
-          //Calculate likelihood for original and candidate
-          for(int j=0; j<J; j++){
-            pdc(j)=1-exp(-lamd(i,j));
-            pdccand(j)=1-exp(-lamdcand(j));
-            vc(j)=y(i,j)*log(pdc(j))+(K-y(i,j))*log(1-pdc(j));
-            vcCand(j)=y(i,j)*log(pdccand(j))+(K-y(i,j))*log(1-pdccand(j));
-            if(vc(j)==vc(j)){
-              v+=vc(j);
-            }
-            if(vcCand(j)==vcCand(j)){
-              vcand+=vcCand(j);
-            }
-
+        //Calculate likelihood for original and candidate
+        for(int j=0; j<J; j++){
+          pdc(j)=1-exp(-lamd(i,j));
+          pdccand(j)=1-exp(-lamdcand(j));
+          vc(j)=y(i,j)*log(pdc(j))+(K-y(i,j))*log(1-pdc(j));
+          vcCand(j)=y(i,j)*log(pdccand(j))+(K-y(i,j))*log(1-pdccand(j));
+          if(vc(j)==vc(j)){
+            v+=vc(j);
           }
-          rand=Rcpp::runif(1);
-          explldiff=exp(vcand-v);
+          if(vcCand(j)==vcCand(j)){
+            vcand+=vcCand(j);
+          }
+          
         }
-        if((rand(0)<explldiff)|(z[i]==0)){
-          snew(i,0)=ScandX(0);
-          snew(i,1)=ScandY(0);
-          for(int j=0; j<J; j++){
-            Dnew(i,j) = dtmp(j);
-            lamdnew(i,j) = lamdcand(j);
-          }
+        rand=Rcpp::runif(1);
+        explldiff=exp(vcand-v);
+      }
+      if((rand(0)<explldiff)|(z[i]==0)){
+        snew(i,0)=ScandX(0);
+        snew(i,1)=ScandY(0);
+        for(int j=0; j<J; j++){
+          Dnew(i,j) = dtmp(j);
+          lamdnew(i,j) = lamdcand(j);
         }
       }
     }
-    List to_return(3);
-    to_return[0] = snew;
-    to_return[1] = Dnew;
-    to_return[2] = lamdnew;
-    return to_return;
+  }
+  List to_return(3);
+  to_return[0] = snew;
+  to_return[1] = Dnew;
+  to_return[2] = lamdnew;
+  return to_return;
 }
 
-//Put pieces together
+////////////////////////////////////////Basic SCR model///////////////////////////////////////////////
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-List MCMC1(double lam0, double sigma,NumericMatrix y, IntegerVector z, NumericMatrix X,int K,NumericMatrix D, IntegerVector knownvector,
-          NumericMatrix s,NumericVector psi, NumericVector xlim,NumericVector ylim,bool useverts, NumericMatrix vertices, double proplam0,
-          double propsigma,double propsx,double propsy, int niter, int nburn, int nthin) {
+List MCMC1(double lam0, double sigma,NumericMatrix y, NumericMatrix lamd, IntegerVector z, NumericMatrix X,int K,NumericMatrix D, IntegerVector knownvector,
+           NumericMatrix s,NumericVector psi, NumericVector xlim,NumericVector ylim,bool useverts, NumericMatrix vertices, double proplam0,
+           double propsigma,double propsx,double propsy, int niter, int nburn, int nthin,
+           int obstype,IntegerVector tf) {
   RNGScope scope;
-  int M = z.size();
+  int M = lamd.nrow();
+  int J = lamd.ncol();
   //Preallocate for update lam0  sigma
-  double likcurr;
-  double liknew;
   double lam0cand;
   double sigmacand;
-  double explldiff;
   NumericVector rand;
   NumericVector rand2;
-  NumericMatrix lamdcand;
-  int J=y.ncol();
-
-  //Preallocate for Psi update
+  NumericMatrix lamdcand(M,J);
   NumericMatrix pd(M,J);
+  NumericMatrix pdcand(M,J);
+  NumericMatrix ll_y_curr(M,J);
+  NumericMatrix ll_y_cand(M,J);
+  double llysum;
+  double llycandsum;
+  
+  //Preallocate for Psi update
   NumericMatrix pbar(M,J);
   NumericVector prob0(M);
   NumericVector fc(M);
   LogicalVector swappable(M);
-  NumericMatrix v1(M,J);
   int N;
-
+  
   //Preallocate for updating activity centers
   LogicalVector inbox(1);
-  NumericVector pdc(J);
-  NumericVector pdccand(J);
-  NumericVector vc(J);
-  NumericVector vcCand(J);
   NumericVector dtmp(J);
-  NumericVector lamdcandc(J);
   NumericVector ScandX(1);
   NumericVector ScandY(1);
-  double vcand;
-
+  
   //Structures to record output
   int nstore=(niter-nburn)/nthin;
   if(nburn % nthin!=0){
@@ -354,41 +346,104 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, IntegerVector z, NumericMa
   NumericMatrix syout(nstore,M);
   NumericMatrix zout(nstore,M);
   int iteridx=0;
-  //calc lamds  D too? Currently an input
-  NumericMatrix lamd=calclamd(lam0,sigma,D);
-
-  //start for loop here
+  //Starting log likelihood obs mod
+  llysum=0;
+  for(int i=0; i<M; i++) {
+    for(int j=0; j<J; j++){
+      if(obstype==1){
+        pd(i,j)=1-exp(-lamd(i,j));
+        ll_y_curr(i,j)=z(i)*(y(i,j)*log(pd(i,j))+(tf(j)-y(i,j))*log(1-pd(i,j)));
+      }else{
+        ll_y_curr(i,j)=z(i)*(y(i,j)*log(tf(j)*lamd(i,j))-tf(j)*lamd(i,j));
+      } 
+      if(ll_y_curr(i,j)==ll_y_curr(i,j)){
+        llysum+=ll_y_curr(i,j); 
+      }
+    }
+  }
+  
+  //start MCMC here
   int iter;
   for(iter=0; iter<niter; iter++){
-    likcurr=SCRlik( z, lamd, y, K);
-    liknew=0;
-    lam0cand=0;
-    sigmacand=0;
+    // Need to resum the ll_y on each iter
+    llysum=0;
+    for(int i=0; i<M; i++) {
+      for(int j=0; j<J; j++){
+        if(ll_y_curr(i,j)==ll_y_curr(i,j)){
+          llysum+=ll_y_curr(i,j);
+        }
+      }
+    }
     //Update lam0
     rand=Rcpp::rnorm(1,lam0,proplam0);
     if(rand(0) > 0){
+      llycandsum=0;
       lam0cand=rand(0);
-      lamdcand=calclamd(lam0cand,sigma,D);
-      liknew=SCRlik( z, lamdcand, y, K);
+       // Update lamd and calculate cand likelihood
+      for(int i=0; i<M; i++) {
+        for(int j=0; j<J; j++){
+          lamdcand(i,j)=lam0cand*exp(-D(i,j)*D(i,j)/(2*sigma*sigma));
+          if(obstype==1){
+            pdcand(i,j)=1-exp(-lamdcand(i,j));
+            ll_y_cand(i,j)=z(i)*(y(i,j)*log(pdcand(i,j))+(tf(j)-y(i,j))*log(1-pdcand(i,j)));
+          }else{
+            ll_y_cand(i,j)=z(i)*(y(i,j)*log(tf(j)*lamdcand(i,j))-tf(j)*lamdcand(i,j));
+          }
+          if(ll_y_cand(i,j)==ll_y_cand(i,j)){
+            llycandsum+=ll_y_cand(i,j);
+          }
+        }
+      }
+      //MH step
       rand2=Rcpp::runif(1);
-      explldiff = exp(liknew-likcurr);
-      if(rand2(0)<explldiff){
+      if(rand2(0)<exp(llycandsum-llysum)){
         lam0=lam0cand;
-        lamd=lamdcand;
-        likcurr=liknew;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd(i,j)=lamdcand(i,j);
+            if(obstype==1){
+              pd(i,j)=pdcand(i,j);
+            }
+            ll_y_curr(i,j)=ll_y_cand(i,j);
+          }
+        }
+        llysum=llycandsum;
       }
     }
-    //Update sigma
+
+    // Update sigma
     rand=Rcpp::rnorm(1,sigma,propsigma);
     if(rand(0) > 0){
       sigmacand=rand(0);
-      lamdcand=calclamd(lam0,sigmacand,D);
-      liknew=SCRlik( z, lamdcand, y, K);
-      rand2=Rcpp::runif(1);
-      if(rand2(0)<exp(liknew-likcurr)){
+      llycandsum=0;
+      //  Update lamd and calculate cand likelihood
+      for(int i=0; i<M; i++) {
+        for(int j=0; j<J; j++){
+          lamdcand(i,j)=lam0*exp(-D(i,j)*D(i,j)/(2*sigmacand*sigmacand));
+          if(obstype==1){
+            pdcand(i,j)=1-exp(-lamdcand(i,j));
+            ll_y_cand(i,j)=z(i)*(y(i,j)*log(pdcand(i,j))+(tf(j)-y(i,j))*log(1-pdcand(i,j)));
+          }else{
+            ll_y_cand(i,j)=z(i)*(y(i,j)*log(tf(j)*lamdcand(i,j))-tf(j)*lamdcand(i,j));
+          }
+          if(ll_y_cand(i,j)==ll_y_cand(i,j)){
+            llycandsum+=ll_y_cand(i,j);
+          }
+        }
+      }
+      rand=Rcpp::runif(1);
+      if(rand(0)<exp(llycandsum-llysum)){
         sigma=sigmacand;
-        lamd=lamdcand;
-        likcurr=liknew;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd(i,j)=lamdcand(i,j);
+            if(obstype==1){
+              pd(i,j)=pdcand(i,j);
+            }
+            ll_y_curr(i,j)=ll_y_cand(i,j);
+          }
+        }
+        llysum=llycandsum;
       }
     }
     //Update Psi
@@ -396,8 +451,10 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, IntegerVector z, NumericMa
     for(int i=0; i<M; i++) {
       prob0(i)=1;
       for(int j=0; j<J; j++){
-        pd(i,j)=1-exp(-lamd(i,j));
-        pbar(i,j)=pow(1-pd(i,j),K);
+        if(obstype==2){
+          pd(i,j)=1-exp(-lamd(i,j));
+        }
+        pbar(i,j)=pow(1-pd(i,j),tf(j));
         prob0(i)*=pbar(i,j);
       }
       fc(i)=prob0(i)*psi(0)/(prob0(i)*psi(0) + 1-psi(0));
@@ -407,22 +464,24 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, IntegerVector z, NumericMa
         z(i)=rand(0);
       }
     }
-    //Calculate current likelihood
-    double v=0;
+    //Calculate updated obs mod ll
+    llysum=0;
     for(int i=0; i<M; i++) {
-      if(z[i]==1){
-        for(int j=0; j<J; j++){
-          v1(i,j)=y(i,j)*log(pd(i,j))+(K-y(i,j))*log(1-pd(i,j));
-          if(v1(i,j)==v1(i,j)){
-            v+=v1(i,j);
-          }
+      for(int j=0; j<J; j++){
+        if(obstype==1){
+          pd(i,j)=1-exp(-lamd(i,j));
+          ll_y_curr(i,j)=z(i)*(y(i,j)*log(pd(i,j))+(tf(j)-y(i,j))*log(1-pd(i,j)));
+        }else{
+          ll_y_curr(i,j)=z(i)*(y(i,j)*log(tf(j)*lamd(i,j))-tf(j)*lamd(i,j));
+        }
+        if(ll_y_curr(i,j)==ll_y_curr(i,j)){
+          llysum+=ll_y_curr(i,j);
         }
       }
     }
     //update psi
     N=sum(z);
     psi=Rcpp::rbeta(1, 1 + N, 1 + M - N);
-    likcurr=v;
 
     //Update Activity Centers
     for(int i=0; i<M; i++) {
@@ -434,54 +493,56 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, IntegerVector z, NumericMa
         inbox=inoutCpp(ScandX,ScandY,vertices);
       }
       if(inbox(0)){
-          dtmp=pow( pow( rep(ScandX,J) - X(_,0), 2.0) + pow( rep(ScandY,J) - X(_,1), 2.0), 0.5 );
-          lamdcandc=lam0*exp(-dtmp*dtmp/(2*sigma*sigma));
-          if(z[i]==1){ //if in pop, otherwise keep update
-            v=0;
-            vcand=0;
-            //Calculate likelihood for original and candidate
-            for(int j=0; j<J; j++){
-              pdc(j)=1-exp(-lamd(i,j));
-              pdccand(j)=1-exp(-lamdcandc(j));
-              vc(j)=y(i,j)*log(pdc(j))+(K-y(i,j))*log(1-pdc(j));
-              vcCand(j)=y(i,j)*log(pdccand(j))+(K-y(i,j))*log(1-pdccand(j));
-              if(vc(j)==vc(j)){
-                v+=vc(j);
-              }
-              if(vcCand(j)==vcCand(j)){
-                vcand+=vcCand(j);
-              }
-            }
-            rand=Rcpp::runif(1);
-            explldiff=exp(vcand-v);
+        llysum=0;
+        llycandsum=0;
+        for(int j=0; j<J; j++){
+          dtmp(j)=pow(pow(ScandX(0)-X(j,0), 2.0)+pow(ScandY(0)-X(j,1),2.0),0.5);
+          lamdcand(i,j)=lam0*exp(-dtmp(j)*dtmp(j)/(2*sigma*sigma));
+          if(obstype==1){
+            pdcand(i,j)=1-exp(-lamdcand(i,j));
+            ll_y_cand(i,j)=z(i)*(y(i,j)*log(pdcand(i,j))+(tf(j)-y(i,j))*log(1-pdcand(i,j)));
+          }else{
+            ll_y_cand(i,j)=z(i)*(y(i,j)*log(tf(j)*lamdcand(i,j))-tf(j)*lamdcand(i,j));
           }
-          if((rand(0)<explldiff)|(z[i]==0)){
-            s(i,0)=ScandX(0);
-            s(i,1)=ScandY(0);
-            for(int j=0; j<J; j++){
-              D(i,j) = dtmp(j);
-              lamd(i,j) = lamdcandc(j);
+          if(ll_y_cand(i,j)==ll_y_cand(i,j)){
+            llycandsum+=ll_y_cand(i,j);
+          }
+          if(ll_y_curr(i,j)==ll_y_curr(i,j)){
+            llysum+=ll_y_curr(i,j);
+          }
+        }
+        rand=Rcpp::runif(1);
+        if((rand(0)<exp(llycandsum-llysum))){
+          s(i,0)=ScandX(0);
+          s(i,1)=ScandY(0);
+          for(int j=0; j<J; j++){
+            D(i,j) = dtmp(j);
+            lamd(i,j) = lamdcand(i,j);
+            if(obstype==1){
+              pd(i,j) = pdcand(i,j);
             }
+            ll_y_curr(i,j) = ll_y_cand(i,j);
           }
         }
       }
-      //Record output
-      if(((iter+1)>nburn)&((iter+1) % nthin==0)){
-        sxout(iteridx,_)= s(_,0);
-        syout(iteridx,_)= s(_,1);
-        zout(iteridx,_)= z;
-        out(iteridx,0)=lam0;
-        out(iteridx,1)=sigma;
-        out(iteridx,2)=N;
-        iteridx=iteridx+1;
-      }
     }
-    List to_return(4);
-    to_return[0] = out;
-    to_return[1] = sxout;
-    to_return[2] = syout;
-    to_return[3] = zout;
-    return to_return;
+  //Record output
+  if(((iter+1)>nburn)&((iter+1) % nthin==0)){
+    sxout(iteridx,_)= s(_,0);
+    syout(iteridx,_)= s(_,1);
+    zout(iteridx,_)= z;
+    out(iteridx,0)=lam0;
+    out(iteridx,1)=sigma;
+    out(iteridx,2)=N;
+    iteridx=iteridx+1;
+  }
+}
+List to_return(4);
+to_return[0] = out;
+to_return[1] = sxout;
+to_return[2] = syout;
+to_return[3] = zout;
+return to_return;
 }
 
 ///////////////////////////Add trap history functionality////////////////////////
@@ -512,185 +573,7 @@ double SCRliktf(IntegerVector z,NumericMatrix lamd,NumericMatrix y,NumericVector
   to_return = v2;
   return to_return;
 }
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List MCMC1tf(double lam0, double sigma,NumericMatrix y, IntegerVector z, NumericMatrix X,NumericVector K,NumericMatrix D, IntegerVector knownvector,
-           NumericMatrix s,NumericVector psi, NumericVector xlim,NumericVector ylim,bool useverts, NumericMatrix vertices, double proplam0,
-           double propsigma, double propsx, double propsy, int niter, int nburn, int nthin) {
-  RNGScope scope;
-  int M = z.size();
-  //Preallocate for update lam0  sigma
-  double likcurr;
-  double liknew;
-  double lam0cand;
-  double sigmacand;
-  double explldiff;
-  NumericVector rand;
-  NumericVector rand2;
-  NumericMatrix lamdcand;
-  int J=y.ncol();
 
-  //Preallocate for Psi update
-  NumericMatrix pd(M,J);
-  NumericMatrix pbar(M,J);
-  NumericVector prob0(M);
-  NumericVector fc(M);
-  LogicalVector swappable(M);
-  NumericMatrix v1(M,J);
-  int N;
-
-  //Preallocate for updating activity centers
-  LogicalVector inbox(1);
-  NumericVector pdc(J);
-  NumericVector pdccand(J);
-  NumericVector vc(J);
-  NumericVector vcCand(J);
-  NumericVector dtmp(J);
-  NumericVector lamdcandc(J);
-  NumericVector ScandX(1);
-  NumericVector ScandY(1);
-  double vcand;
-
-  //Structures to record output
-  int nstore=(niter-nburn)/nthin;
-  if(nburn % nthin!=0){
-    nstore=nstore+1;
-  }
-  NumericMatrix out(nstore,3);
-  NumericMatrix sxout(nstore,M);
-  NumericMatrix syout(nstore,M);
-  NumericMatrix zout(nstore,M);
-  int iteridx=0;
-  //calc lamds  D too? Currently an input
-  NumericMatrix lamd=calclamd(lam0,sigma,D);
-
-  //start for loop here
-  int iter;
-  for(iter=0; iter<niter; iter++){
-    likcurr=SCRliktf( z, lamd, y, K);
-    liknew=0;
-    lam0cand=0;
-    sigmacand=0;
-    //Update lam0
-    rand=Rcpp::rnorm(1,lam0,proplam0);
-    if(rand(0) > 0){
-      lam0cand=rand(0);
-      lamdcand=calclamd(lam0cand,sigma,D);
-      liknew=SCRliktf( z, lamdcand, y, K);
-      rand2=Rcpp::runif(1);
-      explldiff = exp(liknew-likcurr);
-      if(rand2(0)<explldiff){
-        lam0=lam0cand;
-        lamd=lamdcand;
-        likcurr=liknew;
-      }
-    }
-    //Update sigma
-    rand=Rcpp::rnorm(1,sigma,propsigma);
-    if(rand(0) > 0){
-      sigmacand=rand(0);
-      lamdcand=calclamd(lam0,sigmacand,D);
-      liknew=SCRliktf( z, lamdcand, y, K);
-      rand2=Rcpp::runif(1);
-      if(rand2(0)<exp(liknew-likcurr)){
-        sigma=sigmacand;
-        lamd=lamdcand;
-        likcurr=liknew;
-      }
-    }
-    //Update Psi
-    //  Calculate probability of no capture and update z
-    for(int i=0; i<M; i++) {
-      prob0(i)=1;
-      for(int j=0; j<J; j++){
-        pd(i,j)=1-exp(-lamd(i,j));
-        pbar(i,j)=pow(1-pd(i,j),K(j));
-        prob0(i)*=pbar(i,j);
-      }
-      fc(i)=prob0(i)*psi(0)/(prob0(i)*psi(0) + 1-psi(0));
-      swappable(i)=(knownvector(i)==0);
-      if(swappable(i)){
-        NumericVector rand=Rcpp::rbinom(1,1,fc(i));
-        z(i)=rand(0);
-      }
-    }
-    //Calculate current likelihood
-    double v=0;
-    for(int i=0; i<M; i++) {
-      if(z[i]==1){
-        for(int j=0; j<J; j++){
-          v1(i,j)=y(i,j)*log(pd(i,j))+(K(j)-y(i,j))*log(1-pd(i,j));
-          if(v1(i,j)==v1(i,j)){
-            v+=v1(i,j);
-          }
-        }
-      }
-    }
-    //update psi
-    N=sum(z);
-    psi=Rcpp::rbeta(1, 1 + N, 1 + M - N);
-    likcurr=v;
-
-    //Update Activity Centers
-    for(int i=0; i<M; i++) {
-      ScandX=Rcpp::rnorm(1,s(i,0),propsx);
-      ScandY=Rcpp::rnorm(1,s(i,1),propsy);
-      if(useverts==FALSE){
-        inbox= (ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
-      }else{
-        inbox=inoutCpp(ScandX,ScandY,vertices);
-      }
-      if(inbox(0)){
-          dtmp=pow( pow( rep(ScandX,J) - X(_,0), 2.0) + pow( rep(ScandY,J) - X(_,1), 2.0), 0.5 );
-          lamdcandc=lam0*exp(-dtmp*dtmp/(2*sigma*sigma));
-          if(z[i]==1){ //if in pop, otherwise keep update
-            v=0;
-            vcand=0;
-            //Calculate likelihood for original and candidate
-            for(int j=0; j<J; j++){
-              pdc(j)=1-exp(-lamd(i,j));
-              pdccand(j)=1-exp(-lamdcandc(j));
-              vc(j)=y(i,j)*log(pdc(j))+(K(j)-y(i,j))*log(1-pdc(j));
-              vcCand(j)=y(i,j)*log(pdccand(j))+(K(j)-y(i,j))*log(1-pdccand(j));
-              if(vc(j)==vc(j)){
-                v+=vc(j);
-              }
-              if(vcCand(j)==vcCand(j)){
-                vcand+=vcCand(j);
-              }
-            }
-            rand=Rcpp::runif(1);
-            explldiff=exp(vcand-v);
-          }
-          if((rand(0)<explldiff)|(z[i]==0)){
-            s(i,0)=ScandX(0);
-            s(i,1)=ScandY(0);
-            for(int j=0; j<J; j++){
-              D(i,j) = dtmp(j);
-              lamd(i,j) = lamdcandc(j);
-            }
-          }
-        }
-      }
-      //Record output
-      if(((iter+1)>nburn)&((iter+1) % nthin==0)){
-        sxout(iteridx,_)= s(_,0);
-        syout(iteridx,_)= s(_,1);
-        zout(iteridx,_)= z;
-        out(iteridx,0)=lam0;
-        out(iteridx,1)=sigma;
-        out(iteridx,2)=N;
-        iteridx=iteridx+1;
-      }
-    }
-    List to_return(4);
-    to_return[0] = out;
-    to_return[1] = sxout;
-    to_return[2] = syout;
-    to_return[3] = zout;
-    return to_return;
-}
 
 ////////////////////////////////////////Side matching model///////////////////////////////////////////
 //Individual components first. Full, combined algorithm below.
@@ -1992,13 +1875,15 @@ List MCMC(double lam01,double lam02, double sigma,
       }
     }
 
-    List to_return(6);
+    List to_return(8);
     to_return[0] = out;
     to_return[1] = sxout;
     to_return[2] = syout;
     to_return[3] = ID_Lout;
     to_return[4] = ID_Rout;
     to_return[5] = zout;
+    to_return[6] = lamd1;
+    to_return[7] = lamd2;
     return to_return;
 }
 

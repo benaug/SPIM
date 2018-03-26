@@ -8,7 +8,7 @@ using namespace Rcpp;
 
 // inoutCppOpen
 bool inoutCppOpen(NumericVector sx, NumericVector sy, NumericMatrix vertices);
-RcppExport SEXP SPIM_inoutCppOpen(SEXP sxSEXP, SEXP sySEXP, SEXP verticesSEXP) {
+RcppExport SEXP _SPIM_inoutCppOpen(SEXP sxSEXP, SEXP sySEXP, SEXP verticesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,7 +21,7 @@ END_RCPP
 }
 // mcmc_Open_SPIM
 List mcmc_Open_SPIM(NumericVector lam01, NumericVector lam02, NumericVector sigma, NumericVector gamma, NumericVector gammaprime, NumericVector phi, arma::cube D, arma::cube lamd1, arma::cube lamd2, arma::cube yboth, arma::cube yleft, arma::cube yright, IntegerMatrix z, IntegerMatrix a, NumericMatrix s1, arma::cube s2, bool metamu, bool useverts, NumericMatrix vertices, NumericVector xlim, NumericVector ylim, IntegerMatrix knownmatrix, IntegerVector Xidx, arma::cube Xcpp, IntegerVector K, NumericMatrix Ez, double psi, IntegerVector N, NumericVector proplam01, NumericVector proplam02, NumericVector propsig, NumericVector propz, NumericVector propgamma, double props1x, double props1y, double props2x, double props2y, double propsigma_t, NumericVector sigma_t, int niter, int nburn, int nthin, int npar, IntegerVector each, bool jointZ, IntegerMatrix zpossible, IntegerMatrix apossible, IntegerMatrix cancel, IntegerVector ID_L, IntegerVector ID_R, IntegerMatrix ones, IntegerMatrix twos, LogicalVector updates, int swap, int swaptol, int Nfixed, arma::cube left, arma::cube right);
-RcppExport SEXP SPIM_mcmc_Open_SPIM(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP gammaSEXP, SEXP gammaprimeSEXP, SEXP phiSEXP, SEXP DSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP aSEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP metamuSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP knownmatrixSEXP, SEXP XidxSEXP, SEXP XcppSEXP, SEXP KSEXP, SEXP EzSEXP, SEXP psiSEXP, SEXP NSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigSEXP, SEXP propzSEXP, SEXP propgammaSEXP, SEXP props1xSEXP, SEXP props1ySEXP, SEXP props2xSEXP, SEXP props2ySEXP, SEXP propsigma_tSEXP, SEXP sigma_tSEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP nparSEXP, SEXP eachSEXP, SEXP jointZSEXP, SEXP zpossibleSEXP, SEXP apossibleSEXP, SEXP cancelSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP onesSEXP, SEXP twosSEXP, SEXP updatesSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP NfixedSEXP, SEXP leftSEXP, SEXP rightSEXP) {
+RcppExport SEXP _SPIM_mcmc_Open_SPIM(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP gammaSEXP, SEXP gammaprimeSEXP, SEXP phiSEXP, SEXP DSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP aSEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP metamuSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP knownmatrixSEXP, SEXP XidxSEXP, SEXP XcppSEXP, SEXP KSEXP, SEXP EzSEXP, SEXP psiSEXP, SEXP NSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigSEXP, SEXP propzSEXP, SEXP propgammaSEXP, SEXP props1xSEXP, SEXP props1ySEXP, SEXP props2xSEXP, SEXP props2ySEXP, SEXP propsigma_tSEXP, SEXP sigma_tSEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP nparSEXP, SEXP eachSEXP, SEXP jointZSEXP, SEXP zpossibleSEXP, SEXP apossibleSEXP, SEXP cancelSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP onesSEXP, SEXP twosSEXP, SEXP updatesSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP NfixedSEXP, SEXP leftSEXP, SEXP rightSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -89,7 +89,7 @@ END_RCPP
 }
 // inoutCpp
 bool inoutCpp(NumericVector sx, NumericVector sy, NumericMatrix vertices);
-RcppExport SEXP SPIM_inoutCpp(SEXP sxSEXP, SEXP sySEXP, SEXP verticesSEXP) {
+RcppExport SEXP _SPIM_inoutCpp(SEXP sxSEXP, SEXP sySEXP, SEXP verticesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -102,7 +102,7 @@ END_RCPP
 }
 // SCRlik
 double SCRlik(IntegerVector z, NumericMatrix lamd, NumericMatrix y, int K);
-RcppExport SEXP SPIM_SCRlik(SEXP zSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_SCRlik(SEXP zSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -116,7 +116,7 @@ END_RCPP
 }
 // calclamd
 NumericMatrix calclamd(double lam, double sigma, NumericMatrix D);
-RcppExport SEXP SPIM_calclamd(SEXP lamSEXP, SEXP sigmaSEXP, SEXP DSEXP) {
+RcppExport SEXP _SPIM_calclamd(SEXP lamSEXP, SEXP sigmaSEXP, SEXP DSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -129,7 +129,7 @@ END_RCPP
 }
 // updateDfun
 List updateDfun(double lam0, double sigma, NumericMatrix lamd, NumericMatrix y, IntegerVector z, NumericMatrix X, int K, NumericMatrix D);
-RcppExport SEXP SPIM_updateDfun(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP) {
+RcppExport SEXP _SPIM_updateDfun(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -147,7 +147,7 @@ END_RCPP
 }
 // updatePsi
 List updatePsi(IntegerVector z, IntegerVector knownvector, NumericMatrix lamd, NumericMatrix y, IntegerMatrix X, int K, double psi);
-RcppExport SEXP SPIM_updatePsi(SEXP zSEXP, SEXP knownvectorSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP XSEXP, SEXP KSEXP, SEXP psiSEXP) {
+RcppExport SEXP _SPIM_updatePsi(SEXP zSEXP, SEXP knownvectorSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP XSEXP, SEXP KSEXP, SEXP psiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -164,7 +164,7 @@ END_RCPP
 }
 // updateACs
 List updateACs(IntegerVector z, NumericMatrix s, IntegerVector xlim, IntegerVector ylim, NumericMatrix D, NumericMatrix lamd, double lam0, double sigma, NumericMatrix y, NumericMatrix X, int K, bool useverts, NumericMatrix vertices);
-RcppExport SEXP SPIM_updateACs(SEXP zSEXP, SEXP sSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP DSEXP, SEXP lamdSEXP, SEXP lam0SEXP, SEXP sigmaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP KSEXP, SEXP usevertsSEXP, SEXP verticesSEXP) {
+RcppExport SEXP _SPIM_updateACs(SEXP zSEXP, SEXP sSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP DSEXP, SEXP lamdSEXP, SEXP lam0SEXP, SEXP sigmaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP KSEXP, SEXP usevertsSEXP, SEXP verticesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -186,14 +186,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // MCMC1
-List MCMC1(double lam0, double sigma, NumericMatrix y, IntegerVector z, NumericMatrix X, int K, NumericMatrix D, IntegerVector knownvector, NumericMatrix s, NumericVector psi, NumericVector xlim, NumericVector ylim, bool useverts, NumericMatrix vertices, double proplam0, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin);
-RcppExport SEXP SPIM_MCMC1(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP ySEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP knownvectorSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam0SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
+List MCMC1(double lam0, double sigma, NumericMatrix y, NumericMatrix lamd, IntegerVector z, NumericMatrix X, int K, NumericMatrix D, IntegerVector knownvector, NumericMatrix s, NumericVector psi, NumericVector xlim, NumericVector ylim, bool useverts, NumericMatrix vertices, double proplam0, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin, int obstype, IntegerVector tf);
+RcppExport SEXP _SPIM_MCMC1(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP ySEXP, SEXP lamdSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP knownvectorSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam0SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP obstypeSEXP, SEXP tfSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< double >::type lam0(lam0SEXP);
     Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type lamd(lamdSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type z(zSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type X(XSEXP);
     Rcpp::traits::input_parameter< int >::type K(KSEXP);
@@ -212,13 +213,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
     Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP);
     Rcpp::traits::input_parameter< int >::type nthin(nthinSEXP);
-    rcpp_result_gen = Rcpp::wrap(MCMC1(lam0, sigma, y, z, X, K, D, knownvector, s, psi, xlim, ylim, useverts, vertices, proplam0, propsigma, propsx, propsy, niter, nburn, nthin));
+    Rcpp::traits::input_parameter< int >::type obstype(obstypeSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type tf(tfSEXP);
+    rcpp_result_gen = Rcpp::wrap(MCMC1(lam0, sigma, y, lamd, z, X, K, D, knownvector, s, psi, xlim, ylim, useverts, vertices, proplam0, propsigma, propsx, propsy, niter, nburn, nthin, obstype, tf));
     return rcpp_result_gen;
 END_RCPP
 }
 // SCRliktf
 double SCRliktf(IntegerVector z, NumericMatrix lamd, NumericMatrix y, NumericVector K);
-RcppExport SEXP SPIM_SCRliktf(SEXP zSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_SCRliktf(SEXP zSEXP, SEXP lamdSEXP, SEXP ySEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -230,40 +233,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// MCMC1tf
-List MCMC1tf(double lam0, double sigma, NumericMatrix y, IntegerVector z, NumericMatrix X, NumericVector K, NumericMatrix D, IntegerVector knownvector, NumericMatrix s, NumericVector psi, NumericVector xlim, NumericVector ylim, bool useverts, NumericMatrix vertices, double proplam0, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin);
-RcppExport SEXP SPIM_MCMC1tf(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP ySEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP knownvectorSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam0SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type lam0(lam0SEXP);
-    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type z(zSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type X(XSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type K(KSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type D(DSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type knownvector(knownvectorSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type s(sSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type psi(psiSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type xlim(xlimSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type ylim(ylimSEXP);
-    Rcpp::traits::input_parameter< bool >::type useverts(usevertsSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type vertices(verticesSEXP);
-    Rcpp::traits::input_parameter< double >::type proplam0(proplam0SEXP);
-    Rcpp::traits::input_parameter< double >::type propsigma(propsigmaSEXP);
-    Rcpp::traits::input_parameter< double >::type propsx(propsxSEXP);
-    Rcpp::traits::input_parameter< double >::type propsy(propsySEXP);
-    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP);
-    Rcpp::traits::input_parameter< int >::type nthin(nthinSEXP);
-    rcpp_result_gen = Rcpp::wrap(MCMC1tf(lam0, sigma, y, z, X, K, D, knownvector, s, psi, xlim, ylim, useverts, vertices, proplam0, propsigma, propsx, propsy, niter, nburn, nthin));
-    return rcpp_result_gen;
-END_RCPP
-}
 // fulllik
 double fulllik(IntegerVector z, NumericMatrix lamd1, NumericMatrix lamd2, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_fulllik(SEXP zSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_fulllik(SEXP zSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -281,7 +253,7 @@ END_RCPP
 }
 // updateparms
 List updateparms(double lam01, double lam02, double sigma, NumericMatrix lamd1, NumericMatrix lamd2, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z, NumericMatrix X, int K, NumericMatrix D);
-RcppExport SEXP SPIM_updateparms(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP) {
+RcppExport SEXP _SPIM_updateparms(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -303,7 +275,7 @@ END_RCPP
 }
 // swapC
 List swapC(IntegerVector z, int Nfixed, IntegerVector ID_L, IntegerVector ID_R, NumericMatrix s, int swap, double swaptol, NumericMatrix lamd1, NumericMatrix lamd2, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerMatrix X, int K, IntegerVector left, IntegerVector right, double likcurr);
-RcppExport SEXP SPIM_swapC(SEXP zSEXP, SEXP NfixedSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP sSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP likcurrSEXP) {
+RcppExport SEXP _SPIM_swapC(SEXP zSEXP, SEXP NfixedSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP sSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP likcurrSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -330,7 +302,7 @@ END_RCPP
 }
 // updatePsi2
 List updatePsi2(IntegerVector z, LogicalVector zeroguys, IntegerVector knownvector, NumericMatrix lamd1, NumericMatrix lamd2, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerMatrix X, int K, double psi);
-RcppExport SEXP SPIM_updatePsi2(SEXP zSEXP, SEXP zeroguysSEXP, SEXP knownvectorSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP psiSEXP) {
+RcppExport SEXP _SPIM_updatePsi2(SEXP zSEXP, SEXP zeroguysSEXP, SEXP knownvectorSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP psiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -351,7 +323,7 @@ END_RCPP
 }
 // updateACs2
 List updateACs2(IntegerVector z, NumericMatrix s, IntegerVector xlim, IntegerVector ylim, bool useverts, NumericMatrix vertices, NumericMatrix D, NumericMatrix lamd1, NumericMatrix lamd2, double lam01, double lam02, double sigma, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_updateACs2(SEXP zSEXP, SEXP sSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP DSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_updateACs2(SEXP zSEXP, SEXP sSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP DSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -378,7 +350,7 @@ END_RCPP
 }
 // MCMC
 List MCMC(double lam01, double lam02, double sigma, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z, NumericMatrix X, int K, NumericMatrix D, int Nfixed, IntegerVector knownvector, IntegerVector ID_L, IntegerVector ID_R, int swap, double swaptol, IntegerVector left, IntegerVector right, NumericMatrix s, NumericVector psi, NumericVector xlim, NumericVector ylim, bool useverts, NumericMatrix vertices, double proplam01, double proplam02, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin, LogicalVector updates);
-RcppExport SEXP SPIM_MCMC(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
+RcppExport SEXP _SPIM_MCMC(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -421,7 +393,7 @@ END_RCPP
 }
 // fullliktf
 double fullliktf(IntegerVector z, NumericMatrix lamd1, NumericMatrix lamd2, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, IntegerVector K);
-RcppExport SEXP SPIM_fullliktf(SEXP zSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_fullliktf(SEXP zSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -439,7 +411,7 @@ END_RCPP
 }
 // MCMCtf
 List MCMCtf(double lam01, double lam02, double sigma, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z, NumericMatrix X, IntegerVector K, int Kmax, NumericMatrix D, int Nfixed, IntegerVector knownvector, IntegerVector ID_L, IntegerVector ID_R, int swap, double swaptol, IntegerVector left, IntegerVector right, NumericMatrix s, NumericVector psi, NumericVector xlim, NumericVector ylim, bool useverts, NumericMatrix vertices, double proplam01, double proplam02, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin, LogicalVector updates);
-RcppExport SEXP SPIM_MCMCtf(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP KmaxSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
+RcppExport SEXP _SPIM_MCMCtf(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP KmaxSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -483,7 +455,7 @@ END_RCPP
 }
 // fullliktf2
 double fullliktf2(IntegerVector z, NumericMatrix lamd1, NumericMatrix lamd2, arma::cube ybothC, arma::cube yleftC, arma::cube yrightC, NumericMatrix X, IntegerMatrix tf);
-RcppExport SEXP SPIM_fullliktf2(SEXP zSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothCSEXP, SEXP yleftCSEXP, SEXP yrightCSEXP, SEXP XSEXP, SEXP tfSEXP) {
+RcppExport SEXP _SPIM_fullliktf2(SEXP zSEXP, SEXP lamd1SEXP, SEXP lamd2SEXP, SEXP ybothCSEXP, SEXP yleftCSEXP, SEXP yrightCSEXP, SEXP XSEXP, SEXP tfSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -501,7 +473,7 @@ END_RCPP
 }
 // MCMCtf2
 List MCMCtf2(double lam01, double lam02, double sigma, NumericVector yboth, NumericVector yleft, NumericVector yright, IntegerVector z, NumericMatrix X, IntegerMatrix tf, NumericMatrix D, int Nfixed, IntegerVector knownvector, IntegerVector ID_L, IntegerVector ID_R, int swap, double swaptol, IntegerVector left, IntegerVector right, NumericMatrix s, NumericVector psi, NumericVector xlim, NumericVector ylim, bool useverts, NumericMatrix vertices, double proplam01, double proplam02, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin, LogicalVector updates);
-RcppExport SEXP SPIM_MCMCtf2(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP tfSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
+RcppExport SEXP _SPIM_MCMCtf2(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP tfSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP psiSEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -544,7 +516,7 @@ END_RCPP
 }
 // fulllikInd
 double fulllikInd(IntegerVector z1, IntegerVector z2, NumericMatrix lamd11, NumericMatrix lamd21, NumericMatrix lamd12, NumericMatrix lamd22, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K, int Nknown);
-RcppExport SEXP SPIM_fulllikInd(SEXP z1SEXP, SEXP z2SEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP NknownSEXP) {
+RcppExport SEXP _SPIM_fulllikInd(SEXP z1SEXP, SEXP z2SEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP NknownSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -566,7 +538,7 @@ END_RCPP
 }
 // fulllikInd1D
 double fulllikInd1D(int z1, int z2, int nth, int Nfixed, NumericVector lamd11, NumericVector lamd21, NumericVector lamd12, NumericVector lamd22, NumericVector yboth, NumericVector yleft, NumericVector yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_fulllikInd1D(SEXP z1SEXP, SEXP z2SEXP, SEXP nthSEXP, SEXP NfixedSEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_fulllikInd1D(SEXP z1SEXP, SEXP z2SEXP, SEXP nthSEXP, SEXP NfixedSEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -589,7 +561,7 @@ END_RCPP
 }
 // updateparmsInd
 List updateparmsInd(double lam01, double lam02, double sigma, NumericMatrix lamd11, NumericMatrix lamd21, NumericMatrix lamd12, NumericMatrix lamd22, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z1, IntegerVector z2, NumericMatrix X, int K, NumericMatrix D1, NumericMatrix D2, int Nfixed);
-RcppExport SEXP SPIM_updateparmsInd(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP NfixedSEXP) {
+RcppExport SEXP _SPIM_updateparmsInd(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP NfixedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -616,7 +588,7 @@ END_RCPP
 }
 // updatePsiInd
 List updatePsiInd(IntegerVector z1, IntegerVector z2, IntegerVector capvector1, IntegerVector capvector2, NumericMatrix lamd11, NumericMatrix lamd12, NumericMatrix lamd21, NumericMatrix lamd22, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K, double psi1, double psi2, int Nfixed);
-RcppExport SEXP SPIM_updatePsiInd(SEXP z1SEXP, SEXP z2SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP lamd11SEXP, SEXP lamd12SEXP, SEXP lamd21SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP NfixedSEXP) {
+RcppExport SEXP _SPIM_updatePsiInd(SEXP z1SEXP, SEXP z2SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP lamd11SEXP, SEXP lamd12SEXP, SEXP lamd21SEXP, SEXP lamd22SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP NfixedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -642,7 +614,7 @@ END_RCPP
 }
 // updateACsInd
 List updateACsInd(IntegerVector z1, IntegerVector z2, NumericMatrix s1, NumericMatrix s2, IntegerVector xlim, IntegerVector ylim, bool useverts, NumericMatrix vertices, NumericMatrix D1, NumericMatrix D2, NumericMatrix lamd11, NumericMatrix lamd21, NumericMatrix lamd12, NumericMatrix lamd22, double lam01, double lam02, double sigma, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K, int Nfixed);
-RcppExport SEXP SPIM_updateACsInd(SEXP z1SEXP, SEXP z2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP NfixedSEXP) {
+RcppExport SEXP _SPIM_updateACsInd(SEXP z1SEXP, SEXP z2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP lamd11SEXP, SEXP lamd21SEXP, SEXP lamd12SEXP, SEXP lamd22SEXP, SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP NfixedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -675,7 +647,7 @@ END_RCPP
 }
 // MCMCInd
 List MCMCInd(double lam01, double lam02, double sigma, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z1, IntegerVector z2, NumericMatrix X, int K, NumericMatrix D1, NumericMatrix D2, int Nfixed, IntegerVector capvector1, IntegerVector capvector2, NumericMatrix s1, NumericMatrix s2, NumericVector psi1, NumericVector psi2, NumericVector xlim, NumericVector ylim, LogicalVector useverts, NumericMatrix vertices, double proplam01, double proplam02, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin, LogicalVector updates);
-RcppExport SEXP SPIM_MCMCInd(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP NfixedSEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
+RcppExport SEXP _SPIM_MCMCInd(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP NfixedSEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -717,7 +689,7 @@ END_RCPP
 }
 // fulllikInd2
 double fulllikInd2(IntegerVector z1, IntegerVector z2, NumericMatrix lamdL, NumericMatrix lamdR, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_fulllikInd2(SEXP z1SEXP, SEXP z2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_fulllikInd2(SEXP z1SEXP, SEXP z2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -735,7 +707,7 @@ END_RCPP
 }
 // fulllikInd1D2
 double fulllikInd1D2(int z1, int z2, NumericVector lamdL, NumericVector lamdR, NumericVector yleft, NumericVector yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_fulllikInd1D2(SEXP z1SEXP, SEXP z2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_fulllikInd1D2(SEXP z1SEXP, SEXP z2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -753,7 +725,7 @@ END_RCPP
 }
 // updateparmsInd2
 List updateparmsInd2(double lam01, double sigma, NumericMatrix lamdL, NumericMatrix lamdR, NumericMatrix yleft, NumericMatrix yright, IntegerVector z1, IntegerVector z2, NumericMatrix X, int K, NumericMatrix D1, NumericMatrix D2);
-RcppExport SEXP SPIM_updateparmsInd2(SEXP lam01SEXP, SEXP sigmaSEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP) {
+RcppExport SEXP _SPIM_updateparmsInd2(SEXP lam01SEXP, SEXP sigmaSEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -775,7 +747,7 @@ END_RCPP
 }
 // updatePsiInd2
 List updatePsiInd2(IntegerVector z1, IntegerVector z2, IntegerVector capvector1, IntegerVector capvector2, NumericMatrix lamdL, NumericMatrix lamdR, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K, double psi1, double psi2);
-RcppExport SEXP SPIM_updatePsiInd2(SEXP z1SEXP, SEXP z2SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP psi1SEXP, SEXP psi2SEXP) {
+RcppExport SEXP _SPIM_updatePsiInd2(SEXP z1SEXP, SEXP z2SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP, SEXP psi1SEXP, SEXP psi2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -797,7 +769,7 @@ END_RCPP
 }
 // updateACsInd2
 List updateACsInd2(IntegerVector z1, IntegerVector z2, NumericMatrix s1, NumericMatrix s2, IntegerVector xlim, IntegerVector ylim, NumericMatrix D1, NumericMatrix D2, NumericMatrix lamdL, NumericMatrix lamdR, double lam01, double sigma, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_updateACsInd2(SEXP z1SEXP, SEXP z2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP lam01SEXP, SEXP sigmaSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_updateACsInd2(SEXP z1SEXP, SEXP z2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP lam01SEXP, SEXP sigmaSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -823,7 +795,7 @@ END_RCPP
 }
 // MCMCInd2
 List MCMCInd2(double lam01, double sigma, NumericMatrix yleft, NumericMatrix yright, IntegerVector z1, IntegerVector z2, NumericMatrix X, int K, NumericMatrix D1, NumericMatrix D2, IntegerVector capvector1, IntegerVector capvector2, NumericMatrix s1, NumericMatrix s2, NumericVector psi1, NumericVector psi2, NumericVector xlim, NumericVector ylim, LogicalVector useverts, NumericMatrix vertices, double proplam01, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin);
-RcppExport SEXP SPIM_MCMCInd2(SEXP lam01SEXP, SEXP sigmaSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
+RcppExport SEXP _SPIM_MCMCInd2(SEXP lam01SEXP, SEXP sigmaSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -860,7 +832,7 @@ END_RCPP
 }
 // fulllikInd3
 double fulllikInd3(IntegerVector z1, IntegerVector z2, IntegerVector z3, NumericMatrix lamdB, NumericMatrix lamdL, NumericMatrix lamdR, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_fulllikInd3(SEXP z1SEXP, SEXP z2SEXP, SEXP z3SEXP, SEXP lamdBSEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_fulllikInd3(SEXP z1SEXP, SEXP z2SEXP, SEXP z3SEXP, SEXP lamdBSEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -881,7 +853,7 @@ END_RCPP
 }
 // fulllikInd1D3
 double fulllikInd1D3(int z1, int z2, int z3, NumericVector lamdB, NumericVector lamdL, NumericVector lamdR, NumericVector yboth, NumericVector yleft, NumericVector yright, NumericMatrix X, int K);
-RcppExport SEXP SPIM_fulllikInd1D3(SEXP z1SEXP, SEXP z2SEXP, SEXP z3SEXP, SEXP lamdBSEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
+RcppExport SEXP _SPIM_fulllikInd1D3(SEXP z1SEXP, SEXP z2SEXP, SEXP z3SEXP, SEXP lamdBSEXP, SEXP lamdLSEXP, SEXP lamdRSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP XSEXP, SEXP KSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -902,7 +874,7 @@ END_RCPP
 }
 // MCMCInd3
 List MCMCInd3(double lam01, double lam02, double sigma, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z1, IntegerVector z2, IntegerVector z3, NumericMatrix X, int K, NumericMatrix D1, NumericMatrix D2, NumericMatrix D3, IntegerVector capvector1, IntegerVector capvector2, IntegerVector capvector3, NumericMatrix s1, NumericMatrix s2, NumericMatrix s3, NumericVector psi1, NumericVector psi2, NumericVector psi3, NumericVector xlim, NumericVector ylim, LogicalVector useverts, NumericMatrix vertices, double proplam01, double proplam02, double propsigma, double propsx, double propsy, int niter, int nburn, int nthin);
-RcppExport SEXP SPIM_MCMCInd3(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP z3SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP D3SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP capvector3SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP s3SEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP psi3SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
+RcppExport SEXP _SPIM_MCMCInd3(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP z1SEXP, SEXP z2SEXP, SEXP z3SEXP, SEXP XSEXP, SEXP KSEXP, SEXP D1SEXP, SEXP D2SEXP, SEXP D3SEXP, SEXP capvector1SEXP, SEXP capvector2SEXP, SEXP capvector3SEXP, SEXP s1SEXP, SEXP s2SEXP, SEXP s3SEXP, SEXP psi1SEXP, SEXP psi2SEXP, SEXP psi3SEXP, SEXP xlimSEXP, SEXP ylimSEXP, SEXP usevertsSEXP, SEXP verticesSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -947,7 +919,7 @@ END_RCPP
 }
 // upbeta
 List upbeta(double beta0, double beta1, NumericMatrix grid, IntegerVector scell, double propbeta0, double propbeta1, double EN, int N, double cellArea, IntegerVector z);
-RcppExport SEXP SPIM_upbeta(SEXP beta0SEXP, SEXP beta1SEXP, SEXP gridSEXP, SEXP scellSEXP, SEXP propbeta0SEXP, SEXP propbeta1SEXP, SEXP ENSEXP, SEXP NSEXP, SEXP cellAreaSEXP, SEXP zSEXP) {
+RcppExport SEXP _SPIM_upbeta(SEXP beta0SEXP, SEXP beta1SEXP, SEXP gridSEXP, SEXP scellSEXP, SEXP propbeta0SEXP, SEXP propbeta1SEXP, SEXP ENSEXP, SEXP NSEXP, SEXP cellAreaSEXP, SEXP zSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -967,7 +939,7 @@ END_RCPP
 }
 // MCMC1b
 List MCMC1b(double lam0, double sigma, double beta0, double beta1, NumericMatrix y, IntegerVector z, NumericMatrix X, int K, NumericMatrix D, int N, IntegerVector knownvector, NumericMatrix s, IntegerVector scell, NumericVector psi, NumericMatrix grid, double cellArea, double EN, double proplam0, double propsigma, double propbeta0, double propbeta1, double propsx, double propsy, int niter, int nburn, int nthin);
-RcppExport SEXP SPIM_MCMC1b(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP beta0SEXP, SEXP beta1SEXP, SEXP ySEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP NSEXP, SEXP knownvectorSEXP, SEXP sSEXP, SEXP scellSEXP, SEXP psiSEXP, SEXP gridSEXP, SEXP cellAreaSEXP, SEXP ENSEXP, SEXP proplam0SEXP, SEXP propsigmaSEXP, SEXP propbeta0SEXP, SEXP propbeta1SEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
+RcppExport SEXP _SPIM_MCMC1b(SEXP lam0SEXP, SEXP sigmaSEXP, SEXP beta0SEXP, SEXP beta1SEXP, SEXP ySEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP NSEXP, SEXP knownvectorSEXP, SEXP sSEXP, SEXP scellSEXP, SEXP psiSEXP, SEXP gridSEXP, SEXP cellAreaSEXP, SEXP ENSEXP, SEXP proplam0SEXP, SEXP propsigmaSEXP, SEXP propbeta0SEXP, SEXP propbeta1SEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -1003,7 +975,7 @@ END_RCPP
 }
 // MCMC2
 List MCMC2(double lam01, double lam02, double sigma, double beta0, double beta1, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z, NumericMatrix X, int K, NumericMatrix D, int Nfixed, IntegerVector knownvector, IntegerVector ID_L, IntegerVector ID_R, int swap, double swaptol, IntegerVector left, IntegerVector right, NumericMatrix s, IntegerVector scell, NumericVector psi, NumericMatrix grid, double cellArea, double EN, double proplam01, double proplam02, double propsigma, double propbeta0, double propbeta1, double propsx, double propsy, int niter, int nburn, int nthin, LogicalVector updates);
-RcppExport SEXP SPIM_MCMC2(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP beta0SEXP, SEXP beta1SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP scellSEXP, SEXP psiSEXP, SEXP gridSEXP, SEXP cellAreaSEXP, SEXP ENSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propbeta0SEXP, SEXP propbeta1SEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
+RcppExport SEXP _SPIM_MCMC2(SEXP lam01SEXP, SEXP lam02SEXP, SEXP sigmaSEXP, SEXP beta0SEXP, SEXP beta1SEXP, SEXP ybothSEXP, SEXP yleftSEXP, SEXP yrightSEXP, SEXP zSEXP, SEXP XSEXP, SEXP KSEXP, SEXP DSEXP, SEXP NfixedSEXP, SEXP knownvectorSEXP, SEXP ID_LSEXP, SEXP ID_RSEXP, SEXP swapSEXP, SEXP swaptolSEXP, SEXP leftSEXP, SEXP rightSEXP, SEXP sSEXP, SEXP scellSEXP, SEXP psiSEXP, SEXP gridSEXP, SEXP cellAreaSEXP, SEXP ENSEXP, SEXP proplam01SEXP, SEXP proplam02SEXP, SEXP propsigmaSEXP, SEXP propbeta0SEXP, SEXP propbeta1SEXP, SEXP propsxSEXP, SEXP propsySEXP, SEXP niterSEXP, SEXP nburnSEXP, SEXP nthinSEXP, SEXP updatesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -1050,45 +1022,44 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"SPIM_inoutCppOpen", (DL_FUNC) &SPIM_inoutCppOpen, 3},
-    {"SPIM_mcmc_Open_SPIM", (DL_FUNC) &SPIM_mcmc_Open_SPIM, 58},
-    {"SPIM_inoutCpp", (DL_FUNC) &SPIM_inoutCpp, 3},
-    {"SPIM_SCRlik", (DL_FUNC) &SPIM_SCRlik, 4},
-    {"SPIM_calclamd", (DL_FUNC) &SPIM_calclamd, 3},
-    {"SPIM_updateDfun", (DL_FUNC) &SPIM_updateDfun, 8},
-    {"SPIM_updatePsi", (DL_FUNC) &SPIM_updatePsi, 7},
-    {"SPIM_updateACs", (DL_FUNC) &SPIM_updateACs, 13},
-    {"SPIM_MCMC1", (DL_FUNC) &SPIM_MCMC1, 21},
-    {"SPIM_SCRliktf", (DL_FUNC) &SPIM_SCRliktf, 4},
-    {"SPIM_MCMC1tf", (DL_FUNC) &SPIM_MCMC1tf, 21},
-    {"SPIM_fulllik", (DL_FUNC) &SPIM_fulllik, 8},
-    {"SPIM_updateparms", (DL_FUNC) &SPIM_updateparms, 12},
-    {"SPIM_swapC", (DL_FUNC) &SPIM_swapC, 17},
-    {"SPIM_updatePsi2", (DL_FUNC) &SPIM_updatePsi2, 11},
-    {"SPIM_updateACs2", (DL_FUNC) &SPIM_updateACs2, 17},
-    {"SPIM_MCMC", (DL_FUNC) &SPIM_MCMC, 33},
-    {"SPIM_fullliktf", (DL_FUNC) &SPIM_fullliktf, 8},
-    {"SPIM_MCMCtf", (DL_FUNC) &SPIM_MCMCtf, 34},
-    {"SPIM_fullliktf2", (DL_FUNC) &SPIM_fullliktf2, 8},
-    {"SPIM_MCMCtf2", (DL_FUNC) &SPIM_MCMCtf2, 33},
-    {"SPIM_fulllikInd", (DL_FUNC) &SPIM_fulllikInd, 12},
-    {"SPIM_fulllikInd1D", (DL_FUNC) &SPIM_fulllikInd1D, 13},
-    {"SPIM_updateparmsInd", (DL_FUNC) &SPIM_updateparmsInd, 17},
-    {"SPIM_updatePsiInd", (DL_FUNC) &SPIM_updatePsiInd, 16},
-    {"SPIM_updateACsInd", (DL_FUNC) &SPIM_updateACsInd, 23},
-    {"SPIM_MCMCInd", (DL_FUNC) &SPIM_MCMCInd, 32},
-    {"SPIM_fulllikInd2", (DL_FUNC) &SPIM_fulllikInd2, 8},
-    {"SPIM_fulllikInd1D2", (DL_FUNC) &SPIM_fulllikInd1D2, 8},
-    {"SPIM_updateparmsInd2", (DL_FUNC) &SPIM_updateparmsInd2, 12},
-    {"SPIM_updatePsiInd2", (DL_FUNC) &SPIM_updatePsiInd2, 12},
-    {"SPIM_updateACsInd2", (DL_FUNC) &SPIM_updateACsInd2, 16},
-    {"SPIM_MCMCInd2", (DL_FUNC) &SPIM_MCMCInd2, 27},
-    {"SPIM_fulllikInd3", (DL_FUNC) &SPIM_fulllikInd3, 11},
-    {"SPIM_fulllikInd1D3", (DL_FUNC) &SPIM_fulllikInd1D3, 11},
-    {"SPIM_MCMCInd3", (DL_FUNC) &SPIM_MCMCInd3, 35},
-    {"SPIM_upbeta", (DL_FUNC) &SPIM_upbeta, 10},
-    {"SPIM_MCMC1b", (DL_FUNC) &SPIM_MCMC1b, 26},
-    {"SPIM_MCMC2", (DL_FUNC) &SPIM_MCMC2, 37},
+    {"_SPIM_inoutCppOpen", (DL_FUNC) &_SPIM_inoutCppOpen, 3},
+    {"_SPIM_mcmc_Open_SPIM", (DL_FUNC) &_SPIM_mcmc_Open_SPIM, 58},
+    {"_SPIM_inoutCpp", (DL_FUNC) &_SPIM_inoutCpp, 3},
+    {"_SPIM_SCRlik", (DL_FUNC) &_SPIM_SCRlik, 4},
+    {"_SPIM_calclamd", (DL_FUNC) &_SPIM_calclamd, 3},
+    {"_SPIM_updateDfun", (DL_FUNC) &_SPIM_updateDfun, 8},
+    {"_SPIM_updatePsi", (DL_FUNC) &_SPIM_updatePsi, 7},
+    {"_SPIM_updateACs", (DL_FUNC) &_SPIM_updateACs, 13},
+    {"_SPIM_MCMC1", (DL_FUNC) &_SPIM_MCMC1, 24},
+    {"_SPIM_SCRliktf", (DL_FUNC) &_SPIM_SCRliktf, 4},
+    {"_SPIM_fulllik", (DL_FUNC) &_SPIM_fulllik, 8},
+    {"_SPIM_updateparms", (DL_FUNC) &_SPIM_updateparms, 12},
+    {"_SPIM_swapC", (DL_FUNC) &_SPIM_swapC, 17},
+    {"_SPIM_updatePsi2", (DL_FUNC) &_SPIM_updatePsi2, 11},
+    {"_SPIM_updateACs2", (DL_FUNC) &_SPIM_updateACs2, 17},
+    {"_SPIM_MCMC", (DL_FUNC) &_SPIM_MCMC, 33},
+    {"_SPIM_fullliktf", (DL_FUNC) &_SPIM_fullliktf, 8},
+    {"_SPIM_MCMCtf", (DL_FUNC) &_SPIM_MCMCtf, 34},
+    {"_SPIM_fullliktf2", (DL_FUNC) &_SPIM_fullliktf2, 8},
+    {"_SPIM_MCMCtf2", (DL_FUNC) &_SPIM_MCMCtf2, 33},
+    {"_SPIM_fulllikInd", (DL_FUNC) &_SPIM_fulllikInd, 12},
+    {"_SPIM_fulllikInd1D", (DL_FUNC) &_SPIM_fulllikInd1D, 13},
+    {"_SPIM_updateparmsInd", (DL_FUNC) &_SPIM_updateparmsInd, 17},
+    {"_SPIM_updatePsiInd", (DL_FUNC) &_SPIM_updatePsiInd, 16},
+    {"_SPIM_updateACsInd", (DL_FUNC) &_SPIM_updateACsInd, 23},
+    {"_SPIM_MCMCInd", (DL_FUNC) &_SPIM_MCMCInd, 32},
+    {"_SPIM_fulllikInd2", (DL_FUNC) &_SPIM_fulllikInd2, 8},
+    {"_SPIM_fulllikInd1D2", (DL_FUNC) &_SPIM_fulllikInd1D2, 8},
+    {"_SPIM_updateparmsInd2", (DL_FUNC) &_SPIM_updateparmsInd2, 12},
+    {"_SPIM_updatePsiInd2", (DL_FUNC) &_SPIM_updatePsiInd2, 12},
+    {"_SPIM_updateACsInd2", (DL_FUNC) &_SPIM_updateACsInd2, 16},
+    {"_SPIM_MCMCInd2", (DL_FUNC) &_SPIM_MCMCInd2, 27},
+    {"_SPIM_fulllikInd3", (DL_FUNC) &_SPIM_fulllikInd3, 11},
+    {"_SPIM_fulllikInd1D3", (DL_FUNC) &_SPIM_fulllikInd1D3, 11},
+    {"_SPIM_MCMCInd3", (DL_FUNC) &_SPIM_MCMCInd3, 35},
+    {"_SPIM_upbeta", (DL_FUNC) &_SPIM_upbeta, 10},
+    {"_SPIM_MCMC1b", (DL_FUNC) &_SPIM_MCMC1b, 26},
+    {"_SPIM_MCMC2", (DL_FUNC) &_SPIM_MCMC2, 37},
     {NULL, NULL, 0}
 };
 
