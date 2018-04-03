@@ -4,8 +4,8 @@
 \alias{simSCR}
 \title{Simulate data from a SCR study}
 \usage{
-simSCR(N = 120, lam0 = 0.2, lam0b = 0, sigma = 0.5, K = 10, X = X,
-  buff = 3, obstype = "bernoulli")
+simSCR(N = 120, lam0 = 0.2, sigma = 0.5, K = 10, X = X, buff = 3,
+  obstype = "bernoulli")
 }
 \arguments{
 \item{N}{a vector indicating the number of individuals to simulate}

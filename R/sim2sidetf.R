@@ -46,16 +46,16 @@ sim2sidetf <-
         }
       }
       # Initialize the encounter history data for left and right sides
-      left <-right <- both <-array(0,dim=c(N,K,J))
+      left <-right <- both <-array(0,dim=c(N,J,K))
       if(obstype=="bernoulli"){
-        pd=cellprobs(lamd)
+        pd=1-exp(-lamd)
         for(i in 1:N){
           for(j in 1:J){
             for(k in 1:K){
               #P(A or B)=P(A)+P(B)-P(A and B)
-              left[i,k,j]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))*onoff[j,k]) #single side p. two chances for capture with 2 cameras
-              right[i,k,j]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))*onoff[j,k]) #single side p
-              both[i,k,j]=rbinom(1,1,pd[i,j,2]*onoff[j,k])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
+              left[i,j,k]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))*onoff[j,k]) #single side p. two chances for capture with 2 cameras
+              right[i,j,k]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))*onoff[j,k]) #single side p
+              both[i,j,k]=rbinom(1,1,pd[i,j,2]*onoff[j,k])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
             }
           }
         }
@@ -63,9 +63,9 @@ sim2sidetf <-
         for(i in 1:N){
           for(j in 1:J){
             for(k in 1:K){
-              left[i,k,j]=rpois(1,X[j,3]*lamd[i,j,1]*onoff[j,k]) #single side lambda multiplied by number of traps at site
-              right[i,k,j]=rpois(1,X[j,3]*lamd[i,j,1]*onoff[j,k]) #single side lambda multiplied by number of traps at site
-              both[i,k,j]=rpois(1,lamd[i,j,2]*onoff[j,k])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
+              left[i,j,k]=rpois(1,X[j,3]*lamd[i,j,1]*onoff[j,k]) #single side lambda multiplied by number of traps at site
+              right[i,j,k]=rpois(1,X[j,3]*lamd[i,j,1]*onoff[j,k]) #single side lambda multiplied by number of traps at site
+              both[i,j,k]=rpois(1,lamd[i,j,2]*onoff[j,k])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
             }
           }
         }
@@ -103,19 +103,19 @@ sim2sidetf <-
       #number of cams on per trap/occasion
       onoff2=onoff[,,1]+onoff[,,2]
       # Initialize the encounter history data for left and right sides
-      left <-right <- both <-array(0,dim=c(N,K,J))
+      left <-right <- both <-array(0,dim=c(N,J,K))
       if(obstype=="bernoulli"){
-        pd=cellprobs(lamd)
+        pd=1-exp(-lamd)
         for(i in 1:N){
           for(j in 1:J){
             for(k in 1:K){
               if(onoff2[j,k]==2){
-                left[i,k,j]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))) #single side p. two chances for capture with 2 cameras
-                right[i,k,j]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))) #single side p
-                both[i,k,j]=rbinom(1,1,pd[i,j,2])*(X[j,3]==2)  #both side lambda multiplied by indicator for 2 traps at site
+                left[i,j,k]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))) #single side p. two chances for capture with 2 cameras
+                right[i,j,k]=rbinom(1,1,((X[j,3]==1)*pd[i,j,1]+(X[j,3]==2)*(2*pd[i,j,1]-pd[i,j,1]^2))) #single side p
+                both[i,j,k]=rbinom(1,1,pd[i,j,2])*(X[j,3]==2)  #both side lambda multiplied by indicator for 2 traps at site
               }else if(onoff2[j,k]==1){
-                left[i,k,j]=rbinom(1,1,pd[i,j,1])
-                right[i,k,j]=rbinom(1,1,pd[i,j,1])
+                left[i,j,k]=rbinom(1,1,pd[i,j,1])
+                right[i,j,k]=rbinom(1,1,pd[i,j,1])
               }
             }
           }
@@ -124,9 +124,9 @@ sim2sidetf <-
         for(i in 1:N){
           for(j in 1:J){
             for(k in 1:K){
-              left[i,k,j]=rpois(1,X[j,3]*lamd[i,j,1]*onoff2[j,k]) #single side lambda multiplied by number of traps at site
-              right[i,k,j]=rpois(1,X[j,3]*lamd[i,j,1]*onoff2[j,k]) #single side lambda multiplied by number of traps at site
-              both[i,k,j]=rpois(1,lamd[i,j,2]*onoff2[j,k])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
+              left[i,j,k]=rpois(1,X[j,3]*lamd[i,j,1]*onoff2[j,k]) #single side lambda multiplied by number of traps at site
+              right[i,j,k]=rpois(1,X[j,3]*lamd[i,j,1]*onoff2[j,k]) #single side lambda multiplied by number of traps at site
+              both[i,j,k]=rpois(1,lamd[i,j,2]*onoff2[j,k])*(X[j,3]==2)*1  #both side lambda multiplied by indicator for 2 traps at site
             }
           }
         }
@@ -142,7 +142,7 @@ sim2sidetf <-
     n=sum(apply(both+left+right,1,sum)>0)
     nside=c(sum(apply(both,1,sum)>0),sum(apply(left,1,sum)>0),sum(apply(right,1,sum)>0))
     #Count true spatial recaps
-    y2D=apply(both+left+right,c(1,3),sum)
+    y2D=apply(both+left+right,c(1,2),sum)
     scaps=rowSums(1*(y2D>0))
     scaps[scaps>0]=scaps[scaps>0]-1
     nscap=sum(scaps>0)
@@ -196,28 +196,20 @@ sim2sidetf <-
       ID_L=(1:N)
       ID_R=(1:N)
     }
-    #Add all zero dimensions so both left and right can be added together
-    add=array(0,dim=c(N,K,J))
-    both=abind(both,add,add,along=0)
-    left=abind(add,left,add,along=0)
-    right=abind(add,add,right,along=0)
-    both=aperm(both,c(2,1,3,4))
-    left=aperm(left,c(2,1,3,4))
-    right=aperm(right,c(2,1,3,4))
-
+    
     #Remove all 0 capture histories.  Don't remove right and left all 0 histories for known IDs
-    both<- both[IDknown,,,]
-    if(length(dim(both))==3){#if there is 1 both guy need to keep 4d
+    both<- both[IDknown,,]
+    if(length(dim(both))==2){#if there is 1 both guy need to keep 4d
       both=array(both,dim=c(1,dim(both)))
     }
     lcap=which(apply(left,1,sum)>0)
     rcap=which(apply(right,1,sum)>0)
-    left<- left[sort(unique(c(lcap,IDknown))),,,]
-    right<- right[sort(unique(c(rcap,IDknown))),,,]
-    if(length(dim(left))==3){#if there is 1 both guy need to keep 4d
+    left<- left[sort(unique(c(lcap,IDknown))),,]
+    right<- right[sort(unique(c(rcap,IDknown))),,]
+    if(length(dim(left))==2){#if there is 1 both guy need to keep 4d
       left=array(left,dim=c(1,dim(left)))
     }
-    if(length(dim(right))==3){#if there is 1 both guy need to keep 4d
+    if(length(dim(right))==2){#if there is 1 both guy need to keep 4d
       right=array(right,dim=c(1,dim(right)))
     }
     lorder=sort(unique(c(lcap,IDknown)))
@@ -228,34 +220,34 @@ sim2sidetf <-
     ID_R=ID_R[rorder]
 
     #Build all possible observed data sets and count observed spatial recaps
-    B2D=apply(both,c(1,4),sum)
-    L2D=apply(left,c(1,4),sum)
-    R2D=apply(right,c(1,4),sum)
+    B2D=apply(both,c(1,2),sum)
+    L2D=apply(left,c(1,2),sum)
+    R2D=apply(right,c(1,2),sum)
     known=dim(both)[1]
     if(known>0){
-      BLR=1*((both[,1,,]+left[1:known,2,,]+right[1:known,3,,])>0) #keep boths and lefts and rights for boths
+      BLR=1*((both+left[1:known,,]+right[1:known,,])>0) #keep boths and lefts and rights for boths
       if(length(dim(BLR))==2){
         BLR=array(BLR,dim=c(1,dim(BLR)))
       }
       if(dim(left)[1]>known){
-        BLRL=abind(BLR,left[(known+1):dim(left)[1],2,,],along=1) #Add unknown lefts
+        BLRL=abind(BLR,left[(known+1):dim(left)[1],,],along=1) #Add unknown lefts
       }else{
         BLRL=BLR
       }
       if(dim(right)[1]>known){
-        BLRR=abind(BLR,right[(known+1):dim(right)[1],3,,],along=1) #Add unknown rights
+        BLRR=abind(BLR,right[(known+1):dim(right)[1],,],along=1) #Add unknown rights
       }else{
         BLRR=BLR
       }
     }else{ #no known guys
-      BLR=both[,1,,]
+      BLR=both
       if(dim(left)[1]>known){
-        BLRL=left[,2,,] #Add unknown lefts
+        BLRL=left #Add unknown lefts
       }else{
         BLRL=BLR
       }
       if(dim(right)[1]>known){
-        BLRR=right[,3,,] #Add unknown rights
+        BLRR=right #Add unknown rights
       }else{
         BLRR=BLR
       }
@@ -267,8 +259,8 @@ sim2sidetf <-
       }
     }
     #BLR2D=apply(BLR,c(1,3),sum)
-    BLRL2D=apply(BLRL,c(1,3),sum)
-    BLRR2D=apply(BLRR,c(1,3),sum)
+    BLRL2D=apply(BLRL,c(1,2),sum)
+    BLRR2D=apply(BLRR,c(1,2),sum)
     if(dim(B2D)[1]>0){
       Bscaps=rowSums(1*(B2D>0))
       Bscaps[Bscaps>0]=Bscaps[Bscaps>0]-1

@@ -19,11 +19,11 @@
 #' @export
 
 mcmc.SCR <-
-function(data,niter=2400,nburn=1200, nthin=5,M = 200, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=TRUE,Rcpp=TRUE){
+function(data,niter=1000,nburn=0, nthin=1,M = M, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=TRUE,Rcpp=TRUE){
   if(Rcpp==TRUE){ #Do we use Rcpp?
-    out2=SCRmcmcRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
+    out2=SCRmcmcRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars,storeLatent=storeLatent)
   }else{#Don't use Rcpp
-    out2=SCRmcmc(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars)
+    out2=SCRmcmc(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,proppars=proppars,storeLatent=storeLatent)
   }
   if(storeLatent==TRUE){
     list(out=out2$out, sxout=out2$sxout, syout=out2$syout, zout=out2$zout, ID_Lout=out2$ID_Lout,ID_Rout=out2$ID_Rout)

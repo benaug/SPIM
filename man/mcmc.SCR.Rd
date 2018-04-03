@@ -4,9 +4,9 @@
 \alias{mcmc.SCR}
 \title{Run MCMC algorithm for basic SCR model.}
 \usage{
-mcmc.SCR(data, niter = 2400, nburn = 1200, nthin = 5, K = NA, M = 200,
+mcmc.SCR(data, niter = 1000, nburn = 0, nthin = 1, M = M,
   inits = inits, proppars = list(lam0 = 0.05, sigma = 0.1, sx = 0.2, sy =
-  0.2), keepACs = TRUE, Rcpp = TRUE)
+  0.2), storeLatent = TRUE, Rcpp = TRUE)
 }
 \arguments{
 \item{data}{a list produced by simSCR or in the same format}
@@ -23,7 +23,7 @@ mcmc.SCR(data, niter = 2400, nburn = 1200, nthin = 5, K = NA, M = 200,
 
 \item{proppars}{a list of tuning parameters for the proposal distributions}
 
-\item{keepACs}{a logical indicating whether or not to keep the posteriors for z and s}
+\item{storeLatent}{a logical indicating whether or not to keep the posteriors for z and s}
 
 \item{Rcpp}{a logical indicating whether or not to use Rcpp}
 }

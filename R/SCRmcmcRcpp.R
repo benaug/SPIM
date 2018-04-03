@@ -1,5 +1,5 @@
 SCRmcmcRcpp <-
-  function(data,niter=2400,nburn=1200, nthin=5, M = 200,K=NA, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=TRUE){
+  function(data,niter=1000,nburn=0, nthin=1, M =NA,K=NA, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=TRUE){
     library(abind)
     y<-data$y
     X<-as.matrix(data$X)
@@ -100,7 +100,7 @@ store=MCMC1(lam0,sigma,y,lamd,z,X,K,D,known.vector,s,
                   psi,xlim,ylim,useverts,vertices,
                   proppars$lam0,proppars$sigma,proppars$sx,
                       proppars$sy,niter,nburn,nthin,obstypein,
-                  tf)
+                  tf,storeLatent)
 
 if(storeLatent){
   list(out=store[[1]], sxout=store[[2]], syout=store[[3]], zout=store[[4]],data=data)

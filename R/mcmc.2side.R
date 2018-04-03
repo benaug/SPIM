@@ -8,7 +8,7 @@
 #' @param  swap number of IDs to swap on each MCMC iteration
 #' @param  swap.tol the search radius within which to search for partial ID activity centers to match with
 #' @param proppars a list of tuning parameters for the proposal distributions
-#' @param keepACs a logical indicating whether or not to keep the posteriors for z, s, ID_L, and ID_R
+#' @param storeLatent a logical indicating whether or not to keep the posteriors for z, s, ID_L, and ID_R
 #' @param Rcpp a logical indicating whether or not to use Rcpp
 #' @return  a list with the posteriors for the SCR parameters (out), s, z, ID_L and ID_R
 #' @author Ben Augustine, Andy Royle
@@ -62,7 +62,8 @@
 #' @export
 
 mcmc.2side <-
-  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,swap=10,swap.tol=1,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),keepACs=TRUE,Rcpp=TRUE){
+  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,swap=10,swap.tol=1,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),
+           storeLatent=TRUE,Rcpp=TRUE){
     if(Rcpp==TRUE){ #Do we use Rcpp?
       if("tf"%in%names(data)){ #Do we have a trap operation file?
         if(length(dim(data$tf))==2){ #Is trap file 2D?
@@ -70,33 +71,22 @@ mcmc.2side <-
             stop("Collapse 2-D trap file to 1-D vector of counts for days on at each trap because there are no 2's in the current tf")
           }
           out2=mcmc.2sidetfFullRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
-                                    proppars=proppars,keepACs=keepACs)
-        }else if(is.null(dim(data$tf))){#Is trap file 1D?
-          out2=mcmc.2sidetfRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
-                                proppars=proppars,keepACs=keepACs)
-        }else{
-          stop("trap operation file must be either 2D or 1D")
+                                    proppars=proppars,storeLatent=storeLatent)
         }
       }else{#No trap file
         out2=mcmc.2sideRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
-                            proppars=proppars,keepACs=keepACs)
+                            proppars=proppars,storeLatent=storeLatent)
       }
     }else{#Don't use Rcpp
-      if("tf"%in%names(data)){ #Do we have a trap operation file?
-        if(length(dim(data$tf)==2)){ #Is trap file 2D?
-          out2=mcmc.2sidetf(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
-                            proppars=proppars,keepACs=keepACs)
-        }else if(is.null(dim(data$tf))){#Is trap file 1D?
-          stop("Use Rcpp if trap operation file is 1D. I was too lazy to duplicate it in R.")
-        }else{
-          stop("trap operation file must be either 2D or 1D")
-        }
-      }else{#No trap file
+      if(length(dim(data$tf)==2)){ #Is trap file 2D?
+        out2=mcmc.2sidetf(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
+                          proppars=proppars,storeLatent=storeLatent)
+      }else{#trap file 1D
         out2=mcmc.2sideR(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
-                         proppars=proppars,keepACs=keepACs)
+                          proppars=proppars,storeLatent=storeLatent)
       }
     }
-    if(keepACs==TRUE){
+    if(storeLatent==TRUE){
       list(out=out2$out, sxout=out2$sxout, syout=out2$syout, zout=out2$zout, ID_Lout=out2$ID_Lout,ID_Rout=out2$ID_Rout)
     }else{
       list(out=out2$out)

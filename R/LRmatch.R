@@ -13,15 +13,11 @@ LRmatch <-  function(M, left, nleft, right,nright, X, Nfixed){
   idkpl<- (Nfixed+1):dim(left)[1]
   idkpr<- (Nfixed+1):dim(right)[1]
   #Extract unknown individuals
-  ld <- left[idkpl,,,]
-  rd <-right[idkpr,,,]
+  ld <- left[idkpl,]
+  rd <-right[idkpr,]
   X<- as.matrix(X[,1:2])
 
-  #Sum counts for each unknown individual/trap
-  ld<- apply(ld, c(1,4), sum) # total counts per trap
-  rd<- apply(rd,c(1,4), sum)
-
-  #matrices to store initial activity centers
+   #matrices to store initial activity centers
   sbar.left<- matrix(NA,nrow=nleft,ncol=2)
   sbar.right<- matrix(NA,nrow=nright,ncol=2)
 

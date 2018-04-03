@@ -112,193 +112,6 @@ NumericMatrix calclamd(double lam, double sigma, NumericMatrix D) {
   return to_return;
 }
 
-
-//update lam01, lam02, and sigma
-
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List updateDfun(double lam0, double sigma, NumericMatrix lamd,
-                NumericMatrix y, IntegerVector z, NumericMatrix X,int K,
-                NumericMatrix D) {
-  RNGScope scope;
-  //Preallocate
-  //int M = z.size();
-  //int J=X.nrow();
-  double likcurr=SCRlik( z, lamd, y, K);
-  double liknew=0;
-  double lam0cand=0;
-  double sigmacand=0;
-  NumericVector rand;
-  NumericVector rand2;
-  NumericMatrix lamdcand;
-  double explldiff;
-  
-  //Update lam0
-  rand=Rcpp::rnorm(1,lam0,0.05);
-  if(rand(0) > 0){
-    lam0cand=rand(0);
-    lamdcand=calclamd(lam0cand,sigma,D);
-    liknew=SCRlik( z, lamdcand, y, K);
-    rand2=Rcpp::runif(1);
-    explldiff = exp(liknew-likcurr);
-    if(rand2(0)<explldiff){
-      lam0=lam0cand;
-      lamd=lamdcand;
-      likcurr=liknew;
-    }
-  }
-  
-  //Update sigma
-  rand=Rcpp::rnorm(1,sigma,0.1);
-  if(rand(0) > 0){
-    sigmacand=rand(0);
-    lamdcand=calclamd(lam0,sigmacand,D);
-    liknew=SCRlik( z, lamdcand, y, K);
-    rand2=Rcpp::runif(1);
-    if(rand2(0)<exp(liknew-likcurr)){
-      sigma=sigmacand;
-      lamd=lamdcand;
-      likcurr=liknew;
-    }
-  }
-  List to_return(4);
-  to_return[0] = lam0;
-  to_return[1] = sigma;
-  to_return[2] = lamd;
-  to_return[3] = likcurr;
-  return to_return;
-}
-
-//Update psi,z
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List updatePsi(IntegerVector z, IntegerVector knownvector,NumericMatrix lamd,
-               NumericMatrix y,IntegerMatrix X, int K,double psi) {
-  RNGScope scope;
-  //Preallocate
-  int M = z.size();
-  int J=y.ncol();
-  NumericMatrix pd(M,J);
-  NumericMatrix pbar(M,J);
-  NumericVector prob0(M);
-  NumericVector fc(M);
-  LogicalVector swappable(M);
-  NumericMatrix v1(M,J);
-  //  Calculate probability of no capture and update z
-  for(int i=0; i<M; i++) {
-    prob0(i)=1;
-    for(int j=0; j<J; j++){
-      pd(i,j)=1-exp(-lamd(i,j));
-      pbar(i,j)=pow(1-pd(i,j),K);
-      prob0(i)*=pbar(i,j);
-    }
-    fc(i)=prob0(i)*psi/(prob0(i)*psi + 1-psi);
-    swappable(i)=(knownvector(i)==0);
-    if(swappable(i)){
-      NumericVector rand=Rcpp::rbinom(1,1,fc(i));
-      z(i)=rand(0);
-    }
-  }
-  //Calculate current likelihood (no constants)
-  double v=0;
-  for(int i=0; i<M; i++) {
-    if(z[i]==1){
-      for(int j=0; j<J; j++){
-        v1(i,j)=y(i,j)*log(pd(i,j))+(K-y(i,j))*log(1-pd(i,j));
-        if(v1(i,j)==v1(i,j)){
-          v+=v1(i,j);
-        }
-      }
-    }
-  }
-  //update psi
-  NumericVector psinew=Rcpp::rbeta(1, 1 + sum(z), 1 + M - sum(z));
-  List to_return(3);
-  to_return[0] = psinew;
-  to_return[1] = v;
-  to_return[2] = z;
-  return to_return;
-}
-
-
-//Update activity centers
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List updateACs(IntegerVector z, NumericMatrix s, IntegerVector xlim,IntegerVector ylim,NumericMatrix D, NumericMatrix lamd,
-               double lam0,double sigma, NumericMatrix y, NumericMatrix X,int K,bool useverts,NumericMatrix vertices) {
-  RNGScope scope;
-  //Preallocate
-  int M = z.size();
-  int J=X.nrow();
-  LogicalVector inbox(1);
-  NumericVector pdc(J);
-  NumericVector pdccand(J);
-  NumericVector vc(J);
-  NumericVector vcCand(J);
-  NumericVector rand(1);
-  double explldiff;
-  NumericVector dtmp(J);
-  NumericVector lamdcand(J);
-  NumericVector ScandX(1);
-  NumericVector ScandY(1);
-  double v;
-  double vcand;
-  NumericMatrix snew=Rcpp::clone(s);
-  NumericMatrix Dnew=Rcpp::clone(D);
-  NumericMatrix lamdnew=Rcpp::clone(lamd);
-  
-  //  Update activity centers
-  for(int i=0; i<M; i++) {
-    ScandX=Rcpp::rnorm(1,s(i,0),.2);
-    ScandY=Rcpp::rnorm(1,s(i,1),.2);
-    if(useverts==FALSE){
-      inbox= (ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
-    }else{
-      inbox=inoutCpp(ScandX,ScandY,vertices);
-    }
-    if(inbox(0)){
-      dtmp=pow( pow( rep(ScandX,J) - X(_,0), 2.0) + pow( rep(ScandY,J) - X(_,1), 2.0), 0.5 );
-      lamdcand=lam0*exp(-dtmp*dtmp/(2*sigma*sigma));
-      if(z[i]==1){ //if in pop, otherwise keep update
-        v=0;
-        vcand=0;
-        //Calculate likelihood for original and candidate
-        for(int j=0; j<J; j++){
-          pdc(j)=1-exp(-lamd(i,j));
-          pdccand(j)=1-exp(-lamdcand(j));
-          vc(j)=y(i,j)*log(pdc(j))+(K-y(i,j))*log(1-pdc(j));
-          vcCand(j)=y(i,j)*log(pdccand(j))+(K-y(i,j))*log(1-pdccand(j));
-          if(vc(j)==vc(j)){
-            v+=vc(j);
-          }
-          if(vcCand(j)==vcCand(j)){
-            vcand+=vcCand(j);
-          }
-          
-        }
-        rand=Rcpp::runif(1);
-        explldiff=exp(vcand-v);
-      }
-      if((rand(0)<explldiff)|(z[i]==0)){
-        snew(i,0)=ScandX(0);
-        snew(i,1)=ScandY(0);
-        for(int j=0; j<J; j++){
-          Dnew(i,j) = dtmp(j);
-          lamdnew(i,j) = lamdcand(j);
-        }
-      }
-    }
-  }
-  List to_return(3);
-  to_return[0] = snew;
-  to_return[1] = Dnew;
-  to_return[2] = lamdnew;
-  return to_return;
-}
-
 ////////////////////////////////////////Basic SCR model///////////////////////////////////////////////
 #include <Rcpp.h>
 using namespace Rcpp;
@@ -306,7 +119,7 @@ using namespace Rcpp;
 List MCMC1(double lam0, double sigma,NumericMatrix y, NumericMatrix lamd, IntegerVector z, NumericMatrix X,int K,NumericMatrix D, IntegerVector knownvector,
            NumericMatrix s,NumericVector psi, NumericVector xlim,NumericVector ylim,bool useverts, NumericMatrix vertices, double proplam0,
            double propsigma,double propsx,double propsy, int niter, int nburn, int nthin,
-           int obstype,IntegerVector tf) {
+           int obstype,IntegerVector tf,bool storeLatent) {
   RNGScope scope;
   int M = lamd.nrow();
   int J = lamd.ncol();
@@ -338,13 +151,17 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, NumericMatrix lamd, Intege
   
   //Structures to record output
   int nstore=(niter-nburn)/nthin;
+  int nstore2=nstore;
   if(nburn % nthin!=0){
     nstore=nstore+1;
   }
   NumericMatrix out(nstore,3);
-  NumericMatrix sxout(nstore,M);
-  NumericMatrix syout(nstore,M);
-  NumericMatrix zout(nstore,M);
+  if(!storeLatent){
+    nstore2=1;
+  }
+  NumericMatrix sxout(nstore2,M);
+  NumericMatrix syout(nstore2,M);
+  NumericMatrix zout(nstore2,M);
   int iteridx=0;
   //Starting log likelihood obs mod
   llysum=0;
@@ -361,7 +178,6 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, NumericMatrix lamd, Intege
       }
     }
   }
-  
   //start MCMC here
   int iter;
   for(iter=0; iter<niter; iter++){
@@ -410,7 +226,6 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, NumericMatrix lamd, Intege
         llysum=llycandsum;
       }
     }
-
     // Update sigma
     rand=Rcpp::rnorm(1,sigma,propsigma);
     if(rand(0) > 0){
@@ -482,7 +297,6 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, NumericMatrix lamd, Intege
     //update psi
     N=sum(z);
     psi=Rcpp::rbeta(1, 1 + N, 1 + M - N);
-
     //Update Activity Centers
     for(int i=0; i<M; i++) {
       ScandX=Rcpp::rnorm(1,s(i,0),propsx);
@@ -528,9 +342,11 @@ List MCMC1(double lam0, double sigma,NumericMatrix y, NumericMatrix lamd, Intege
     }
   //Record output
   if(((iter+1)>nburn)&((iter+1) % nthin==0)){
-    sxout(iteridx,_)= s(_,0);
-    syout(iteridx,_)= s(_,1);
-    zout(iteridx,_)= z;
+    if(storeLatent){
+      sxout(iteridx,_)= s(_,0);
+      syout(iteridx,_)= s(_,1);
+      zout(iteridx,_)= z;
+    }
     out(iteridx,0)=lam0;
     out(iteridx,1)=sigma;
     out(iteridx,2)=N;
@@ -545,38 +361,7 @@ to_return[3] = zout;
 return to_return;
 }
 
-///////////////////////////Add trap history functionality////////////////////////
-//likelihood calculation
-#include <Rcpp.h>
-    using namespace Rcpp;
-//[[Rcpp::export]]
-double SCRliktf(IntegerVector z,NumericMatrix lamd,NumericMatrix y,NumericVector K) {
-  //Preallocate
-  int M = z.size();
-  int J=lamd.ncol();
-  NumericMatrix pd(M,J);
-  NumericMatrix v1(M,J);
-  double v2=0;
-  //  Calculate likelihood
-  for(int i=0; i<M; i++) {
-    if(z[i]==1){ //if in pop
-      for(int j=0; j<J; j++){
-        pd(i,j)=1-exp(-lamd(i,j));
-        v1(i,j)=y(i,j)*log(pd(i,j))+(K(j)-y(i,j))*log(1-pd(i,j));
-        if(v1(i,j)==v1(i,j)){
-          v2+=v1(i,j);
-        }
-      }
-    }
-  }
-  double to_return;
-  to_return = v2;
-  return to_return;
-}
-
-
 ////////////////////////////////////////Side matching model///////////////////////////////////////////
-//Individual components first. Full, combined algorithm below.
 
 //likelihood calculation
 #include <Rcpp.h>
@@ -627,666 +412,53 @@ double fulllik(IntegerVector z,NumericMatrix lamd1,NumericMatrix lamd2,NumericMa
   return to_return;
 }
 
-//update lam01, lam02, and sigma
-
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List updateparms(double lam01,double lam02, double sigma, NumericMatrix lamd1,NumericMatrix lamd2,
-                 NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z, NumericMatrix X,int K,
-                 NumericMatrix D) {
-  RNGScope scope;
-  //Preallocate
-  //int M = z.size();
-  //int J=X.nrow();
-  double likcurr=fulllik( z, lamd1, lamd2, yboth,  yleft, yright,  X, K);
-  double liknew=0;
-  double lam01cand=0;
-  double lam02cand=0;
-  double sigmacand=0;
-  NumericVector rand;
-  NumericVector rand2;
-  NumericMatrix lamd1cand;
-  NumericMatrix lamd2cand;
-  double explldiff;
-
-  //Update lam01
-  rand=Rcpp::rnorm(1,lam01,0.05);
-  if(rand(0) > 0){
-    lam01cand=rand(0);
-    lamd1cand=calclamd(lam01cand,sigma,D);
-    liknew=fulllik( z, lamd1cand, lamd2, yboth,  yleft, yright,  X, K);
-    rand2=Rcpp::runif(1);
-    explldiff = exp(liknew-likcurr);
-    if(rand2(0)<explldiff){
-      lam01=lam01cand;
-      lamd1=lamd1cand;
-      likcurr=liknew;
-    }
-  }
-  //Update lam02
-  rand=Rcpp::rnorm(1,lam02,0.05);
-  if(rand(0) > 0){
-    lam02cand=rand(0);
-    lamd2cand=calclamd(lam02cand,sigma,D);
-    liknew=fulllik( z, lamd1, lamd2cand, yboth,  yleft, yright,  X, K);
-    rand2=Rcpp::runif(1);
-    if(rand2(0)<exp(liknew-likcurr)){
-      lam02=lam02cand;
-      lamd2=lamd2cand;
-      likcurr=liknew;
-    }
-  }
-  //Update sigma
-  rand=Rcpp::rnorm(1,sigma,0.1);
-  if(rand(0) > 0){
-    sigmacand=rand(0);
-    lamd1cand=calclamd(lam01,sigmacand,D);
-    lamd2cand=calclamd(lam02,sigmacand,D);
-    liknew=fulllik( z, lamd1cand, lamd2cand, yboth,  yleft, yright,  X, K);
-    rand2=Rcpp::runif(1);
-    if(rand2(0)<exp(liknew-likcurr)){
-      sigma=sigmacand;
-      lamd1=lamd1cand;
-      lamd2=lamd2cand;
-      likcurr=liknew;
-    }
-  }
-  List to_return(6);
-  to_return[0] = lam01;
-  to_return[1] = lam02;
-  to_return[2] = sigma;
-  to_return[3] = lamd1;
-  to_return[4] = lamd2;
-  to_return[5] = likcurr;
-  return to_return;
-}
-
-//update IDs
-#include <Rcpp.h>
-using namespace Rcpp;
-
-// [[Rcpp::export]]
-List swapC(IntegerVector z,int Nfixed,IntegerVector ID_L, IntegerVector ID_R,NumericMatrix s,int swap,double swaptol,
-           NumericMatrix lamd1,NumericMatrix lamd2, NumericMatrix yboth,NumericMatrix yleft, NumericMatrix yright,IntegerMatrix X, int K,
-           IntegerVector left, IntegerVector right,double likcurr) {
-  int M = z.size();
-  RNGScope scope;
-  //  Build map and candidate map for L and R separately
-
-  //Build mapL
-  IntegerMatrix mapL(M,2);
-  IntegerVector v=seq_len(M);
-  mapL(_,1)=ID_L;
-  mapL(_,0)=v;
-  IntegerMatrix candmapL=Rcpp::clone(mapL);
-  for (int i=0; i<M; i++) {
-    if(z[candmapL(i,1)-1]==0){
-      candmapL(i,1)= -1;
-    }
-    if(i<Nfixed){
-      candmapL(i,0)= -1;
-      candmapL(i,1)= -1;
-    }
-    if(z(i)==0){
-      candmapL(i,0)= -1;
-    }
-  }
-
-  //Find outcandsL and incandsL
-  IntegerVector outcandsL=v[candmapL(_,1)>0];
-  IntegerVector incandsL=v[candmapL(_,0)>0];
-  int insizeL=incandsL.size();
-  int outsizeL=outcandsL.size();
-
-  //Build mapR
-  IntegerMatrix mapR(M,2);
-  mapR(_,1)=ID_R;
-  mapR(_,0)=v;
-  IntegerMatrix candmapR=Rcpp::clone(mapR);
-  for (int i=0; i<M; i++) {
-    if(z[candmapR(i,1)-1]==0){
-      candmapR(i,1)= -1;
-    }
-    if(i<Nfixed){
-      candmapR(i,0)= -1;
-      candmapR(i,1)= -1;
-    }
-    if(z(i)==0){
-      candmapR(i,0)= -1;
-    }
-  }
-
-  //Find outcandsR and incandsR
-  IntegerVector outcandsR=v[candmapR(_,1)>0];
-  IntegerVector incandsR=v[candmapR(_,0)>0];
-  int insizeR=incandsR.size();
-  int outsizeR=outcandsR.size();
-
-  //Build left swapout bins for sample function
-  //swapin bins vary in size so must be calculated in for loop
-  NumericVector binsL(outsizeL+1);
-  double x;
-  for (int i=0; i<(outsizeL+1); i++) {
-    binsL(i)=i;
-    x=binsL(i)/outsizeL;
-    binsL(i)=x;
-  }
-
-  //Build right swapout bins for sample function
-  //swapin bins vary in size so must be calculated in for loop
-  NumericVector binsR(outsizeR+1);
-  for (int i=0; i<(outsizeR+1); i++) {
-    binsR(i)=i;
-    x=binsR(i)/outsizeR;
-    binsR(i)=x;
-  }
-
-  //Prespecify storage for objects that dont change size in loop
-  //Swapping structures
-  NumericVector rand(1);
-  int guy1;
-  int guy2;
-  int swapin;
-  int swapout;
-  int idx=0;
-  double ncand;
-  double ncand2;
-  int match;
-  double jumpprob;
-  double backprob;
-  NumericVector Dl(incandsL.size());
-  NumericVector Dr(incandsR.size());
-  IntegerVector possible;
-  IntegerVector unpossible;
-  NumericVector trashL(insizeL);
-  NumericVector trashR(insizeR);
-  IntegerVector newID(M);
-  int J=yleft.ncol();
-  NumericMatrix ylefttmp(M,J);
-  NumericMatrix yrighttmp(M,J);  //could use same structure but dont want to get confused
-
-  //ll structures
-  NumericMatrix prepart(2,J);
-  NumericMatrix postpart(2,J);
-  NumericMatrix pd1(2,J);
-  NumericMatrix pd12(2,J);
-  NumericVector swapped(2);
-  double llpre;
-  double llpost;
-
-  //MH structures
-  double lldiff;
-
-  //Housekeeping structures
-  NumericVector guycounts(M);
-  LogicalVector zeroguys(M);
-
-  ///////////////// //swap left sides//////////////
-  for (int l=0; l<swap; l++) {
-    //Find guy 1
-    rand=Rcpp::runif(1);
-    idx=0;
-    for (int i=0; i<(outsizeL+1); i++) {
-      if(binsL(i)<rand(0)){
-        idx=idx+1;
-      }
-    }
-    guy1=outcandsL(idx-1);
-
-    //find swapout
-    swapout=mapL(guy1-1,1);
-
-    //calculate distances and find possible switches
-    for (int i=0; i<insizeL; i++) {
-      Dl(i) = sqrt( pow( s(swapout-1,0) - s(incandsL(i)-1,0), 2.0) + pow( s(swapout-1,1) - s(incandsL(i)-1,1), 2.0) );
-    }
-    possible=incandsL[Dl < swaptol];
-    ncand=possible.size();
-    jumpprob=1/ncand;
-
-    //swap in
-    if(ncand>1){
-      NumericVector binsL2(ncand+1);
-      rand=Rcpp::runif(1);
-      idx=0;
-      for (int i=0; i<(ncand+1); i++) {
-        binsL2(i)=i;
-        x=binsL2(i)/ncand;
-        binsL2(i)=x;
-        if(x<rand(0)){
-          idx=idx+1;
-        }
-      }
-      swapin=possible(idx-1);
-    }else{
-      swapin=possible(0);
-    }
-    for (int i=0; i<incandsL.size(); i++) {
-      trashL(i) = sqrt( pow( s(swapin-1,0) - s(incandsL(i)-1,0), 2.0) + pow( s(swapin-1,1) - s(incandsL(i)-1,1), 2.0) );
-    }
-    unpossible=incandsL[trashL < swaptol];
-    ncand2=unpossible.size();
-    backprob=1/ncand2;
-    //find guy2
-    for (int i=0; i<M; i++) {
-      match=mapL(i,1);
-      if(match==swapin){
-        guy2=i+1;
-      }
-    }
-    //update ID_L
-    newID=Rcpp::clone(ID_L);
-    newID(guy1-1)=swapin;
-    newID(guy2-1)=swapout;
-
-    //Make new left data set
-    idx=0;
-    for (int i=0; i<M; i++) {
-      for(int j=0; j<J; j++) {
-        ylefttmp(newID(i)-1,j)=0;
-        for (int k=0; k<K; k++) {
-          ylefttmp(newID(i)-1,j)+=left(idx);
-          idx+=1;
-        }
-      }
-    }
-    //Calculate likelihoods pre and post switch. Only need to calc for left data
-    swapped(0)=swapout;
-    swapped(1)=swapin;
-    llpre=0;
-    llpost=0;
-    for(int i=0; i<2; i++) {
-      for(int j=0; j<J; j++){
-        pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
-        if(X(j,2)==2){ //if double trap
-          pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-          prepart(i,j)=yleft(swapped(i)-1,j)*log(pd12(i,j))+(K-yleft(swapped(i)-1,j))*log(1-pd12(i,j));
-          postpart(i,j)=ylefttmp(swapped(i)-1,j)*log(pd12(i,j))+(K-ylefttmp(swapped(i)-1,j))*log(1-pd12(i,j));
-        }else{ //if single trap
-          prepart(i,j)=yleft(swapped(i)-1,j)*log(pd1(i,j))+(K-yleft(swapped(i)-1,j))*log(1-pd1(i,j));
-          postpart(i,j)=ylefttmp(swapped(i)-1,j)*log(pd1(i,j))+(K-ylefttmp(swapped(i)-1,j))*log(1-pd1(i,j));
-        }
-        if((prepart(i,j)==prepart(i,j))&(!std::isinf(prepart(i,j)))){
-          llpre+=prepart(i,j);
-        }
-        if((postpart(i,j)==postpart(i,j))&(!std::isinf(postpart(i,j)))){
-          llpost+=postpart(i,j);
-        }
-      }
-    }
-
-    //MH step
-    rand=Rcpp::runif(1);
-    lldiff=llpost-llpre;
-    if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-      likcurr+=lldiff;
-      yleft=Rcpp::clone(ylefttmp);
-      ID_L=Rcpp::clone(newID);
-      mapL(guy1-1,1)=swapin;
-      mapL(guy2-1,1)=swapout;
-    }
-
-  }
-  ///////////////// //swap right sides/////////////////
-  for (int l=0; l<swap; l++) {
-    //Find guy 1
-    rand=Rcpp::runif(1);
-    idx=0;
-    for (int i=0; i<(outsizeR+1); i++) {
-      if(binsR(i)<rand(0)){
-        idx=idx+1;
-      }
-    }
-    guy1=outcandsR(idx-1);
-
-    //find swapout
-    swapout=mapR(guy1-1,1);
-
-    //calculate distances and find possible switches
-    for (int i=0; i<insizeR; i++) {
-      Dr(i) = sqrt( pow( s(swapout-1,0) - s(incandsR(i)-1,0), 2.0) + pow( s(swapout-1,1) - s(incandsR(i)-1,1), 2.0) );
-    }
-    possible=incandsR[Dr < swaptol];
-    ncand=possible.size();
-    jumpprob=1/ncand;
-
-    //swap in
-    if(ncand>1){
-      NumericVector binsR2(ncand+1);
-      rand=Rcpp::runif(1);
-      idx=0;
-      for (int i=0; i<(ncand+1); i++) {
-        binsR2(i)=i;
-        x=binsR2(i)/ncand;
-        binsR2(i)=x;
-        if(x<rand(0)){
-          idx=idx+1;
-        }
-      }
-      swapin=possible(idx-1);
-    }else{
-      swapin=possible(0);
-    }
-    for (int i=0; i<incandsR.size(); i++) {
-      trashR(i) = sqrt( pow( s(swapin-1,0) - s(incandsR(i)-1,0), 2.0) + pow( s(swapin-1,1) - s(incandsR(i)-1,1), 2.0) );
-    }
-    unpossible=incandsR[trashR < swaptol];
-    ncand2=unpossible.size();
-    backprob=1/ncand2;
-    //find guy2
-    for (int i=0; i<M; i++) {
-      match=mapR(i,1);
-      if(match==swapin){
-        guy2=i+1;
-      }
-    }
-    //update ID_R
-    newID=Rcpp::clone(ID_R);
-    newID(guy1-1)=swapin;
-    newID(guy2-1)=swapout;
-
-    //Make new right data set
-    idx=0;
-    for (int i=0; i<M; i++) {
-      for(int j=0; j<J; j++) {
-        yrighttmp(newID(i)-1,j)=0;
-        for (int k=0; k<K; k++) {
-          yrighttmp(newID(i)-1,j)+=right(idx);
-          idx+=1;
-        }
-      }
-    }
-    //Calculate likelihoods pre and post switch. Only need to calc for right side data
-    swapped(0)=swapout;
-    swapped(1)=swapin;
-    llpre=0;
-    llpost=0;
-    for(int i=0; i<2; i++){
-      for(int j=0; j<J; j++){
-        pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
-        if(X(j,2)==2){ //if double trap
-          pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-          prepart(i,j)=yright(swapped(i)-1,j)*log(pd12(i,j))+(K-yright(swapped(i)-1,j))*log(1-pd12(i,j));
-          postpart(i,j)=yrighttmp(swapped(i)-1,j)*log(pd12(i,j))+(K-yrighttmp(swapped(i)-1,j))*log(1-pd12(i,j));
-        }else{ //if single trap
-          prepart(i,j)=yright(swapped(i)-1,j)*log(pd1(i,j))+(K-yright(swapped(i)-1,j))*log(1-pd1(i,j));
-          postpart(i,j)=yrighttmp(swapped(i)-1,j)*log(pd1(i,j))+(K-yrighttmp(swapped(i)-1,j))*log(1-pd1(i,j));
-        }
-        if((prepart(i,j)==prepart(i,j))&(!std::isinf(prepart(i,j)))){
-          llpre+=prepart(i,j);
-        }
-        if((postpart(i,j)==postpart(i,j))&(!std::isinf(postpart(i,j)))){
-          llpost+=postpart(i,j);
-        }
-      }
-    }
-
-    //MH step
-    rand=Rcpp::runif(1);
-    lldiff=llpost-llpre;
-    if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-      likcurr+=lldiff;
-      yright=Rcpp::clone(yrighttmp);
-      ID_R=Rcpp::clone(newID);
-      mapR(guy1-1,1)=swapin;
-      mapR(guy2-1,1)=swapout;
-    }
-
-  } //end swapping rights
-  //}
-  //Recalculate zeroguys
-  for (int i=0; i<M; i++) {
-    guycounts(i)=0;
-    for(int j=0; j<J; j++) {
-      guycounts(i)+=yboth(i,j)+yright(i,j)+yleft(i,j);
-    }
-    zeroguys(i)=guycounts(i)==0;
-  }
-
-  List to_return(6);
-  to_return[0] = likcurr;
-  to_return[1] = ID_L;
-  to_return[2] = ID_R;
-  to_return[3] = yleft;
-  to_return[4] = yright;
-  to_return[5] = zeroguys;
-  return to_return;
-}
-
-//Update psi,z
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List updatePsi2(IntegerVector z, LogicalVector zeroguys, IntegerVector knownvector,NumericMatrix lamd1,
-               NumericMatrix lamd2, NumericMatrix yboth,NumericMatrix yleft,
-               NumericMatrix yright,IntegerMatrix X, int K,double psi) {
-  RNGScope scope;
-  //Preallocate
-  int M = z.size();
-  int J=yleft.ncol();
-  NumericMatrix pd1(M,J);
-  NumericMatrix pd12(M,J);
-  NumericMatrix pd2(M,J);
-  NumericMatrix pd1traps(M,J);
-  NumericMatrix pd2traps(M,J);
-  NumericMatrix pbar1(M,J);
-  NumericMatrix pbar2(M,J);
-  NumericMatrix pbar0(M,J);
-  NumericVector prob0(M);
-  NumericVector fc(M);
-  LogicalVector swappable(M);
-  NumericMatrix partboth(M,J);
-  NumericMatrix partleft(M,J);
-  NumericMatrix partright(M,J);
-  //  Calculate probability of no capture and update z
-  for(int i=0; i<M; i++) {
-    prob0(i)=1;
-    for(int j=0; j<J; j++){
-      pd1(i,j)=1-exp(-lamd1(i,j));
-      if(X(j,2)==2){ //if double trap
-        pd2(i,j)=1-exp(-lamd2(i,j));
-        pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-        pd1traps(i,j)=pd12(i,j);
-        pd2traps(i,j)=pd2(i,j);
-      }else{ //if single trap
-        pd1traps(i,j)=pd1(i,j);
-        pd2traps(i,j)=0;
-      }
-      pbar1(i,j)=pow(1-pd1traps(i,j),2*K);
-      pbar2(i,j)=pow(1-pd2traps(i,j),K);
-      pbar0(i,j)=pbar1(i,j)*pbar2(i,j);
-      prob0(i)*=pbar0(i,j);
-    }
-    fc(i)=prob0(i)*psi/(prob0(i)*psi + 1-psi);
-    swappable(i)=(knownvector(i)==0)&zeroguys(i);
-    if(swappable(i)){
-      NumericVector rand=Rcpp::rbinom(1,1,fc(i));
-      z(i)=rand(0);
-    }
-  }
-  //Calculate current likelihood (no constants)
-  double v=0;
-  for(int i=0; i<M; i++) {
-    if(z[i]==1){
-      for(int j=0; j<J; j++){
-        if(X(j,2)==2){ //if double trap
-          partboth(i,j)=yboth(i,j)*log(pd2(i,j))+(K-yboth(i,j))*log(1-pd2(i,j));
-          partleft(i,j)=yleft(i,j)*log(pd12(i,j))+(K-yleft(i,j))*log(1-pd12(i,j));
-          partright(i,j)=yright(i,j)*log(pd12(i,j))+(K-yright(i,j))*log(1-pd12(i,j));
-        }else{ //if single trap
-          partboth(i,j)=0;
-          partleft(i,j)=yleft(i,j)*log(pd1(i,j))+(K-yleft(i,j))*log(1-pd1(i,j));
-          partright(i,j)=yright(i,j)*log(pd1(i,j))+(K-yright(i,j))*log(1-pd1(i,j));
-        }
-        if(partboth(i,j)==partboth(i,j)){
-          v+=partboth(i,j);
-        }
-        if(partleft(i,j)==partleft(i,j)){
-          v+=partleft(i,j);
-        }
-        if(partright(i,j)==partright(i,j)){
-          v+=partright(i,j);
-        }
-      }
-    }
-  }
-  //update psi
-  NumericVector psinew=Rcpp::rbeta(1, 1 + sum(z), 1 + M - sum(z));
-  List to_return(3);
-  to_return[0] = psinew;
-  to_return[1] = v;
-  to_return[2] = z;
-  return to_return;
-}
-
-//Update activity centers
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List updateACs2(IntegerVector z, NumericMatrix s, IntegerVector xlim,IntegerVector ylim,bool useverts, NumericMatrix vertices,
-               NumericMatrix D, NumericMatrix lamd1,NumericMatrix lamd2, double lam01, double lam02,
-               double sigma, NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, NumericMatrix X,int K) {
-  RNGScope scope;
-  //Preallocate
-  int M = z.size();
-  int J=X.nrow();
-  LogicalVector inbox(1);
-  NumericVector pd1c(J);
-  NumericVector pd12c(J);
-  NumericVector pd2c(J);
-  NumericVector pd1ccand(J);
-  NumericVector pd12ccand(J);
-  NumericVector pd2ccand(J);
-  NumericVector partbothc(J);
-  NumericVector partleftc(J);
-  NumericVector partrightc(J);
-  NumericVector partbothcCand(J);
-  NumericVector partleftcCand(J);
-  NumericVector partrightcCand(J);
-  NumericVector rand(1);
-  double explldiff;
-  NumericVector dtmp(J);
-  NumericVector lamd1cand(J);
-  NumericVector lamd2cand(J);
-  NumericVector ScandX(1);
-  NumericVector ScandY(1);
-  double v;
-  double vcand;
-  NumericMatrix snew=Rcpp::clone(s);
-  NumericMatrix Dnew=Rcpp::clone(D);
-  NumericMatrix lamd1new=Rcpp::clone(lamd1);
-  NumericMatrix lamd2new=Rcpp::clone(lamd2);
-
-
-  //  Update activity centers
-  for(int i=0; i<M; i++) {
-    ScandX=Rcpp::rnorm(1,s(i,0),.2);
-    ScandY=Rcpp::rnorm(1,s(i,1),.2);
-    if(useverts==FALSE){
-      inbox= (ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
-    }else{
-      inbox=inoutCpp(ScandX,ScandY,vertices);
-    }
-    if(inbox(0)){
-        dtmp=pow( pow( rep(ScandX,J) - X(_,0), 2.0) + pow( rep(ScandY,J) - X(_,1), 2.0), 0.5 );
-        lamd1cand=lam01*exp(-dtmp*dtmp/(2*sigma*sigma));
-        lamd2cand=lam02*exp(-dtmp*dtmp/(2*sigma*sigma));
-        if(z[i]==1){ //if in pop, otherwise keep update
-          v=0;
-          vcand=0;
-          //Calculate likelihood for original and candidate
-          for(int j=0; j<J; j++){
-            pd1c(j)=1-exp(-lamd1(i,j));
-            pd1ccand(j)=1-exp(-lamd1cand(j));
-            if(X(j,2)==2){ //if double trap
-              pd12c(j)=2*pd1c(j)-pd1c(j)*pd1c(j);
-              pd12ccand(j)=2*pd1ccand(j)-pd1ccand(j)*pd1ccand(j);
-              pd2c(j)=1-exp(-lamd2(i,j));
-              pd2ccand(j)=1-exp(-lamd2cand(j));
-              partbothc(j)=yboth(i,j)*log(pd2c(j))+(K-yboth(i,j))*log(1-pd2c(j));
-              partleftc(j)=yleft(i,j)*log(pd12c(j))+(K-yleft(i,j))*log(1-pd12c(j));
-              partrightc(j)=yright(i,j)*log(pd12c(j))+(K-yright(i,j))*log(1-pd12c(j));
-              partbothcCand(j)=yboth(i,j)*log(pd2ccand(j))+(K-yboth(i,j))*log(1-pd2ccand(j));
-              partleftcCand(j)=yleft(i,j)*log(pd12ccand(j))+(K-yleft(i,j))*log(1-pd12ccand(j));
-              partrightcCand(j)=yright(i,j)*log(pd12ccand(j))+(K-yright(i,j))*log(1-pd12ccand(j));
-            }else{ //if single trap
-              partbothc(j)=0;
-              partleftc(j)=yleft(i,j)*log(pd1c(j))+(K-yleft(i,j))*log(1-pd1c(j));
-              partrightc(j)=yright(i,j)*log(pd1c(j))+(K-yright(i,j))*log(1-pd1c(j));
-              partleftcCand(j)=yleft(i,j)*log(pd1ccand(j))+(K-yleft(i,j))*log(1-pd1ccand(j));
-              partrightcCand(j)=yright(i,j)*log(pd1ccand(j))+(K-yright(i,j))*log(1-pd1ccand(j));
-            }
-            if(partbothc(j)==partbothc(j)){
-              v+=partbothc(j);
-            }
-            if(partleftc(j)==partleftc(j)){
-              v+=partleftc(j);
-            }
-            if(partrightc(j)==partrightc(j)){
-              v+=partrightc(j);
-            }
-            if(partbothcCand(j)==partbothcCand(j)){
-              vcand+=partbothcCand(j);
-            }
-            if(partleftcCand(j)==partleftcCand(j)){
-              vcand+=partleftcCand(j);
-            }
-            if(partrightcCand(j)==partrightcCand(j)){
-              vcand+=partrightcCand(j);
-            }
-          }
-          rand=Rcpp::runif(1);
-          explldiff=exp(vcand-v);
-        }
-        if((rand(0)<explldiff)|(z[i]==0)){
-          snew(i,0)=ScandX(0);
-          snew(i,1)=ScandY(0);
-          for(int j=0; j<J; j++){
-            Dnew(i,j) = dtmp(j);
-            lamd1new(i,j) = lamd1cand(j);
-            lamd2new(i,j) = lamd2cand(j);
-          }
-        }
-      }
-    }
-    List to_return(4);
-    to_return[0] = snew;
-    to_return[1] = Dnew;
-    to_return[2] = lamd1new;
-    to_return[3] = lamd2new;
-    return to_return;
-}
-
-
-
 ////////////////////////WholeShebang////////////////////////////////
 #include <Rcpp.h>
 using namespace Rcpp;
 // [[Rcpp::export]]
-List MCMC(double lam01,double lam02, double sigma,
-          NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z, NumericMatrix X,int K,
+List MCMC2side(double lam01,double lam02, double sigma,NumericMatrix lamd1,NumericMatrix lamd2,
+          NumericMatrix y_both, NumericMatrix y_left_true, NumericMatrix y_right_true,
+          NumericMatrix y_left_obs, NumericMatrix y_right_obs,
+          IntegerVector z, NumericMatrix X,IntegerVector tf,
           NumericMatrix D,int Nfixed, IntegerVector knownvector,IntegerVector ID_L, IntegerVector ID_R,int swap,double swaptol,
-          IntegerVector left,IntegerVector right,NumericMatrix s,NumericVector psi, NumericVector xlim,NumericVector ylim,
+          NumericMatrix s,NumericVector psi, NumericVector xlim,NumericVector ylim,
           bool useverts, NumericMatrix vertices, double proplam01, double proplam02, double propsigma, double propsx, double propsy,
-          int niter, int nburn, int nthin, LogicalVector updates) {
+          int niter, int nburn, int nthin, LogicalVector updates,bool storeLatent) {
   RNGScope scope;
   int M = z.size();
+  int J=y_both.ncol();
   //Preallocate for update lam01 lam02 sigma
-  double likcurr;//=fulllik( z, lamd1, lamd2, yboth,  yleft, yright,  X, K);
-  double liknew;
-  double lam01cand;
-  double lam02cand;
-  double sigmacand;
+  double  lam01cand;
+  double  lam02cand;
+  double  sigmacand;
   NumericVector rand;
   NumericVector rand2;
-  NumericMatrix lamd1cand;
-  NumericMatrix lamd2cand;
+  NumericMatrix lamd1cand(M,J);
+  NumericMatrix lamd2cand(M,J);
+  NumericMatrix pd1cand(M,J);
+  NumericMatrix pd12cand(M,J);
+  NumericMatrix pd2cand(M,J);
+  NumericMatrix pd1(M,J);
+  NumericMatrix pd12(M,J);
+  NumericMatrix pd2(M,J);
+  NumericMatrix  ll_y_both_curr(M,J);
+  NumericMatrix  ll_y_left_curr(M,J);
+  NumericMatrix  ll_y_right_curr(M,J);
+  NumericMatrix  ll_y_both_cand(M,J);
+  NumericMatrix  ll_y_left_cand(M,J);
+  NumericMatrix  ll_y_right_cand(M,J);
+  double llysum;
+  double llycandsum;
+  double lly1sum;
+  double lly1candsum;
+  double lly2sum;
+  double lly2candsum;
   //Preallocate side swapping structures
   //Swapping structures
   IntegerVector IDs=seq_len(M);
   int guy1=0;
   int guy2=0;
+  IntegerVector swapped(2);
   int swapin;
   int swapout;
   int idx;
@@ -1298,102 +470,120 @@ List MCMC(double lam01,double lam02, double sigma,
   IntegerVector possible;
   IntegerVector unpossible;
   IntegerVector newID(M);
-  int J=yleft.ncol();
-  NumericMatrix ylefttmp(M,J);
-  NumericMatrix yrighttmp(M,J);  //could use same structure but dont want to get confused
-
-  //ll structures
-  NumericMatrix prepart(2,J);
-  NumericMatrix postpart(2,J);
-  NumericMatrix pd1b(2,J);
-  NumericMatrix pd12b(2,J);
-  NumericVector swapped(2);
-  double llpre;
-  double llpost;
-
-  //MH structures
-  double lldiff=0;
+  NumericMatrix y_left_tmp(M,J);
+  NumericMatrix y_right_tmp(M,J);  //could use same structure but dont want to get confused
 
   //Housekeeping structures
   NumericVector guycounts(M);
   LogicalVector zeroguys(M);
-
+  
   //Preallocate for Psi update
-  NumericMatrix pd1(M,J);
-  NumericMatrix pd12(M,J);
-  NumericMatrix pd2(M,J);
-  NumericMatrix pd1traps(M,J);
-  NumericMatrix pd2traps(M,J);
-  NumericMatrix pbar1(M,J);
-  NumericMatrix pbar2(M,J);
-  NumericMatrix pbar0(M,J);
-  NumericVector prob0(M);
   NumericVector fc(M);
   LogicalVector swappable(M);
-  NumericMatrix partboth(M,J);
-  NumericMatrix partleft(M,J);
-  NumericMatrix partright(M,J);
+  NumericVector prob0(M);
+  NumericMatrix pbar1(M,J);
+  NumericMatrix pbar2(M,J);
   int N;
-
+  
   //Preallocate for updating activity centers
   LogicalVector inbox(1);
-  NumericVector pd1c(J);
-  NumericVector pd12c(J);
-  NumericVector pd2c(J);
-  NumericVector pd1ccand(J);
-  NumericVector pd12ccand(J);
-  NumericVector pd2ccand(J);
-  NumericVector partbothc(J);
-  NumericVector partleftc(J);
-  NumericVector partrightc(J);
-  NumericVector partbothcCand(J);
-  NumericVector partleftcCand(J);
-  NumericVector partrightcCand(J);
   NumericVector dtmp(J);
-  NumericVector lamd1candc(J);
-  NumericVector lamd2candc(J);
   NumericVector ScandX(1);
   NumericVector ScandY(1);
-  double vcand;
-  double v;
   //Structures to record output
   int nstore=(niter-nburn)/nthin;
   if(nburn % nthin!=0){
     nstore=nstore+1;
   }
   NumericMatrix out(nstore,4);
-  NumericMatrix sxout(nstore,M);
-  NumericMatrix syout(nstore,M);
-  NumericMatrix zout(nstore,M);
-  NumericMatrix ID_Lout(nstore,M);
-  NumericMatrix ID_Rout(nstore,M);
+  int nstore2=nstore;
+  if(!storeLatent){
+    nstore2=1;
+  }
+  NumericMatrix sxout(nstore2,M);
+  NumericMatrix syout(nstore2,M);
+  NumericMatrix zout(nstore2,M);
+  NumericMatrix ID_Lout(nstore2,M);
+  NumericMatrix ID_Rout(nstore2,M);
+  int iter=0;
   int iteridx=0;
-  //calc lamds  D too? Currently an input
-  NumericMatrix lamd1=calclamd(lam01,sigma,D);
-  NumericMatrix lamd2=calclamd(lam02,sigma,D);
+  //Starting log likelihood obs mod
+  for(int i=0; i<M; i++) {
+    for(int j=0; j<J; j++){
+      pd1(i,j)=1-exp(-lamd1(i,j));
+      pd2(i,j)=1-exp(-lamd2(i,j));
+      if(X(j,2)==2){ //if double trap
+        pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
+        ll_y_both_curr(i,j)=z(i)*(y_both(i,j)*log(pd2(i,j))+(tf(j)-y_both(i,j))*log(1-pd2(i,j)));
+        ll_y_left_curr(i,j)=z(i)*(y_left_true(i,j)*log(pd12(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd12(i,j)));
+        ll_y_right_curr(i,j)=z(i)*(y_right_true(i,j)*log(pd12(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd12(i,j)));
+      }else{//single trap
+        ll_y_both_curr(i,j)=0;
+        ll_y_left_curr(i,j)=z(i)*(y_left_true(i,j)*log(pd1(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd1(i,j)));
+        ll_y_right_curr(i,j)=z(i)*(y_right_true(i,j)*log(pd1(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd1(i,j)));
+      }
+    }
+  }
+  
   //start for loop here
-  int iter;
   for(iter=0; iter<niter; iter++){
-    //update lam01, lam02, and sigma
-
-    likcurr=fulllik( z, lamd1, lamd2, yboth,  yleft, yright,  X, K);
-    liknew=0;
-    lam01cand=0;
-    lam02cand=0;
-    sigmacand=0;
-
+    //Sum single and both side LL on each iteration
+    lly1sum=0;
+    lly2sum=0;
+    for(int i=0; i<M; i++) {
+      for(int j=0; j<J; j++){
+        if(X(j,2)==2){ //if double trap
+          if((ll_y_both_curr(i,j)==ll_y_both_curr(i,j))&(!std::isinf(ll_y_both_curr(i,j)))){
+            lly2sum+=ll_y_both_curr(i,j); 
+          }
+        }
+        if((ll_y_left_curr(i,j)==ll_y_left_curr(i,j))&(!std::isinf(ll_y_left_curr(i,j)))){
+          lly1sum+=ll_y_left_curr(i,j); 
+        }
+        if((ll_y_right_curr(i,j)==ll_y_right_curr(i,j))&(!std::isinf(ll_y_right_curr(i,j)))){
+          lly1sum+=ll_y_right_curr(i,j); 
+        }
+      }
+    }
     //Update lam01
     if(updates(0)){
       rand=Rcpp::rnorm(1,lam01,proplam01);
       if(rand(0) > 0){
         lam01cand=rand(0);
-        lamd1cand=calclamd(lam01cand,sigma,D);
-        liknew=fulllik( z, lamd1cand, lamd2, yboth,  yleft, yright,  X, K);
+        lly1candsum=0;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd1cand(i,j)=lam01cand*exp(-D(i,j)*D(i,j)/(2*sigma*sigma));
+            pd1cand(i,j)=1-exp(-lamd1cand(i,j));
+            if(X(j,2)==2){ //if double trap
+              pd12cand(i,j)=2*pd1cand(i,j)-pd1cand(i,j)*pd1cand(i,j);
+              ll_y_left_cand(i,j)=z(i)*(y_left_true(i,j)*log(pd12cand(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd12cand(i,j)));
+              ll_y_right_cand(i,j)=z(i)*(y_right_true(i,j)*log(pd12cand(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd12cand(i,j)));
+            }else{//single trap
+              ll_y_left_cand(i,j)=z(i)*(y_left_true(i,j)*log(pd1cand(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd1cand(i,j)));
+              ll_y_right_cand(i,j)=z(i)*(y_right_true(i,j)*log(pd1cand(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd1cand(i,j)));
+            }
+            if((ll_y_left_cand(i,j)==ll_y_left_cand(i,j))&(!std::isinf(ll_y_left_cand(i,j)))){
+              lly1candsum+=ll_y_left_cand(i,j);
+            }
+            if((ll_y_right_cand(i,j)==ll_y_right_cand(i,j))&(!std::isinf(ll_y_right_cand(i,j)))){
+              lly1candsum+=ll_y_right_cand(i,j);
+            }
+          }
+        }
         rand2=Rcpp::runif(1);
-        if(rand2(0)<exp(liknew-likcurr)){
+        if(rand2(0)<exp(lly1candsum-lly1sum)){
           lam01=lam01cand;
-          lamd1=lamd1cand;
-          likcurr=liknew;
+          lly1sum=lly1candsum;
+          for(int i=0; i<M; i++) {
+            for(int j=0; j<J; j++){
+              lamd1(i,j)=lamd1cand(i,j);
+              pd1(i,j)=pd1cand(i,j);
+              pd12(i,j)=pd12cand(i,j);
+              ll_y_left_curr(i,j)=ll_y_left_cand(i,j);
+              ll_y_right_curr(i,j)=ll_y_right_cand(i,j);
+            }
+          }
         }
       }
     }
@@ -1402,35 +592,85 @@ List MCMC(double lam01,double lam02, double sigma,
       rand=Rcpp::rnorm(1,lam02,proplam02);
       if(rand(0) > 0){
         lam02cand=rand(0);
-        lamd2cand=calclamd(lam02cand,sigma,D);
-        liknew=fulllik( z, lamd1, lamd2cand, yboth,  yleft, yright,  X, K);
+        lly2candsum=0;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd2cand(i,j)=lam02cand*exp(-D(i,j)*D(i,j)/(2*sigma*sigma));
+            pd2cand(i,j)=1-exp(-lamd2cand(i,j));
+            if(X(j,2)==2){ //if double trap
+              ll_y_both_cand(i,j)=z(i)*(y_both(i,j)*log(pd2cand(i,j))+(tf(j)-y_both(i,j))*log(1-pd2cand(i,j)));
+              if((ll_y_both_cand(i,j)==ll_y_both_cand(i,j))&(!std::isinf(ll_y_both_cand(i,j)))){
+                lly2candsum+=ll_y_both_cand(i,j);
+              }
+            }
+          }
+        }
         rand2=Rcpp::runif(1);
-        if(rand2(0)<exp(liknew-likcurr)){
+        if(rand2(0)<exp(lly2candsum-lly2sum)){
+          lly2sum=lly2candsum;
           lam02=lam02cand;
-          lamd2=lamd2cand;
-          likcurr=liknew;
+          for(int i=0; i<M; i++) {
+            for(int j=0; j<J; j++){
+              lamd2(i,j)=lamd2cand(i,j);
+              pd2(i,j)=pd2cand(i,j);
+              ll_y_both_curr(i,j)=ll_y_both_cand(i,j);
+            }
+          }
         }
       }
     }
-    //Update sigma
+    //update sigma
     rand=Rcpp::rnorm(1,sigma,propsigma);
     if(rand(0) > 0){
       sigmacand=rand(0);
-      lamd1cand=calclamd(lam01,sigmacand,D);
-      lamd2cand=calclamd(lam02,sigmacand,D);
-      liknew=fulllik( z, lamd1cand, lamd2cand, yboth,  yleft, yright,  X, K);
+      lly1candsum=0;
+      lly2candsum=0;
+      for(int i=0; i<M; i++) {
+        for(int j=0; j<J; j++){
+          lamd1cand(i,j)=lam01*exp(-D(i,j)*D(i,j)/(2*sigmacand*sigmacand));
+          lamd2cand(i,j)=lam02*exp(-D(i,j)*D(i,j)/(2*sigmacand*sigmacand));
+          pd1cand(i,j)=1-exp(-lamd1cand(i,j));
+          pd2cand(i,j)=1-exp(-lamd2cand(i,j));
+          if(X(j,2)==2){ //if double trap
+            ll_y_both_cand(i,j)=z(i)*(y_both(i,j)*log(pd2cand(i,j))+(tf(j)-y_both(i,j))*log(1-pd2cand(i,j)));
+            if((ll_y_both_cand(i,j)==ll_y_both_cand(i,j))&(!std::isinf(ll_y_both_cand(i,j)))){
+              lly2candsum+=ll_y_both_cand(i,j);
+            }
+            pd12cand(i,j)=2*pd1cand(i,j)-pd1cand(i,j)*pd1cand(i,j);
+            ll_y_left_cand(i,j)=z(i)*(y_left_true(i,j)*log(pd12cand(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd12cand(i,j)));
+            ll_y_right_cand(i,j)=z(i)*(y_right_true(i,j)*log(pd12cand(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd12cand(i,j)));
+          }else{//single trap
+            ll_y_left_cand(i,j)=z(i)*(y_left_true(i,j)*log(pd1cand(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd1cand(i,j)));
+            ll_y_right_cand(i,j)=z(i)*(y_right_true(i,j)*log(pd1cand(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd1cand(i,j)));
+          }
+          if((ll_y_left_cand(i,j)==ll_y_left_cand(i,j))&(!std::isinf(ll_y_left_cand(i,j)))){
+            lly1candsum+=ll_y_left_cand(i,j);
+          }
+          if((ll_y_right_cand(i,j)==ll_y_right_cand(i,j))&(!std::isinf(ll_y_right_cand(i,j)))){
+            lly1candsum+=ll_y_right_cand(i,j);
+          }
+        }
+      }
       rand2=Rcpp::runif(1);
-      if(rand2(0)<exp(liknew-likcurr)){
+      if(rand2(0)<exp((lly1candsum+lly2candsum)-(lly1sum+lly2sum))){
         sigma=sigmacand;
-        lamd1=lamd1cand;
-        lamd2=lamd2cand;
-        likcurr=liknew;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd1(i,j)=lamd1cand(i,j);
+            lamd2(i,j)=lamd2cand(i,j);
+            pd1(i,j)=pd1cand(i,j);
+            pd12(i,j)=pd12cand(i,j);
+            pd2(i,j)=pd2cand(i,j);
+            ll_y_both_curr(i,j)=ll_y_both_cand(i,j);
+            ll_y_left_curr(i,j)=ll_y_left_cand(i,j);
+            ll_y_right_curr(i,j)=ll_y_right_cand(i,j);
+          }
+        }
       }
     }
-
     //  Update left sides
     if(updates(2)){
-      //Build mapL
+      //   //Build mapL
       IntegerMatrix mapL(M,2);
       mapL(_,1)=ID_L;
       mapL(_,0)=IDs;
@@ -1527,56 +767,50 @@ List MCMC(double lam01,double lam02, double sigma,
         newID(guy2-1)=swapout;
 
         //Make new left data set
-        idx=0;
+
         for (int i=0; i<M; i++) {
           for(int j=0; j<J; j++) {
-            ylefttmp(newID(i)-1,j)=0;
-            for (int k=0; k<K; k++) {
-              ylefttmp(newID(i)-1,j)+=left(idx);
-              idx+=1;
-            }
+            y_left_tmp(newID(i)-1,j)=y_left_obs(i,j);
           }
         }
-        //Calculate likelihoods pre and post switch. Only need to calc for left data
         swapped(0)=swapout;
         swapped(1)=swapin;
-        llpre=0;
-        llpost=0;
+        //Calculate likelihoods pre and post switch. Only need to calc for left data
+        llysum=0;
+        llycandsum=0;
         for(int i=0; i<2; i++) {
           for(int j=0; j<J; j++){
-            pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
             if(X(j,2)==2){ //if double trap
-              pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-              prepart(i,j)=yleft(swapped(i)-1,j)*log(pd12(i,j))+(K-yleft(swapped(i)-1,j))*log(1-pd12(i,j));
-              postpart(i,j)=ylefttmp(swapped(i)-1,j)*log(pd12(i,j))+(K-ylefttmp(swapped(i)-1,j))*log(1-pd12(i,j));
-            }else{ //if single trap
-              prepart(i,j)=yleft(swapped(i)-1,j)*log(pd1(i,j))+(K-yleft(swapped(i)-1,j))*log(1-pd1(i,j));
-              postpart(i,j)=ylefttmp(swapped(i)-1,j)*log(pd1(i,j))+(K-ylefttmp(swapped(i)-1,j))*log(1-pd1(i,j));
+              ll_y_left_cand(swapped(i)-1,j)=(y_left_tmp(swapped(i)-1,j)*log(pd12(swapped(i)-1,j))+(tf(j)-y_left_tmp(swapped(i)-1,j))*log(1-pd12(swapped(i)-1,j)));
+            }else{//single trap
+              ll_y_left_cand(swapped(i)-1,j)=(y_left_tmp(swapped(i)-1,j)*log(pd1(swapped(i)-1,j))+(tf(j)-y_left_tmp(swapped(i)-1,j))*log(1-pd1(swapped(i)-1,j)));
             }
-            if((prepart(i,j)==prepart(i,j))&(!std::isinf(prepart(i,j)))){
-              llpre+=prepart(i,j);
+            if((ll_y_left_cand(swapped(i)-1,j)==ll_y_left_cand(swapped(i)-1,j))&(!std::isinf(ll_y_left_cand(swapped(i)-1,j)))){
+              llycandsum+=ll_y_left_cand(swapped(i)-1,j);
             }
-            if((postpart(i,j)==postpart(i,j))&(!std::isinf(postpart(i,j)))){
-              llpost+=postpart(i,j);
+            if((ll_y_left_curr(swapped(i)-1,j)==ll_y_left_curr(swapped(i)-1,j))&(!std::isinf(ll_y_left_curr(swapped(i)-1,j)))){
+              llysum+=ll_y_left_curr(swapped(i)-1,j);
             }
           }
         }
         //MH step
         rand=Rcpp::runif(1);
-        lldiff=llpost-llpre;
-        if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-          // likcurr+=lldiff;
-          yleft=Rcpp::clone(ylefttmp);
+        if(rand(0)<(exp(llycandsum-llysum)*(backprob/jumpprob))){
+          y_left_true=Rcpp::clone(y_left_tmp);
           ID_L=Rcpp::clone(newID);
           mapL(guy1-1,1)=swapin;
           mapL(guy2-1,1)=swapout;
+          for(int i=0; i<2; i++) {
+            for(int j=0; j<J; j++){
+              ll_y_left_curr(swapped(i)-1,j)=ll_y_left_cand(swapped(i)-1,j);
+            }
+          }
         }
-
       }
     }
     //Update Right sides
     if(updates(3)){
-      //Build mapR
+      //   //Build mapR
       IntegerMatrix mapR(M,2);
       mapR(_,1)=ID_R;
       mapR(_,0)=IDs;
@@ -1614,7 +848,7 @@ List MCMC(double lam01,double lam02, double sigma,
         binsR(i)=x;
       }
 
-      ///////////////// //swap right sides/////////////////
+      ///////////////// //swap right sides//////////////
       for (int l=0; l<swap; l++) {
         //Find guy 1
         rand=Rcpp::runif(1);
@@ -1673,200 +907,169 @@ List MCMC(double lam01,double lam02, double sigma,
         newID(guy2-1)=swapout;
 
         //Make new right data set
-        idx=0;
+
         for (int i=0; i<M; i++) {
           for(int j=0; j<J; j++) {
-            yrighttmp(newID(i)-1,j)=0;
-            for (int k=0; k<K; k++) {
-              yrighttmp(newID(i)-1,j)+=right(idx);
-              idx+=1;
-            }
+            y_right_tmp(newID(i)-1,j)=y_right_obs(i,j);
           }
         }
-        //Calculate likelihoods pre and post switch. Only need to calc for right side data
         swapped(0)=swapout;
         swapped(1)=swapin;
-        llpre=0;
-        llpost=0;
-        for(int i=0; i<2; i++){
+        //Calculate likelihoods pre and post switch. Only need to calc for right data
+        llysum=0;
+        llycandsum=0;
+        for(int i=0; i<2; i++) {
           for(int j=0; j<J; j++){
-            pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
             if(X(j,2)==2){ //if double trap
-              pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-              prepart(i,j)=yright(swapped(i)-1,j)*log(pd12(i,j))+(K-yright(swapped(i)-1,j))*log(1-pd12(i,j));
-              postpart(i,j)=yrighttmp(swapped(i)-1,j)*log(pd12(i,j))+(K-yrighttmp(swapped(i)-1,j))*log(1-pd12(i,j));
-            }else{ //if single trap
-              prepart(i,j)=yright(swapped(i)-1,j)*log(pd1(i,j))+(K-yright(swapped(i)-1,j))*log(1-pd1(i,j));
-              postpart(i,j)=yrighttmp(swapped(i)-1,j)*log(pd1(i,j))+(K-yrighttmp(swapped(i)-1,j))*log(1-pd1(i,j));
+              ll_y_right_cand(swapped(i)-1,j)=(y_right_tmp(swapped(i)-1,j)*log(pd12(swapped(i)-1,j))+(tf(j)-y_right_tmp(swapped(i)-1,j))*log(1-pd12(swapped(i)-1,j)));
+            }else{//single trap
+              ll_y_right_cand(swapped(i)-1,j)=(y_right_tmp(swapped(i)-1,j)*log(pd1(swapped(i)-1,j))+(tf(j)-y_right_tmp(swapped(i)-1,j))*log(1-pd1(swapped(i)-1,j)));
             }
-            if((prepart(i,j)==prepart(i,j))&(!std::isinf(prepart(i,j)))){
-              llpre+=prepart(i,j);
+            if((ll_y_right_cand(swapped(i)-1,j)==ll_y_right_cand(swapped(i)-1,j))&(!std::isinf(ll_y_right_cand(swapped(i)-1,j)))){
+              llycandsum+=ll_y_right_cand(swapped(i)-1,j);
             }
-            if((postpart(i,j)==postpart(i,j))&(!std::isinf(postpart(i,j)))){
-              llpost+=postpart(i,j);
+            if((ll_y_right_curr(swapped(i)-1,j)==ll_y_right_curr(swapped(i)-1,j))&(!std::isinf(ll_y_right_curr(swapped(i)-1,j)))){
+              llysum+=ll_y_right_curr(swapped(i)-1,j);
             }
           }
         }
+
         //MH step
         rand=Rcpp::runif(1);
-        lldiff=llpost-llpre;
-        if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-          // likcurr+=lldiff;
-          yright=Rcpp::clone(yrighttmp);
+        if(rand(0)<(exp(llycandsum-llysum)*(backprob/jumpprob))){
+          y_right_true=Rcpp::clone(y_right_tmp);
           ID_R=Rcpp::clone(newID);
           mapR(guy1-1,1)=swapin;
           mapR(guy2-1,1)=swapout;
+          for(int i=0; i<2; i++) {
+            for(int j=0; j<J; j++){
+              ll_y_right_curr(swapped(i)-1,j)=ll_y_right_cand(swapped(i)-1,j);
+            }
+          }
         }
-
-      } //end swapping rights
+      }
     }
-
     //Recalculate zeroguys
     for (int i=0; i<M; i++) {
       guycounts(i)=0;
       for(int j=0; j<J; j++) {
-        guycounts(i)+=yboth(i,j)+yright(i,j)+yleft(i,j);
+        guycounts(i)+=y_both(i,j)+y_left_true(i,j)+y_right_true(i,j);
       }
       zeroguys(i)=guycounts(i)==0;
     }
-
     //Update Psi
-    //  Calculate probability of no capture and update z
+    // Calculate probability of no capture and update z
     for(int i=0; i<M; i++) {
       prob0(i)=1;
       for(int j=0; j<J; j++){
-        pd1(i,j)=1-exp(-lamd1(i,j));
         if(X(j,2)==2){ //if double trap
-          pd2(i,j)=1-exp(-lamd2(i,j));
-          pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-          pd1traps(i,j)=pd12(i,j);
-          pd2traps(i,j)=pd2(i,j);
-        }else{ //if single trap
-          pd1traps(i,j)=pd1(i,j);
-          pd2traps(i,j)=0;
+          pbar1(i,j)=pow(1-pd12(i,j),2*tf(j));
+          pbar2(i,j)=pow(1-pd2(i,j),tf(j));
+          prob0(i)*=pbar1(i,j);
+          prob0(i)*=pbar2(i,j);
+        }else{//single trap
+          pbar1(i,j)=pow(1-pd1(i,j),2*tf(j));
+          prob0(i)*=pbar1(i,j);
         }
-        pbar1(i,j)=pow(1-pd1traps(i,j),2*K);
-        pbar2(i,j)=pow(1-pd2traps(i,j),K);
-        pbar0(i,j)=pbar1(i,j)*pbar2(i,j);
-        prob0(i)*=pbar0(i,j);
       }
       fc(i)=prob0(i)*psi(0)/(prob0(i)*psi(0) + 1-psi(0));
       swappable(i)=(knownvector(i)==0)&zeroguys(i);
       if(swappable(i)){
-        rand=Rcpp::rbinom(1,1,fc(i));
+        NumericVector rand=Rcpp::rbinom(1,1,fc(i));
         z(i)=rand(0);
       }
     }
-    //Calculate current likelihood
-    v=0;
+
+    //Calculate current likelihoods after z update
     for(int i=0; i<M; i++) {
-      if(z[i]==1){
-        for(int j=0; j<J; j++){
-          if(X(j,2)==2){ //if double trap
-            partboth(i,j)=yboth(i,j)*log(pd2(i,j))+(K-yboth(i,j))*log(1-pd2(i,j));
-            partleft(i,j)=yleft(i,j)*log(pd12(i,j))+(K-yleft(i,j))*log(1-pd12(i,j));
-            partright(i,j)=yright(i,j)*log(pd12(i,j))+(K-yright(i,j))*log(1-pd12(i,j));
-          }else{ //if single trap
-            partboth(i,j)=0;
-            partleft(i,j)=yleft(i,j)*log(pd1(i,j))+(K-yleft(i,j))*log(1-pd1(i,j));
-            partright(i,j)=yright(i,j)*log(pd1(i,j))+(K-yright(i,j))*log(1-pd1(i,j));
-          }
-          if(partboth(i,j)==partboth(i,j)){
-            v+=partboth(i,j);
-          }
-          if(partleft(i,j)==partleft(i,j)){
-            v+=partleft(i,j);
-          }
-          if(partright(i,j)==partright(i,j)){
-            v+=partright(i,j);
-          }
+      for(int j=0; j<J; j++){
+        if(X(j,2)==2){ //if double trap
+          ll_y_left_curr(i,j)=z(i)*(y_left_true(i,j)*log(pd12(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd12(i,j)));
+          ll_y_right_curr(i,j)=z(i)*(y_right_true(i,j)*log(pd12(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd12(i,j)));
+          ll_y_both_curr(i,j)=z(i)*(y_both(i,j)*log(pd2(i,j))+(tf(j)-y_both(i,j))*log(1-pd2(i,j)));
+        }else{//single trap
+          ll_y_left_curr(i,j)=z(i)*(y_left_true(i,j)*log(pd1(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd1(i,j)));
+          ll_y_right_curr(i,j)=z(i)*(y_right_true(i,j)*log(pd1(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd1(i,j)));
+          // ll_y_both_curr(i,j)=0;
         }
       }
     }
     //update psi
     N=sum(z);
     psi=Rcpp::rbeta(1, 1 + N, 1 + M - N);
-    likcurr=v;
-
     //Update Activity Centers
     for(int i=0; i<M; i++) {
       ScandX=Rcpp::rnorm(1,s(i,0),propsx);
       ScandY=Rcpp::rnorm(1,s(i,1),propsy);
       if(useverts==FALSE){
-        inbox= (ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
+        inbox=(ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
       }else{
         inbox=inoutCpp(ScandX,ScandY,vertices);
       }
       if(inbox(0)){
-          dtmp=pow( pow( rep(ScandX,J) - X(_,0), 2.0) + pow( rep(ScandY,J) - X(_,1), 2.0), 0.5 );
-          lamd1candc=lam01*exp(-dtmp*dtmp/(2*sigma*sigma));
-          lamd2candc=lam02*exp(-dtmp*dtmp/(2*sigma*sigma));
-          if(z[i]==1){ //if in pop, otherwise keep update
-            v=0;
-            vcand=0;
-            //Calculate likelihood for original and candidate
-            for(int j=0; j<J; j++){
-              pd1c(j)=1-exp(-lamd1(i,j));
-              pd1ccand(j)=1-exp(-lamd1candc(j));
-              if(X(j,2)==2){ //if double trap
-                pd12c(j)=2*pd1c(j)-pd1c(j)*pd1c(j);
-                pd12ccand(j)=2*pd1ccand(j)-pd1ccand(j)*pd1ccand(j);
-                pd2c(j)=1-exp(-lamd2(i,j));
-                pd2ccand(j)=1-exp(-lamd2candc(j));
-                partbothc(j)=yboth(i,j)*log(pd2c(j))+(K-yboth(i,j))*log(1-pd2c(j));
-                partleftc(j)=yleft(i,j)*log(pd12c(j))+(K-yleft(i,j))*log(1-pd12c(j));
-                partrightc(j)=yright(i,j)*log(pd12c(j))+(K-yright(i,j))*log(1-pd12c(j));
-                partbothcCand(j)=yboth(i,j)*log(pd2ccand(j))+(K-yboth(i,j))*log(1-pd2ccand(j));
-                partleftcCand(j)=yleft(i,j)*log(pd12ccand(j))+(K-yleft(i,j))*log(1-pd12ccand(j));
-                partrightcCand(j)=yright(i,j)*log(pd12ccand(j))+(K-yright(i,j))*log(1-pd12ccand(j));
-              }else{ //if single trap
-                partbothc(j)=0;
-                partleftc(j)=yleft(i,j)*log(pd1c(j))+(K-yleft(i,j))*log(1-pd1c(j));
-                partrightc(j)=yright(i,j)*log(pd1c(j))+(K-yright(i,j))*log(1-pd1c(j));
-                partleftcCand(j)=yleft(i,j)*log(pd1ccand(j))+(K-yleft(i,j))*log(1-pd1ccand(j));
-                partrightcCand(j)=yright(i,j)*log(pd1ccand(j))+(K-yright(i,j))*log(1-pd1ccand(j));
-              }
-              if(partbothc(j)==partbothc(j)){
-                v+=partbothc(j);
-              }
-              if(partleftc(j)==partleftc(j)){
-                v+=partleftc(j);
-              }
-              if(partrightc(j)==partrightc(j)){
-                v+=partrightc(j);
-              }
-              if(partbothcCand(j)==partbothcCand(j)){
-                vcand+=partbothcCand(j);
-              }
-              if(partleftcCand(j)==partleftcCand(j)){
-                vcand+=partleftcCand(j);
-              }
-              if(partrightcCand(j)==partrightcCand(j)){
-                vcand+=partrightcCand(j);
-              }
+        llysum=0;
+        llycandsum=0;
+        for(int j=0; j<J; j++){
+          dtmp(j)=pow(pow(ScandX(0)-X(j,0), 2.0)+pow(ScandY(0)-X(j,1),2.0),0.5);
+          lamd1cand(i,j)=lam01*exp(-dtmp(j)*dtmp(j)/(2*sigma*sigma));
+          lamd2cand(i,j)=lam02*exp(-dtmp(j)*dtmp(j)/(2*sigma*sigma));
+          pd1cand(i,j)=1-exp(-lamd1cand(i,j));
+          pd2cand(i,j)=1-exp(-lamd2cand(i,j));
+          if(X(j,2)==2){ //if double trap
+            ll_y_both_cand(i,j)=z(i)*(y_both(i,j)*log(pd2cand(i,j))+(tf(j)-y_both(i,j))*log(1-pd2cand(i,j)));
+            if((ll_y_both_cand(i,j)==ll_y_both_cand(i,j))&(!std::isinf(ll_y_both_cand(i,j)))){
+              llycandsum+=ll_y_both_cand(i,j);
             }
-            rand=Rcpp::runif(1);
-            lldiff=vcand-v;
+            if((ll_y_both_curr(i,j)==ll_y_both_curr(i,j))&(!std::isinf(ll_y_both_curr(i,j)))){
+              llysum+=ll_y_both_curr(i,j);
+            }
+            pd12cand(i,j)=2*pd1cand(i,j)-pd1cand(i,j)*pd1cand(i,j);
+            ll_y_left_cand(i,j)=z(i)*(y_left_true(i,j)*log(pd12cand(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd12cand(i,j)));
+            ll_y_right_cand(i,j)=z(i)*(y_right_true(i,j)*log(pd12cand(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd12cand(i,j)));
+          }else{//single trap
+            ll_y_left_cand(i,j)=z(i)*(y_left_true(i,j)*log(pd1cand(i,j))+(tf(j)-y_left_true(i,j))*log(1-pd1cand(i,j)));
+            ll_y_right_cand(i,j)=z(i)*(y_right_true(i,j)*log(pd1cand(i,j))+(tf(j)-y_right_true(i,j))*log(1-pd1cand(i,j)));
           }
-          if((rand(0)<exp(lldiff))|(z[i]==0)){
-            s(i,0)=ScandX(0);
-            s(i,1)=ScandY(0);
-            for(int j=0; j<J; j++){
-              D(i,j) = dtmp(j);
-              lamd1(i,j) = lamd1candc(j);
-              lamd2(i,j) = lamd2candc(j);
-            }
+          if((ll_y_left_cand(i,j)==ll_y_left_cand(i,j))&(!std::isinf(ll_y_left_cand(i,j)))){
+            llycandsum+=ll_y_left_cand(i,j);
+          }
+          if((ll_y_right_cand(i,j)==ll_y_right_cand(i,j))&(!std::isinf(ll_y_right_cand(i,j)))){
+            llycandsum+=ll_y_right_cand(i,j);
+          }
+          if((ll_y_left_curr(i,j)==ll_y_left_curr(i,j))&(!std::isinf(ll_y_left_curr(i,j)))){
+            llysum+=ll_y_left_curr(i,j);
+          }
+          if((ll_y_right_curr(i,j)==ll_y_right_curr(i,j))&(!std::isinf(ll_y_right_curr(i,j)))){
+            llysum+=ll_y_right_curr(i,j);
+          }
+        }
+        rand=Rcpp::runif(1);
+        if((rand(0)<exp(llycandsum-llysum))){
+          s(i,0)=ScandX(0);
+          s(i,1)=ScandY(0);
+          for(int j=0; j<J; j++){
+            D(i,j) = dtmp(j);
+            lamd1(i,j) = lamd1cand(i,j);
+            lamd2(i,j) = lamd2cand(i,j);
+            pd1(i,j) = pd1cand(i,j);
+            pd12(i,j) = pd12cand(i,j);
+            pd2(i,j) = pd2cand(i,j);
+            ll_y_both_curr(i,j) = ll_y_both_cand(i,j);
+            ll_y_left_curr(i,j) = ll_y_left_cand(i,j);
+            ll_y_right_curr(i,j) = ll_y_right_cand(i,j);
           }
         }
       }
-
+    }
       //Record output
       if(((iter+1)>nburn)&((iter+1) % nthin==0)){
-        sxout(iteridx,_)= s(_,0);
-        syout(iteridx,_)= s(_,1);
-        zout(iteridx,_)= z;
-        ID_Lout(iteridx,_)=ID_L;
-        ID_Rout(iteridx,_)=ID_R;
+        if(storeLatent){
+          sxout(iteridx,_)= s(_,0);
+          syout(iteridx,_)= s(_,1);
+          zout(iteridx,_)= z;
+          ID_Lout(iteridx,_)=ID_L;
+          ID_Rout(iteridx,_)=ID_R;
+        }
         out(iteridx,0)=lam01;
         out(iteridx,1)=lam02;
         out(iteridx,2)=sigma;
@@ -1875,15 +1078,16 @@ List MCMC(double lam01,double lam02, double sigma,
       }
     }
 
-    List to_return(8);
+    List to_return(9);
     to_return[0] = out;
     to_return[1] = sxout;
     to_return[2] = syout;
     to_return[3] = ID_Lout;
     to_return[4] = ID_Rout;
     to_return[5] = zout;
-    to_return[6] = lamd1;
-    to_return[7] = lamd2;
+    to_return[6] = IDs;
+    to_return[7] = lly1sum;
+    to_return[8] = lly2sum;
     return to_return;
 }
 
@@ -1893,7 +1097,7 @@ List MCMC(double lam01,double lam02, double sigma,
 using namespace Rcpp;
 //[[Rcpp::export]]
 double fullliktf(IntegerVector z,NumericMatrix lamd1,NumericMatrix lamd2,NumericMatrix yboth, NumericMatrix yleft,
-               NumericMatrix yright, NumericMatrix X,IntegerVector K) {
+               NumericMatrix yright, NumericMatrix X,IntegerVector K,bool storeLatent) {
   //Preallocate
   int M = z.size();
   int J=X.nrow();
@@ -1936,33 +1140,58 @@ double fullliktf(IntegerVector z,NumericMatrix lamd1,NumericMatrix lamd2,Numeric
   to_return = v;
   return to_return;
 }
-#include <Rcpp.h>
-using namespace Rcpp;
-// [[Rcpp::export]]
-List MCMCtf(double lam01,double lam02, double sigma,NumericMatrix yboth, NumericMatrix yleft, NumericMatrix yright, IntegerVector z,
-            NumericMatrix X,IntegerVector K,int Kmax,NumericMatrix D,int Nfixed, IntegerVector knownvector,IntegerVector ID_L,
-            IntegerVector ID_R,int swap,double swaptol,IntegerVector left,IntegerVector right,NumericMatrix s,NumericVector psi,
-            NumericVector xlim,NumericVector ylim,bool useverts, NumericMatrix vertices,double proplam01, double proplam02, double propsigma, double propsx,
-            double propsy, int niter, int nburn, int nthin, LogicalVector updates) {
-  RNGScope scope;
-  int M = z.size();
-  int J=yleft.ncol();
 
+//2 side model with 2D trap file
+//[[Rcpp::depends(RcppArmadillo)]]
+// #include <RcppArmadillo.h> included in openSCR file
+using namespace Rcpp;
+using namespace arma;
+// #include <RcppArmadilloExtensions/sample.h>
+// [[Rcpp::export]]// [[Rcpp::export]]
+List MCMCtf2(double lam01,double lam02,double sigma, NumericMatrix lamd1,
+             NumericMatrix lamd2,NumericMatrix y_both, 
+             arma::cube y_left_true, arma::cube y_right_true,
+             arma::cube y_left_obs, arma::cube y_right_obs,IntegerVector z,
+             NumericMatrix X,IntegerMatrix tf1,IntegerVector tf2,NumericMatrix D,int Nfixed, IntegerVector knownvector,IntegerVector ID_L,
+             IntegerVector ID_R,int swap,double swaptol,NumericMatrix s,NumericVector psi,
+             NumericVector xlim,NumericVector ylim,bool useverts, NumericMatrix vertices,double proplam01, double proplam02, double propsigma, double propsx,
+             double propsy, int niter, int nburn, int nthin, LogicalVector updates,bool storeLatent) {
+  RNGScope scope;
+  int M = size(y_left_obs)[0];
+  int J = size(y_left_obs)[1];
+  int K = size(y_left_obs)[2];
   //Preallocate for update lam01 lam02 sigma
-  double likcurr;
-  double liknew;
-  double lam01cand;
-  double lam02cand;
-  double sigmacand;
+  double  lam01cand;
+  double  lam02cand;
+  double  sigmacand;
   NumericVector rand;
   NumericVector rand2;
-  NumericMatrix lamd1cand;
-  NumericMatrix lamd2cand;
+  NumericMatrix lamd1cand(M,J);
+  NumericMatrix lamd2cand(M,J);
+  NumericMatrix pd1cand(M,J);
+  NumericMatrix pd12cand(M,J);
+  NumericMatrix pd2cand(M,J);
+  NumericMatrix pd1(M,J);
+  NumericMatrix pd12(M,J);
+  NumericMatrix pd2(M,J);
+  NumericMatrix  ll_y_both_curr(M,J);
+  arma::cube  ll_y_left_curr=zeros<cube>(M,J,K);
+  arma::cube  ll_y_right_curr=zeros<cube>(M,J,K);
+  NumericMatrix  ll_y_both_cand(M,J);
+  arma::cube  ll_y_left_cand=zeros<cube>(M,J,K);
+  arma::cube  ll_y_right_cand=zeros<cube>(M,J,K);
+  double llysum;
+  double llycandsum;
+  double lly1sum;
+  double lly1candsum;
+  double lly2sum;
+  double lly2candsum;
   //Preallocate side swapping structures
   //Swapping structures
   IntegerVector IDs=seq_len(M);
   int guy1=0;
   int guy2=0;
+  IntegerVector swapped(2);
   int swapin;
   int swapout;
   int idx;
@@ -1974,138 +1203,233 @@ List MCMCtf(double lam01,double lam02, double sigma,NumericMatrix yboth, Numeric
   IntegerVector possible;
   IntegerVector unpossible;
   IntegerVector newID(M);
-  NumericMatrix ylefttmp(M,J);
-  NumericMatrix yrighttmp(M,J);  //could use same structure but dont want to get confused
-
-  //ll structures
-  NumericMatrix prepart(2,J);
-  NumericMatrix postpart(2,J);
-  NumericMatrix pd1b(2,J);
-  NumericMatrix pd12b(2,J);
-  NumericVector swapped(2);
-  double llpre;
-  double llpost;
-
-  //MH structures
-  double lldiff=0;
-
+  arma::cube  y_left_tmp=zeros<cube>(M,J,K);
+  arma::cube  y_right_tmp=zeros<cube>(M,J,K);
+  
   //Housekeeping structures
   NumericVector guycounts(M);
   LogicalVector zeroguys(M);
-
+  
   //Preallocate for Psi update
-  NumericMatrix pd1(M,J);
-  NumericMatrix pd12(M,J);
-  NumericMatrix pd2(M,J);
-  NumericMatrix pd1traps(M,J);
-  NumericMatrix pd2traps(M,J);
-  NumericMatrix pbar1(M,J);
-  NumericMatrix pbar2(M,J);
-  NumericMatrix pbar0(M,J);
-  NumericVector prob0(M);
   NumericVector fc(M);
   LogicalVector swappable(M);
-  NumericMatrix partboth(M,J);
-  NumericMatrix partleft(M,J);
-  NumericMatrix partright(M,J);
+  NumericVector prob0(M);
+  arma::cube  pbar1=zeros<cube>(M,J,K);
+  NumericMatrix pbar2(M,J);
   int N;
-
+  
   //Preallocate for updating activity centers
   LogicalVector inbox(1);
-  NumericVector pd1c(J);
-  NumericVector pd12c(J);
-  NumericVector pd2c(J);
-  NumericVector pd1ccand(J);
-  NumericVector pd12ccand(J);
-  NumericVector pd2ccand(J);
-  NumericVector partbothc(J);
-  NumericVector partleftc(J);
-  NumericVector partrightc(J);
-  NumericVector partbothcCand(J);
-  NumericVector partleftcCand(J);
-  NumericVector partrightcCand(J);
   NumericVector dtmp(J);
-  NumericVector lamd1candc(J);
-  NumericVector lamd2candc(J);
   NumericVector ScandX(1);
   NumericVector ScandY(1);
-  double vcand;
-  double v;
   //Structures to record output
   int nstore=(niter-nburn)/nthin;
   if(nburn % nthin!=0){
     nstore=nstore+1;
   }
   NumericMatrix out(nstore,4);
-  NumericMatrix sxout(nstore,M);
-  NumericMatrix syout(nstore,M);
-  NumericMatrix zout(nstore,M);
-  NumericMatrix ID_Lout(nstore,M);
-  NumericMatrix ID_Rout(nstore,M);
+  int nstore2=nstore;
+  if(!storeLatent){
+    nstore2=1;
+  }
+  NumericMatrix sxout(nstore2,M);
+  NumericMatrix syout(nstore2,M);
+  NumericMatrix zout(nstore2,M);
+  NumericMatrix ID_Lout(nstore2,M);
+  NumericMatrix ID_Rout(nstore2,M);
+  int iter=0;
   int iteridx=0;
-  //calc lamds  D too? Currently an input
-  NumericMatrix lamd1=calclamd(lam01,sigma,D);
-  NumericMatrix lamd2=calclamd(lam02,sigma,D);
-  //start for loop here
-  int iter;
-  for(iter=0; iter<niter; iter++){
-    //update lam01, lam02, and sigma
-
-    likcurr=fullliktf( z, lamd1, lamd2, yboth,  yleft, yright,  X, K);
-    liknew=0;
-    lam01cand=0;
-    lam02cand=0;
-    sigmacand=0;
-
-    //Update lam01
-    if(updates(0)){
-      rand=Rcpp::rnorm(1,lam01,proplam01);
-      if(rand(0) > 0){
-        lam01cand=rand(0);
-        lamd1cand=calclamd(lam01cand,sigma,D);
-        liknew=fullliktf( z, lamd1cand, lamd2, yboth,  yleft, yright,  X, K);
-        rand2=Rcpp::runif(1);
-        if(rand2(0)<exp(liknew-likcurr)){
-          lam01=lam01cand;
-          lamd1=lamd1cand;
-          likcurr=liknew;
+  //Starting log likelihood obs mod
+  for(int i=0; i<M; i++) {
+    for(int j=0; j<J; j++){
+      pd1(i,j)=1-exp(-lamd1(i,j));
+      pd2(i,j)=1-exp(-lamd2(i,j));
+      if(X(j,2)==2){ //if double trap
+        pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
+        ll_y_both_curr(i,j)=z(i)*(y_both(i,j)*log(pd2(i,j))+(tf2(j)-y_both(i,j))*log(1-pd2(i,j)));
+      }
+      for(int k=0; k<K; k++){
+        if(tf1(j,k)==2){
+          ll_y_left_curr(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd12(i,j))+(1-y_left_true(i,j,k))*log(1-pd12(i,j)));
+          ll_y_right_curr(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd12(i,j))+(1-y_right_true(i,j,k))*log(1-pd12(i,j)));
+        }else if(tf1(j,k)==1){
+          ll_y_left_curr(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd1(i,j))+(1-y_left_true(i,j,k))*log(1-pd1(i,j)));
+          ll_y_right_curr(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd1(i,j))+(1-y_right_true(i,j,k))*log(1-pd1(i,j)));
+        }else{
+          ll_y_left_curr(i,j,k)=0;
+          ll_y_right_curr(i,j,k)=0;
         }
       }
     }
+  }
+
+  //start for loop here
+  for(iter=0; iter<niter; iter++){
+    //Sum single and both side LL on each iteration
+    lly1sum=0;
+    lly2sum=0;
+    for(int i=0; i<M; i++) {
+      for(int j=0; j<J; j++){
+        if(X(j,2)==2){ //if double trap
+          if((ll_y_both_curr(i,j)==ll_y_both_curr(i,j))&(!std::isinf(ll_y_both_curr(i,j)))){
+            lly2sum+=ll_y_both_curr(i,j);
+          }
+        }
+        for(int k=0; k<K; k++){
+          if((ll_y_left_curr(i,j,k)==ll_y_left_curr(i,j,k))&(!std::isinf(ll_y_left_curr(i,j,k)))){
+            lly1sum+=ll_y_left_curr(i,j,k);
+          }
+          if((ll_y_right_curr(i,j,k)==ll_y_right_curr(i,j,k))&(!std::isinf(ll_y_right_curr(i,j,k)))){
+            lly1sum+=ll_y_right_curr(i,j,k);
+          }
+        }
+      }
+    }
+  //   //Update lam01
+  if(updates(0)){
+    rand=Rcpp::rnorm(1,lam01,proplam01);
+    if(rand(0) > 0){
+      lam01cand=rand(0);
+      lly1candsum=0;
+      for(int i=0; i<M; i++) {
+        for(int j=0; j<J; j++){
+          lamd1cand(i,j)=lam01cand*exp(-D(i,j)*D(i,j)/(2*sigma*sigma));
+          pd1cand(i,j)=1-exp(-lamd1cand(i,j));
+          if(X(j,2)==2){ //if double trap
+            pd12cand(i,j)=2*pd1cand(i,j)-pd1cand(i,j)*pd1cand(i,j);
+          }
+          for(int k=0; k<K; k++){
+            if(tf1(j,k)==2){
+              ll_y_left_cand(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd12cand(i,j))+(1-y_left_true(i,j,k))*log(1-pd12cand(i,j)));
+              ll_y_right_cand(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd12cand(i,j))+(1-y_right_true(i,j,k))*log(1-pd12cand(i,j)));
+            }else if(tf1(j,k)==1){
+              ll_y_left_cand(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd1cand(i,j))+(1-y_left_true(i,j,k))*log(1-pd1cand(i,j)));
+              ll_y_right_cand(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd1cand(i,j))+(1-y_right_true(i,j,k))*log(1-pd1cand(i,j)));
+            }else{
+              ll_y_left_cand(i,j,k)=0;
+              ll_y_right_cand(i,j,k)=0;
+            }
+            if((ll_y_left_cand(i,j,k)==ll_y_left_cand(i,j,k))&(!std::isinf(ll_y_left_cand(i,j,k)))){
+              lly1candsum+=ll_y_left_cand(i,j,k);
+            }
+            if((ll_y_right_cand(i,j,k)==ll_y_right_cand(i,j,k))&(!std::isinf(ll_y_right_cand(i,j,k)))){
+              lly1candsum+=ll_y_right_cand(i,j,k);
+            }
+          }
+        }
+      }
+      rand2=Rcpp::runif(1);
+      if(rand2(0)<exp(lly1candsum-lly1sum)){
+        lam01=lam01cand;
+        lly1sum=lly1candsum;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd1(i,j)=lamd1cand(i,j);
+            pd1(i,j)=pd1cand(i,j);
+            pd12(i,j)=pd12cand(i,j);
+            for(int k=0; k<K; k++){
+              ll_y_left_curr(i,j,k)=ll_y_left_cand(i,j,k);
+              ll_y_right_curr(i,j,k)=ll_y_right_cand(i,j,k);
+            }
+          }
+        }
+      }
+    }
+  }
     //Update lam02
     if(updates(1)){
       rand=Rcpp::rnorm(1,lam02,proplam02);
       if(rand(0) > 0){
         lam02cand=rand(0);
-        lamd2cand=calclamd(lam02cand,sigma,D);
-        liknew=fullliktf( z, lamd1, lamd2cand, yboth,  yleft, yright,  X, K);
+        lly2candsum=0;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd2cand(i,j)=lam02cand*exp(-D(i,j)*D(i,j)/(2*sigma*sigma));
+            pd2cand(i,j)=1-exp(-lamd2cand(i,j));
+            if(X(j,2)==2){ //if double trap
+              ll_y_both_cand(i,j)=z(i)*(y_both(i,j)*log(pd2cand(i,j))+(tf2(j)-y_both(i,j))*log(1-pd2cand(i,j)));
+              if((ll_y_both_cand(i,j)==ll_y_both_cand(i,j))&(!std::isinf(ll_y_both_cand(i,j)))){
+                lly2candsum+=ll_y_both_cand(i,j);
+              }
+            }
+          }
+        }
         rand2=Rcpp::runif(1);
-        if(rand2(0)<exp(liknew-likcurr)){
+        if(rand2(0)<exp(lly2candsum-lly2sum)){
+          lly2sum=lly2candsum;
           lam02=lam02cand;
-          lamd2=lamd2cand;
-          likcurr=liknew;
+          for(int i=0; i<M; i++) {
+            for(int j=0; j<J; j++){
+              lamd2(i,j)=lamd2cand(i,j);
+              pd2(i,j)=pd2cand(i,j);
+              ll_y_both_curr(i,j)=ll_y_both_cand(i,j);
+            }
+          }
         }
       }
     }
-    //Update sigma
+    //update sigma
     rand=Rcpp::rnorm(1,sigma,propsigma);
     if(rand(0) > 0){
       sigmacand=rand(0);
-      lamd1cand=calclamd(lam01,sigmacand,D);
-      lamd2cand=calclamd(lam02,sigmacand,D);
-      liknew=fullliktf( z, lamd1cand, lamd2cand, yboth,  yleft, yright,  X, K);
+      lly1candsum=0;
+      lly2candsum=0;
+      for(int i=0; i<M; i++) {
+        for(int j=0; j<J; j++){
+          lamd1cand(i,j)=lam01*exp(-D(i,j)*D(i,j)/(2*sigmacand*sigmacand));
+          lamd2cand(i,j)=lam02*exp(-D(i,j)*D(i,j)/(2*sigmacand*sigmacand));
+          pd1cand(i,j)=1-exp(-lamd1cand(i,j));
+          pd2cand(i,j)=1-exp(-lamd2cand(i,j));
+          if(X(j,2)==2){ //if double trap
+            ll_y_both_cand(i,j)=z(i)*(y_both(i,j)*log(pd2cand(i,j))+(tf2(j)-y_both(i,j))*log(1-pd2cand(i,j)));
+            if((ll_y_both_cand(i,j)==ll_y_both_cand(i,j))&(!std::isinf(ll_y_both_cand(i,j)))){
+              lly2candsum+=ll_y_both_cand(i,j);
+            }
+            pd12cand(i,j)=2*pd1cand(i,j)-pd1cand(i,j)*pd1cand(i,j);
+          }
+          for(int k=0; k<K; k++){
+            if(tf1(j,k)==2){
+              ll_y_left_cand(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd12cand(i,j))+(1-y_left_true(i,j,k))*log(1-pd12cand(i,j)));
+              ll_y_right_cand(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd12cand(i,j))+(1-y_right_true(i,j,k))*log(1-pd12cand(i,j)));
+            }else if(tf1(j,k)==1){
+              ll_y_left_cand(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd1cand(i,j))+(1-y_left_true(i,j,k))*log(1-pd1cand(i,j)));
+              ll_y_right_cand(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd1cand(i,j))+(1-y_right_true(i,j,k))*log(1-pd1cand(i,j)));
+            }else{
+              ll_y_left_cand(i,j,k)=0;
+              ll_y_right_cand(i,j,k)=0;
+            }
+            if((ll_y_left_cand(i,j,k)==ll_y_left_cand(i,j,k))&(!std::isinf(ll_y_left_cand(i,j,k)))){
+              lly1candsum+=ll_y_left_cand(i,j,k);
+            }
+            if((ll_y_right_cand(i,j,k)==ll_y_right_cand(i,j,k))&(!std::isinf(ll_y_right_cand(i,j,k)))){
+              lly1candsum+=ll_y_right_cand(i,j,k);
+            }
+          }
+        }
+      }
       rand2=Rcpp::runif(1);
-      if(rand2(0)<exp(liknew-likcurr)){
+      if(rand2(0)<exp((lly1candsum+lly2candsum)-(lly1sum+lly2sum))){
         sigma=sigmacand;
-        lamd1=lamd1cand;
-        lamd2=lamd2cand;
-        likcurr=liknew;
+        for(int i=0; i<M; i++) {
+          for(int j=0; j<J; j++){
+            lamd1(i,j)=lamd1cand(i,j);
+            lamd2(i,j)=lamd2cand(i,j);
+            pd1(i,j)=pd1cand(i,j);
+            pd12(i,j)=pd12cand(i,j);
+            pd2(i,j)=pd2cand(i,j);
+            ll_y_both_curr(i,j)=ll_y_both_cand(i,j);
+            for(int k=0; k<K; k++){
+              ll_y_left_curr(i,j,k)=ll_y_left_cand(i,j,k);
+              ll_y_right_curr(i,j,k)=ll_y_right_cand(i,j,k);
+            }
+          }
+        }
       }
     }
-
     //  Update left sides
     if(updates(2)){
-      //Build mapL
+      //   //Build mapL
       IntegerMatrix mapL(M,2);
       mapL(_,1)=ID_L;
       mapL(_,0)=IDs;
@@ -2202,56 +1526,63 @@ List MCMCtf(double lam01,double lam02, double sigma,NumericMatrix yboth, Numeric
         newID(guy2-1)=swapout;
 
         //Make new left data set
-        idx=0;
         for (int i=0; i<M; i++) {
           for(int j=0; j<J; j++) {
-            ylefttmp(newID(i)-1,j)=0;
-            for (int k=0; k<Kmax; k++) {
-              ylefttmp(newID(i)-1,j)+=left(idx);
-              idx+=1;
+            for(int k=0; k<K; k++) {
+              y_left_tmp(newID(i)-1,j,k)=y_left_obs(i,j,k);
             }
           }
         }
-        //Calculate likelihoods pre and post switch. Only need to calc for left data
         swapped(0)=swapout;
         swapped(1)=swapin;
-        llpre=0;
-        llpost=0;
+        //Calculate likelihoods pre and post switch. Only need to calc for left data
+        llysum=0;
+        llycandsum=0;
         for(int i=0; i<2; i++) {
           for(int j=0; j<J; j++){
-            pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
-            if(X(j,2)==2){ //if double trap
-              pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-              prepart(i,j)=yleft(swapped(i)-1,j)*log(pd12(i,j))+(K(j)-yleft(swapped(i)-1,j))*log(1-pd12(i,j));
-              postpart(i,j)=ylefttmp(swapped(i)-1,j)*log(pd12(i,j))+(K(j)-ylefttmp(swapped(i)-1,j))*log(1-pd12(i,j));
-            }else{ //if single trap
-              prepart(i,j)=yleft(swapped(i)-1,j)*log(pd1(i,j))+(K(j)-yleft(swapped(i)-1,j))*log(1-pd1(i,j));
-              postpart(i,j)=ylefttmp(swapped(i)-1,j)*log(pd1(i,j))+(K(j)-ylefttmp(swapped(i)-1,j))*log(1-pd1(i,j));
-            }
-            if((prepart(i,j)==prepart(i,j))&(!std::isinf(prepart(i,j)))){
-              llpre+=prepart(i,j);
-            }
-            if((postpart(i,j)==postpart(i,j))&(!std::isinf(postpart(i,j)))){
-              llpost+=postpart(i,j);
+            for(int k=0; k<K; k++){
+              if(tf1(j,k)==2){ //if double trap
+                ll_y_left_cand(swapped(i)-1,j,k)=(y_left_tmp(swapped(i)-1,j,k)*log(pd12(swapped(i)-1,j))+(1-y_left_tmp(swapped(i)-1,j,k))*log(1-pd12(swapped(i)-1,j)));
+              }else if(tf1(j,k)==1){//single trap
+                ll_y_left_cand(swapped(i)-1,j,k)=(y_left_tmp(swapped(i)-1,j,k)*log(pd1(swapped(i)-1,j))+(1-y_left_tmp(swapped(i)-1,j,k))*log(1-pd1(swapped(i)-1,j)));
+              }else{
+                ll_y_left_cand(swapped(i)-1,j,k)=0;
+              }
+              if((ll_y_left_cand(swapped(i)-1,j,k)==ll_y_left_cand(swapped(i)-1,j,k))&(!std::isinf(ll_y_left_cand(swapped(i)-1,j,k)))){
+                llycandsum+=ll_y_left_cand(swapped(i)-1,j,k);
+              }
+              if((ll_y_left_curr(swapped(i)-1,j,k)==ll_y_left_curr(swapped(i)-1,j,k))&(!std::isinf(ll_y_left_curr(swapped(i)-1,j,k)))){
+                llysum+=ll_y_left_curr(swapped(i)-1,j,k);
+              }
             }
           }
         }
         //MH step
         rand=Rcpp::runif(1);
-        lldiff=llpost-llpre;
-        if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-          // likcurr+=lldiff;
-          yleft=Rcpp::clone(ylefttmp);
-          ID_L=Rcpp::clone(newID);
+        if(rand(0)<(exp(llycandsum-llysum)*(backprob/jumpprob))){
           mapL(guy1-1,1)=swapin;
           mapL(guy2-1,1)=swapout;
+          for (int i=0; i<M; i++) {//I think only need to loop over 2 guys
+            ID_L(i)=newID(i);
+            for(int j=0; j<J; j++) {
+              for(int k=0; k<K; k++) {
+                y_left_true(i,j,k)=y_left_tmp(i,j,k);
+              }
+            }
+          }
+          for(int i=0; i<2; i++) {
+            for(int j=0; j<J; j++){
+              for(int k=0; k<K; k++){
+                ll_y_left_curr(swapped(i)-1,j,k)=ll_y_left_cand(swapped(i)-1,j,k);
+              }
+            }
+          }
         }
-
       }
     }
     //Update Right sides
     if(updates(3)){
-      //Build mapR
+      //   //Build mapR
       IntegerMatrix mapR(M,2);
       mapR(_,1)=ID_R;
       mapR(_,0)=IDs;
@@ -2289,7 +1620,7 @@ List MCMCtf(double lam01,double lam02, double sigma,NumericMatrix yboth, Numeric
         binsR(i)=x;
       }
 
-      ///////////////// //swap right sides/////////////////
+      ///////////////// //swap right sides//////////////
       for (int l=0; l<swap; l++) {
         //Find guy 1
         rand=Rcpp::runif(1);
@@ -2348,112 +1679,115 @@ List MCMCtf(double lam01,double lam02, double sigma,NumericMatrix yboth, Numeric
         newID(guy2-1)=swapout;
 
         //Make new right data set
-        idx=0;
         for (int i=0; i<M; i++) {
           for(int j=0; j<J; j++) {
-            yrighttmp(newID(i)-1,j)=0;
-            for (int k=0; k<Kmax; k++) {
-              yrighttmp(newID(i)-1,j)+=right(idx);
-              idx+=1;
+            for(int k=0; k<K; k++) {
+              y_right_tmp(newID(i)-1,j,k)=y_right_obs(i,j,k);
             }
           }
         }
-        //Calculate likelihoods pre and post switch. Only need to calc for right side data
         swapped(0)=swapout;
         swapped(1)=swapin;
-        llpre=0;
-        llpost=0;
-        for(int i=0; i<2; i++){
+        //Calculate likelihoods pre and post switch. Only need to calc for left data
+        llysum=0;
+        llycandsum=0;
+        for(int i=0; i<2; i++) {
           for(int j=0; j<J; j++){
-            pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
-            if(X(j,2)==2){ //if double trap
-              pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-              prepart(i,j)=yright(swapped(i)-1,j)*log(pd12(i,j))+(K(j)-yright(swapped(i)-1,j))*log(1-pd12(i,j));
-              postpart(i,j)=yrighttmp(swapped(i)-1,j)*log(pd12(i,j))+(K(j)-yrighttmp(swapped(i)-1,j))*log(1-pd12(i,j));
-            }else{ //if single trap
-              prepart(i,j)=yright(swapped(i)-1,j)*log(pd1(i,j))+(K(j)-yright(swapped(i)-1,j))*log(1-pd1(i,j));
-              postpart(i,j)=yrighttmp(swapped(i)-1,j)*log(pd1(i,j))+(K(j)-yrighttmp(swapped(i)-1,j))*log(1-pd1(i,j));
-            }
-            if((prepart(i,j)==prepart(i,j))&(!std::isinf(prepart(i,j)))){
-              llpre+=prepart(i,j);
-            }
-            if((postpart(i,j)==postpart(i,j))&(!std::isinf(postpart(i,j)))){
-              llpost+=postpart(i,j);
+            for(int k=0; k<K; k++){
+              if(tf1(j,k)==2){ //if double trap
+                ll_y_right_cand(swapped(i)-1,j,k)=(y_right_tmp(swapped(i)-1,j,k)*log(pd12(swapped(i)-1,j))+(1-y_right_tmp(swapped(i)-1,j,k))*log(1-pd12(swapped(i)-1,j)));
+              }else if(tf1(j,k)==1){//single trap
+                ll_y_right_cand(swapped(i)-1,j,k)=(y_right_tmp(swapped(i)-1,j,k)*log(pd1(swapped(i)-1,j))+(1-y_right_tmp(swapped(i)-1,j,k))*log(1-pd1(swapped(i)-1,j)));
+              }else{
+                ll_y_right_cand(swapped(i)-1,j,k)=0;
+              }
+              if((ll_y_right_cand(swapped(i)-1,j,k)==ll_y_right_cand(swapped(i)-1,j,k))&(!std::isinf(ll_y_right_cand(swapped(i)-1,j,k)))){
+                llycandsum+=ll_y_right_cand(swapped(i)-1,j,k);
+              }
+              if((ll_y_right_curr(swapped(i)-1,j,k)==ll_y_right_curr(swapped(i)-1,j,k))&(!std::isinf(ll_y_right_curr(swapped(i)-1,j,k)))){
+                llysum+=ll_y_right_curr(swapped(i)-1,j,k);
+              }
             }
           }
         }
         //MH step
         rand=Rcpp::runif(1);
-        lldiff=llpost-llpre;
-        if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-          // likcurr+=lldiff;
-          yright=Rcpp::clone(yrighttmp);
-          ID_R=Rcpp::clone(newID);
+        if(rand(0)<(exp(llycandsum-llysum)*(backprob/jumpprob))){
           mapR(guy1-1,1)=swapin;
           mapR(guy2-1,1)=swapout;
+          for (int i=0; i<M; i++) {//I think only need to loop over 2 guys
+            ID_R(i)=newID(i);
+            for(int j=0; j<J; j++) {
+              for(int k=0; k<K; k++) {
+                y_right_true(i,j,k)=y_right_tmp(i,j,k);
+              }
+            }
+          }
+          for(int i=0; i<2; i++) {
+            for(int j=0; j<J; j++){
+              for(int k=0; k<K; k++){
+                ll_y_right_curr(swapped(i)-1,j,k)=ll_y_right_cand(swapped(i)-1,j,k);
+              }
+            }
+          }
         }
-
-      } //end swapping rights
+      }
     }
-
     //Recalculate zeroguys
     for (int i=0; i<M; i++) {
       guycounts(i)=0;
       for(int j=0; j<J; j++) {
-        guycounts(i)+=yboth(i,j)+yright(i,j)+yleft(i,j);
+        guycounts(i)+=y_both(i,j);
+        for(int k=0; k<K; k++) {
+          guycounts(i)+=y_left_true(i,j,k)+y_right_true(i,j,k);
+        }
       }
       zeroguys(i)=guycounts(i)==0;
     }
-
     //Update Psi
-    //  Calculate probability of no capture and update z
+    // Calculate probability of no capture and update z
     for(int i=0; i<M; i++) {
       prob0(i)=1;
       for(int j=0; j<J; j++){
-        pd1(i,j)=1-exp(-lamd1(i,j));
         if(X(j,2)==2){ //if double trap
-          pd2(i,j)=1-exp(-lamd2(i,j));
-          pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-          pd1traps(i,j)=pd12(i,j);
-          pd2traps(i,j)=pd2(i,j);
-        }else{ //if single trap
-          pd1traps(i,j)=pd1(i,j);
-          pd2traps(i,j)=0;
+          pbar2(i,j)=pow(1-pd2(i,j),tf2(j));
+          prob0(i)*=pbar2(i,j);
         }
-        pbar1(i,j)=pow(1-pd1traps(i,j),2*K(j));
-        pbar2(i,j)=pow(1-pd2traps(i,j),K(j));
-        pbar0(i,j)=pbar1(i,j)*pbar2(i,j);
-        prob0(i)*=pbar0(i,j);
+        for(int k=0; k<K; k++){
+          if(tf1(j,k)==2){
+            pbar1(i,j,k)=pow(1-pd12(i,j),2);
+          }else if(tf1(j,k)==1){
+            pbar1(i,j,k)=pow(1-pd1(i,j),2);
+          }else{
+            pbar1(i,j,k)=1;
+          }
+          prob0(i)*=pbar1(i,j,k);
+        }
       }
       fc(i)=prob0(i)*psi(0)/(prob0(i)*psi(0) + 1-psi(0));
       swappable(i)=(knownvector(i)==0)&zeroguys(i);
       if(swappable(i)){
-        rand=Rcpp::rbinom(1,1,fc(i));
+        NumericVector rand=Rcpp::rbinom(1,1,fc(i));
         z(i)=rand(0);
       }
     }
-    //Calculate current likelihood
-    v=0;
+
+    //Calculate current likelihoods after z update
     for(int i=0; i<M; i++) {
-      if(z[i]==1){
-        for(int j=0; j<J; j++){
-          if(X(j,2)==2){ //if double trap
-            partboth(i,j)=yboth(i,j)*log(pd2(i,j))+(K(j)-yboth(i,j))*log(1-pd2(i,j));
-            partleft(i,j)=yleft(i,j)*log(pd12(i,j))+(K(j)-yleft(i,j))*log(1-pd12(i,j));
-            partright(i,j)=yright(i,j)*log(pd12(i,j))+(K(j)-yright(i,j))*log(1-pd12(i,j));
-          }else{ //if single trap
-            partboth(i,j)=0;
-            partleft(i,j)=yleft(i,j)*log(pd1(i,j))+(K(j)-yleft(i,j))*log(1-pd1(i,j));
-            partright(i,j)=yright(i,j)*log(pd1(i,j))+(K(j)-yright(i,j))*log(1-pd1(i,j));
-          }
-          if(partboth(i,j)==partboth(i,j)){
-            v+=partboth(i,j);
-          }
-          if(partleft(i,j)==partleft(i,j)){
-            v+=partleft(i,j);
-          }
-          if(partright(i,j)==partright(i,j)){
-            v+=partright(i,j);
+      for(int j=0; j<J; j++){
+        if(X(j,2)==2){ //if double trap
+          ll_y_both_curr(i,j)=z(i)*(y_both(i,j)*log(pd2(i,j))+(tf2(j)-y_both(i,j))*log(1-pd2(i,j)));
+        }
+        for(int k=0; k<K; k++){
+          if(tf1(j,k)==2){
+            ll_y_left_curr(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd12(i,j))+(1-y_left_true(i,j,k))*log(1-pd12(i,j)));
+            ll_y_right_curr(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd12(i,j))+(1-y_right_true(i,j,k))*log(1-pd12(i,j)));
+          }else if(tf1(j,k)==1){
+            ll_y_left_curr(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd1(i,j))+(1-y_left_true(i,j,k))*log(1-pd1(i,j)));
+            ll_y_right_curr(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd1(i,j))+(1-y_right_true(i,j,k))*log(1-pd1(i,j)));
+          }else{
+            ll_y_left_curr(i,j,k)=0;
+            ll_y_right_curr(i,j,k)=0;
           }
         }
       }
@@ -2461,87 +1795,88 @@ List MCMCtf(double lam01,double lam02, double sigma,NumericMatrix yboth, Numeric
     //update psi
     N=sum(z);
     psi=Rcpp::rbeta(1, 1 + N, 1 + M - N);
-    likcurr=v;
-
     //Update Activity Centers
     for(int i=0; i<M; i++) {
       ScandX=Rcpp::rnorm(1,s(i,0),propsx);
       ScandY=Rcpp::rnorm(1,s(i,1),propsy);
       if(useverts==FALSE){
-        inbox= (ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
+        inbox=(ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
       }else{
         inbox=inoutCpp(ScandX,ScandY,vertices);
       }
       if(inbox(0)){
-        dtmp=pow( pow( rep(ScandX,J) - X(_,0), 2.0) + pow( rep(ScandY,J) - X(_,1), 2.0), 0.5 );
-        lamd1candc=lam01*exp(-dtmp*dtmp/(2*sigma*sigma));
-        lamd2candc=lam02*exp(-dtmp*dtmp/(2*sigma*sigma));
-        if(z[i]==1){ //if in pop, otherwise keep update
-          v=0;
-          vcand=0;
-          //Calculate likelihood for original and candidate
-          for(int j=0; j<J; j++){
-            pd1c(j)=1-exp(-lamd1(i,j));
-            pd1ccand(j)=1-exp(-lamd1candc(j));
-            if(X(j,2)==2){ //if double trap
-              pd12c(j)=2*pd1c(j)-pd1c(j)*pd1c(j);
-              pd12ccand(j)=2*pd1ccand(j)-pd1ccand(j)*pd1ccand(j);
-              pd2c(j)=1-exp(-lamd2(i,j));
-              pd2ccand(j)=1-exp(-lamd2candc(j));
-              partbothc(j)=yboth(i,j)*log(pd2c(j))+(K(j)-yboth(i,j))*log(1-pd2c(j));
-              partleftc(j)=yleft(i,j)*log(pd12c(j))+(K(j)-yleft(i,j))*log(1-pd12c(j));
-              partrightc(j)=yright(i,j)*log(pd12c(j))+(K(j)-yright(i,j))*log(1-pd12c(j));
-              partbothcCand(j)=yboth(i,j)*log(pd2ccand(j))+(K(j)-yboth(i,j))*log(1-pd2ccand(j));
-              partleftcCand(j)=yleft(i,j)*log(pd12ccand(j))+(K(j)-yleft(i,j))*log(1-pd12ccand(j));
-              partrightcCand(j)=yright(i,j)*log(pd12ccand(j))+(K(j)-yright(i,j))*log(1-pd12ccand(j));
-            }else{ //if single trap
-              partbothc(j)=0;
-              partleftc(j)=yleft(i,j)*log(pd1c(j))+(K(j)-yleft(i,j))*log(1-pd1c(j));
-              partrightc(j)=yright(i,j)*log(pd1c(j))+(K(j)-yright(i,j))*log(1-pd1c(j));
-              partleftcCand(j)=yleft(i,j)*log(pd1ccand(j))+(K(j)-yleft(i,j))*log(1-pd1ccand(j));
-              partrightcCand(j)=yright(i,j)*log(pd1ccand(j))+(K(j)-yright(i,j))*log(1-pd1ccand(j));
+        llysum=0;
+        llycandsum=0;
+        for(int j=0; j<J; j++){
+          dtmp(j)=pow(pow(ScandX(0)-X(j,0), 2.0)+pow(ScandY(0)-X(j,1),2.0),0.5);
+          lamd1cand(i,j)=lam01*exp(-dtmp(j)*dtmp(j)/(2*sigma*sigma));
+          lamd2cand(i,j)=lam02*exp(-dtmp(j)*dtmp(j)/(2*sigma*sigma));
+          pd1cand(i,j)=1-exp(-lamd1cand(i,j));
+          pd2cand(i,j)=1-exp(-lamd2cand(i,j));
+          if(X(j,2)==2){ //if double trap
+            ll_y_both_cand(i,j)=z(i)*(y_both(i,j)*log(pd2cand(i,j))+(tf2(j)-y_both(i,j))*log(1-pd2cand(i,j)));
+            if(ll_y_both_cand(i,j)==ll_y_both_cand(i,j)){
+              llycandsum+=ll_y_both_cand(i,j);
             }
-            if(partbothc(j)==partbothc(j)){
-              v+=partbothc(j);
+            if((ll_y_both_curr(i,j)==ll_y_both_curr(i,j))&(!std::isinf(ll_y_both_curr(i,j)))){
+              llysum+=ll_y_both_curr(i,j);
             }
-            if(partleftc(j)==partleftc(j)){
-              v+=partleftc(j);
+            pd12cand(i,j)=2*pd1cand(i,j)-pd1cand(i,j)*pd1cand(i,j);
+          }
+          for(int k=0; k<K; k++){
+            if(tf1(j,k)==2){
+              ll_y_left_cand(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd12cand(i,j))+(1-y_left_true(i,j,k))*log(1-pd12cand(i,j)));
+              ll_y_right_cand(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd12cand(i,j))+(1-y_right_true(i,j,k))*log(1-pd12cand(i,j)));
+            }else if(tf1(j,k)==1){//single trap
+              ll_y_left_cand(i,j,k)=z(i)*(y_left_true(i,j,k)*log(pd1cand(i,j))+(1-y_left_true(i,j,k))*log(1-pd1cand(i,j)));
+              ll_y_right_cand(i,j,k)=z(i)*(y_right_true(i,j,k)*log(pd1cand(i,j))+(1-y_right_true(i,j,k))*log(1-pd1cand(i,j)));
+            }else{
+              ll_y_left_cand(i,j,k)=0;
+              ll_y_right_cand(i,j,k)=0;
             }
-            if(partrightc(j)==partrightc(j)){
-              v+=partrightc(j);
+            if((ll_y_left_cand(i,j,k)==ll_y_left_cand(i,j,k))&(!std::isinf(ll_y_left_cand(i,j,k)))){
+              llycandsum+=ll_y_left_cand(i,j,k);
             }
-            if(partbothcCand(j)==partbothcCand(j)){
-              vcand+=partbothcCand(j);
+            if((ll_y_right_cand(i,j,k)==ll_y_right_cand(i,j,k))&(!std::isinf(ll_y_right_cand(i,j,k)))){
+              llycandsum+=ll_y_right_cand(i,j,k);
             }
-            if(partleftcCand(j)==partleftcCand(j)){
-              vcand+=partleftcCand(j);
+            if((ll_y_left_curr(i,j,k)==ll_y_left_curr(i,j,k))&(!std::isinf(ll_y_left_curr(i,j,k)))){
+              llysum+=ll_y_left_curr(i,j,k);
             }
-            if(partrightcCand(j)==partrightcCand(j)){
-              vcand+=partrightcCand(j);
+            if((ll_y_right_curr(i,j,k)==ll_y_right_curr(i,j,k))&(!std::isinf(ll_y_right_curr(i,j,k)))){
+              llysum+=ll_y_right_curr(i,j,k);
             }
           }
-          rand=Rcpp::runif(1);
-          lldiff=vcand-v;
         }
-        if((rand(0)<exp(lldiff))|(z[i]==0)){
+        rand=Rcpp::runif(1);
+        if((rand(0)<exp(llycandsum-llysum))){
           s(i,0)=ScandX(0);
           s(i,1)=ScandY(0);
           for(int j=0; j<J; j++){
             D(i,j) = dtmp(j);
-            lamd1(i,j) = lamd1candc(j);
-            lamd2(i,j) = lamd2candc(j);
+            lamd1(i,j) = lamd1cand(i,j);
+            lamd2(i,j) = lamd2cand(i,j);
+            pd1(i,j) = pd1cand(i,j);
+            pd12(i,j) = pd12cand(i,j);
+            pd2(i,j) = pd2cand(i,j);
+            ll_y_both_curr(i,j) = ll_y_both_cand(i,j);
+            for(int k=0; k<K; k++){
+              ll_y_left_curr(i,j,k) = ll_y_left_cand(i,j,k);
+              ll_y_right_curr(i,j,k) = ll_y_right_cand(i,j,k);
+            }
           }
         }
       }
     }
-
     //Record output
     if(((iter+1)>nburn)&((iter+1) % nthin==0)){
-      sxout(iteridx,_)= s(_,0);
-      syout(iteridx,_)= s(_,1);
-      zout(iteridx,_)= z;
-      ID_Lout(iteridx,_)=ID_L;
-      ID_Rout(iteridx,_)=ID_R;
+      if(storeLatent){
+        sxout(iteridx,_)= s(_,0);
+        syout(iteridx,_)= s(_,1);
+        zout(iteridx,_)= z;
+        ID_Lout(iteridx,_)=ID_L;
+        ID_Rout(iteridx,_)=ID_R;
+      }
       out(iteridx,0)=lam01;
       out(iteridx,1)=lam02;
       out(iteridx,2)=sigma;
@@ -2549,804 +1884,16 @@ List MCMCtf(double lam01,double lam02, double sigma,NumericMatrix yboth, Numeric
       iteridx=iteridx+1;
     }
   }
-
-  List to_return(6);
+  
+  List to_return(8);
   to_return[0] = out;
   to_return[1] = sxout;
   to_return[2] = syout;
   to_return[3] = ID_Lout;
   to_return[4] = ID_Rout;
   to_return[5] = zout;
-  return to_return;
-}
-
-///////////////////////2side model full tf functionality//////////////////////
-//likelihood calculation
-
-//[[Rcpp::export]]
-double fullliktf2(IntegerVector z,NumericMatrix lamd1,NumericMatrix lamd2,arma::cube ybothC, arma::cube yleftC,
-                  arma::cube yrightC, NumericMatrix X,IntegerMatrix tf) {
-  //Preallocate
-  int M = z.size();
-  int J=X.nrow();
-  int K=tf.ncol();
-  NumericMatrix pd1(M,J);
-  NumericMatrix pd12(M,J);
-  NumericMatrix pd2(M,J);
-  arma::cube partboth(M,J,K);
-  arma::cube partleft(M,J,K);
-  arma::cube partright(M,J,K);
-  double v=0;
-  //  Calculate likelihood
-  for(int i=0; i<M; i++) {
-    if(z[i]==1){ //if in pop
-      for(int j=0; j<J; j++){
-        pd1(i,j)=1-exp(-lamd1(i,j));
-        if(X(j,2)==2){//if double trap
-          pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-          pd2(i,j)=1-exp(-lamd2(i,j));
-          for(int k=0; k<K; k++){
-            if(tf(j,k)==2){ //if two cams on
-              partboth(i,j,k)=ybothC(i,j,k)*log(pd2(i,j))+(1-ybothC(i,j,k))*log(1-pd2(i,j));
-              partleft(i,j,k)=yleftC(i,j,k)*log(pd12(i,j))+(1-yleftC(i,j,k))*log(1-pd12(i,j));
-              partright(i,j,k)=yrightC(i,j,k)*log(pd12(i,j))+(1-yrightC(i,j,k))*log(1-pd12(i,j));
-            }else if(tf(j,k)==1){//if one cam on
-              partboth(i,j,k)=0;
-              partleft(i,j,k)=yleftC(i,j,k)*log(pd1(i,j))+(1-yleftC(i,j,k))*log(1-pd1(i,j));
-              partright(i,j,k)=yrightC(i,j,k)*log(pd1(i,j))+(1-yrightC(i,j,k))*log(1-pd1(i,j));
-            }else{//if no cams on
-              partboth(i,j,k)=0;
-              partleft(i,j,k)=0;
-              partright(i,j,k)=0;
-            }
-            if(partboth(i,j,k)==partboth(i,j,k)){
-              v+=partboth(i,j,k);
-            }
-            if(partleft(i,j,k)==partleft(i,j,k)){
-              v+=partleft(i,j,k);
-            }
-            if(partright(i,j,k)==partright(i,j,k)){
-              v+=partright(i,j,k);
-            }
-          }
-        }else{ //if single trap
-          for(int k=0; k<K; k++){
-            if(tf(j,k)==1){//if 1 cam on
-              partboth(i,j,k)=0;
-              partleft(i,j,k)=yleftC(i,j,k)*log(pd1(i,j))+(1-yleftC(i,j,k))*log(1-pd1(i,j));
-              partright(i,j,k)=yrightC(i,j,k)*log(pd1(i,j))+(1-yrightC(i,j,k))*log(1-pd1(i,j));
-            }else{//if no cams on
-              partboth(i,j,k)=0;
-              partleft(i,j,k)=0;
-              partright(i,j,k)=0;
-            }
-            if(partboth(i,j,k)==partboth(i,j,k)){
-              v+=partboth(i,j,k);
-            }
-            if(partleft(i,j,k)==partleft(i,j,k)){
-              v+=partleft(i,j,k);
-            }
-            if(partright(i,j,k)==partright(i,j,k)){
-              v+=partright(i,j,k);
-            }
-          }
-        }
-      }
-    }
-  }
-  double to_return;
-  to_return = v;
-  return to_return;
-}
-
-
-
-using namespace Rcpp;
-// [[Rcpp::export]]
-List MCMCtf2(double lam01,double lam02, double sigma,NumericVector yboth, NumericVector yleft, NumericVector yright, IntegerVector z,
-             NumericMatrix X,IntegerMatrix tf,NumericMatrix D,int Nfixed, IntegerVector knownvector,IntegerVector ID_L,
-             IntegerVector ID_R,int swap,double swaptol,IntegerVector left,IntegerVector right,NumericMatrix s,NumericVector psi,
-             NumericVector xlim,NumericVector ylim,bool useverts, NumericMatrix vertices,double proplam01, double proplam02, double propsigma, double propsx,
-             double propsy, int niter, int nburn, int nthin, LogicalVector updates) {
-  RNGScope scope;
-  int M = z.size();
-  int J=tf.nrow();
-  int K=tf.ncol();
-
-  //put data in cubes
-  IntegerVector arrayDims = yboth.attr("dim");
-  arma::cube ybothC(yboth.begin(), arrayDims[0], arrayDims[1], arrayDims[2], false);
-  arma::cube yleftC(yleft.begin(), arrayDims[0], arrayDims[1], arrayDims[2], false);
-  arma::cube yrightC(yright.begin(), arrayDims[0], arrayDims[1], arrayDims[2], false);
-  //Preallocate for update lam01 lam02 sigma
-  double likcurr;
-  double liknew;
-  double lam01cand;
-  double lam02cand;
-  double sigmacand;
-  NumericVector rand;
-  NumericVector rand2;
-  NumericMatrix lamd1cand;
-  NumericMatrix lamd2cand;
-  //Preallocate side swapping structures
-  //Swapping structures
-  IntegerVector IDs=seq_len(M);
-  int guy1=0;
-  int guy2=0;
-  int swapin;
-  int swapout;
-  int idx;
-  double ncand;
-  double ncand2;
-  int match;
-  double jumpprob;
-  double backprob;
-  IntegerVector possible;
-  IntegerVector unpossible;
-  IntegerVector newID(M);
-  arma::cube ylefttmp(M,J,K);
-  arma::cube yrighttmp(M,J,K);  //could use same structure but dont want to get confused
-
-  //ll structures
-  arma::cube prepart(2,J,K);
-  arma::cube postpart(2,J,K);
-  arma::cube pd1b(2,J,K);
-  arma::cube pd12b(2,J,K);
-  NumericVector swapped(2);
-  double llpre;
-  double llpost;
-
-  //MH structures
-  double lldiff=0;
-
-  //Housekeeping structures
-  NumericVector guycounts(M);
-  LogicalVector zeroguys(M);
-
-  //Preallocate for Psi update
-  NumericMatrix pd1(M,J);
-  NumericMatrix pd12(M,J);
-  NumericMatrix pd2(M,J);
-  arma::cube pd1traps(M,J,K);
-  arma::cube pd2traps(M,J,K);
-  arma::cube pbar1(M,J,K);
-  arma::cube pbar2(M,J,K);
-  arma::cube pbar0(M,J,K);
-  NumericVector prob0(M);
-  NumericVector fc(M);
-  LogicalVector swappable(M);
-  arma::cube partboth(M,J,K);
-  arma::cube partleft(M,J,K);
-  arma::cube partright(M,J,K);
-  int N;
-
-  //Preallocate for updating activity centers
-  LogicalVector inbox(1);
-  NumericVector pd1c(J);
-  NumericVector pd12c(J);
-  NumericVector pd2c(J);
-  NumericVector pd1ccand(J);
-  NumericVector pd12ccand(J);
-  NumericVector pd2ccand(J);
-  NumericMatrix partbothc(J,K);
-  NumericMatrix partleftc(J,K);
-  NumericMatrix partrightc(J,K);
-  NumericMatrix partbothcCand(J,K);
-  NumericMatrix partleftcCand(J,K);
-  NumericMatrix partrightcCand(J,K);
-  NumericVector dtmp(J);
-  NumericVector lamd1candc(J);
-  NumericVector lamd2candc(J);
-  NumericVector ScandX(1);
-  NumericVector ScandY(1);
-  double vcand;
-  double v;
-  //Structures to record output
-  int nstore=(niter-nburn)/nthin;
-  if(nburn % nthin!=0){
-    nstore=nstore+1;
-  }
-  NumericMatrix out(nstore,4);
-  NumericMatrix sxout(nstore,M);
-  NumericMatrix syout(nstore,M);
-  NumericMatrix zout(nstore,M);
-  NumericMatrix ID_Lout(nstore,M);
-  NumericMatrix ID_Rout(nstore,M);
-  int iteridx=0;
-  //calc lamds  D too? Currently an input
-  NumericMatrix lamd1=calclamd(lam01,sigma,D);
-  NumericMatrix lamd2=calclamd(lam02,sigma,D);
-  //start for loop here
-  int iter;
-  for(iter=0; iter<niter; iter++){
-    //update lam01, lam02, and sigma
-
-    likcurr=fullliktf2( z, lamd1, lamd2, ybothC,  yleftC, yrightC,  X, tf);
-    //Update lam01
-    if(updates(0)){
-      rand=Rcpp::rnorm(1,lam01,proplam01);
-      if(rand(0) > 0){
-        lam01cand=rand(0);
-        lamd1cand=calclamd(lam01cand,sigma,D);
-        liknew=fullliktf2( z, lamd1cand, lamd2, ybothC,  yleftC, yrightC,  X, tf);
-        rand2=Rcpp::runif(1);
-        if(rand2(0)<exp(liknew-likcurr)){
-          lam01=lam01cand;
-          lamd1=lamd1cand;
-          likcurr=liknew;
-        }
-      }
-    }
-    //Update lam02
-    if(updates(1)){
-      rand=Rcpp::rnorm(1,lam02,proplam02);
-      if(rand(0) > 0){
-        lam02cand=rand(0);
-        lamd2cand=calclamd(lam02cand,sigma,D);
-        liknew=fullliktf2( z, lamd1, lamd2cand, ybothC,  yleftC, yrightC,  X, tf);
-        rand2=Rcpp::runif(1);
-        if(rand2(0)<exp(liknew-likcurr)){
-          lam02=lam02cand;
-          lamd2=lamd2cand;
-          likcurr=liknew;
-        }
-      }
-    }
-    //Update sigma
-    rand=Rcpp::rnorm(1,sigma,propsigma);
-    if(rand(0) > 0){
-      sigmacand=rand(0);
-      lamd1cand=calclamd(lam01,sigmacand,D);
-      lamd2cand=calclamd(lam02,sigmacand,D);
-      liknew=fullliktf2( z, lamd1cand, lamd2cand, ybothC,  yleftC, yrightC,  X, tf);
-      rand2=Rcpp::runif(1);
-      if(rand2(0)<exp(liknew-likcurr)){
-        sigma=sigmacand;
-        lamd1=lamd1cand;
-        lamd2=lamd2cand;
-        likcurr=liknew;
-      }
-    }
-
-    //  Update left sides
-    if(updates(2)){
-      //Build mapL
-      IntegerMatrix mapL(M,2);
-      mapL(_,1)=ID_L;
-      mapL(_,0)=IDs;
-      IntegerMatrix candmapL=Rcpp::clone(mapL);
-      for (int i=0; i<M; i++) {
-        if(z[candmapL(i,1)-1]==0){
-          candmapL(i,1)= -1;
-        }
-        if(i<Nfixed){
-          candmapL(i,0)= -1;
-          candmapL(i,1)= -1;
-        }
-        if(z(i)==0){
-          candmapL(i,0)= -1;
-        }
-      }
-
-      //Find outcandsL and incandsL
-      IntegerVector outcandsL=IDs[candmapL(_,1)>0];
-      IntegerVector incandsL=IDs[candmapL(_,0)>0];
-      int insizeL=incandsL.size();
-      int outsizeL=outcandsL.size();
-
-      //Structures to store distances
-      NumericVector Dl(incandsL.size());
-      NumericVector trashL(insizeL);
-
-      //Build left swapout bins for sample function
-      //swapin bins vary in size so must be calculated in for loop
-      NumericVector binsL(outsizeL+1);
-      double x;
-      for (int i=0; i<(outsizeL+1); i++) {
-        binsL(i)=i;
-        x=binsL(i)/outsizeL;
-        binsL(i)=x;
-      }
-
-      ///////////////// //swap left sides//////////////
-      for (int l=0; l<swap; l++) {
-        //Find guy 1
-        rand=Rcpp::runif(1);
-        idx=0;
-        for (int i=0; i<(outsizeL+1); i++) {
-          if(binsL(i)<rand(0)){
-            idx=idx+1;
-          }
-        }
-        guy1=outcandsL(idx-1);
-
-        //find swapout
-        swapout=mapL(guy1-1,1);
-
-        //calculate distances and find possible switches
-        for (int i=0; i<insizeL; i++) {
-          Dl(i) = sqrt( pow( s(swapout-1,0) - s(incandsL(i)-1,0), 2.0) + pow( s(swapout-1,1) - s(incandsL(i)-1,1), 2.0) );
-        }
-        possible=incandsL[Dl < swaptol];
-        ncand=possible.size();
-        jumpprob=1/ncand;
-
-        //swap in
-        if(ncand>1){
-          NumericVector binsL2(ncand+1);
-          rand=Rcpp::runif(1);
-          idx=0;
-          for (int i=0; i<(ncand+1); i++) {
-            binsL2(i)=i;
-            x=binsL2(i)/ncand;
-            binsL2(i)=x;
-            if(x<rand(0)){
-              idx=idx+1;
-            }
-          }
-          swapin=possible(idx-1);
-        }else{
-          swapin=possible(0);
-        }
-        for (int i=0; i<incandsL.size(); i++) {
-          trashL(i) = sqrt( pow( s(swapin-1,0) - s(incandsL(i)-1,0), 2.0) + pow( s(swapin-1,1) - s(incandsL(i)-1,1), 2.0) );
-        }
-        unpossible=incandsL[trashL < swaptol];
-        ncand2=unpossible.size();
-        backprob=1/ncand2;
-        //find guy2
-        for (int i=0; i<M; i++) {
-          match=mapL(i,1);
-          if(match==swapin){
-            guy2=i+1;
-          }
-        }
-        //update ID_L
-        newID=Rcpp::clone(ID_L);
-        newID(guy1-1)=swapin;
-        newID(guy2-1)=swapout;
-
-        //Make new left data set
-        idx=0;
-        for (int i=0; i<M; i++) {
-          for(int j=0; j<J; j++) {
-            for (int k=0; k<K; k++) {
-              ylefttmp(newID(i)-1,j,k)=left(idx);
-              idx+=1;
-            }
-          }
-        }
-        //Calculate likelihoods pre and post switch. Only need to calc for left data
-        swapped(0)=swapout;
-        swapped(1)=swapin;
-        llpre=0;
-        llpost=0;
-        for(int i=0; i<2; i++) {
-          for(int j=0; j<J; j++){
-            pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
-            if(X(j,2)==2){ //if double trap
-              pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-              for(int k=0; k<K; k++){
-                if(tf(j,k)==2){ //if two cams on
-                  prepart(i,j,k)=yleftC(swapped(i)-1,j,k)*log(pd12(i,j))+(1-yleftC(swapped(i)-1,j,k))*log(1-pd12(i,j));
-                  postpart(i,j,k)=ylefttmp(swapped(i)-1,j,k)*log(pd12(i,j))+(1-ylefttmp(swapped(i)-1,j,k))*log(1-pd12(i,j));
-                }else if(tf(j,k)==1){//if one cam on
-                  prepart(i,j,k)=yleftC(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yleftC(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                  postpart(i,j,k)=ylefttmp(swapped(i)-1,j,k)*log(pd1(i,j))+(1-ylefttmp(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                }else{//if no cam on
-                  prepart(i,j,k)=0;
-                  postpart(i,j,k)=0;
-                }
-                if((prepart(i,j,k)==prepart(i,j,k))&(!std::isinf(prepart(i,j,k)))){
-                  llpre+=prepart(i,j,k);
-                }
-                if((postpart(i,j,k)==postpart(i,j,k))&(!std::isinf(postpart(i,j,k)))){
-                  llpost+=postpart(i,j,k);
-                }
-              }
-            }else{ //if single trap
-              for(int k=0; k<K; k++){
-                if(tf(j,k)==1){ //if one cam on
-                  prepart(i,j,k)=yleftC(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yleftC(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                  postpart(i,j,k)=ylefttmp(swapped(i)-1,j,k)*log(pd1(i,j))+(1-ylefttmp(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                }else{//if no cam on
-                  prepart(i,j,k)=yleftC(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yleftC(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                  postpart(i,j,k)=ylefttmp(swapped(i)-1,j,k)*log(pd1(i,j))+(1-ylefttmp(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                }
-                if((prepart(i,j,k)==prepart(i,j,k))&(!std::isinf(prepart(i,j,k)))){
-                  llpre+=prepart(i,j,k);
-                }
-                if((postpart(i,j,k)==postpart(i,j,k))&(!std::isinf(postpart(i,j,k)))){
-                  llpost+=postpart(i,j,k);
-                }
-              }
-            }
-          }
-        }
-        //MH step
-        rand=Rcpp::runif(1);
-        lldiff=llpost-llpre;
-        if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-          // likcurr+=lldiff;
-          yleftC=ylefttmp;
-          ID_L=Rcpp::clone(newID);
-          mapL(guy1-1,1)=swapin;
-          mapL(guy2-1,1)=swapout;
-        }
-
-      }
-    }
-    //Update Right sides
-    if(updates(3)){
-      //Build mapR
-      IntegerMatrix mapR(M,2);
-      mapR(_,1)=ID_R;
-      mapR(_,0)=IDs;
-      IntegerMatrix candmapR=Rcpp::clone(mapR);
-      for (int i=0; i<M; i++) {
-        if(z[candmapR(i,1)-1]==0){
-          candmapR(i,1)= -1;
-        }
-        if(i<Nfixed){
-          candmapR(i,0)= -1;
-          candmapR(i,1)= -1;
-        }
-        if(z(i)==0){
-          candmapR(i,0)= -1;
-        }
-      }
-
-      //Find outcandsR and incandsR
-      IntegerVector outcandsR=IDs[candmapR(_,1)>0];
-      IntegerVector incandsR=IDs[candmapR(_,0)>0];
-      int insizeR=incandsR.size();
-      int outsizeR=outcandsR.size();
-
-      //Structures to store distances
-      NumericVector Dr(incandsR.size());
-      NumericVector trashR(insizeR);
-
-      //Build right swapout bins for sample function
-      //swapin bins vary in size so must be calculated in for loop
-      NumericVector binsR(outsizeR+1);
-      double x;
-      for (int i=0; i<(outsizeR+1); i++) {
-        binsR(i)=i;
-        x=binsR(i)/outsizeR;
-        binsR(i)=x;
-      }
-
-      ///////////////// //swap right sides/////////////////
-      for (int l=0; l<swap; l++) {
-        //Find guy 1
-        rand=Rcpp::runif(1);
-        idx=0;
-        for (int i=0; i<(outsizeR+1); i++) {
-          if(binsR(i)<rand(0)){
-            idx=idx+1;
-          }
-        }
-        guy1=outcandsR(idx-1);
-
-        //find swapout
-        swapout=mapR(guy1-1,1);
-
-        //calculate distances and find possible switches
-        for (int i=0; i<insizeR; i++) {
-          Dr(i) = sqrt( pow( s(swapout-1,0) - s(incandsR(i)-1,0), 2.0) + pow( s(swapout-1,1) - s(incandsR(i)-1,1), 2.0) );
-        }
-        possible=incandsR[Dr < swaptol];
-        ncand=possible.size();
-        jumpprob=1/ncand;
-
-        //swap in
-        if(ncand>1){
-          NumericVector binsR2(ncand+1);
-          rand=Rcpp::runif(1);
-          idx=0;
-          for (int i=0; i<(ncand+1); i++) {
-            binsR2(i)=i;
-            x=binsR2(i)/ncand;
-            binsR2(i)=x;
-            if(x<rand(0)){
-              idx=idx+1;
-            }
-          }
-          swapin=possible(idx-1);
-        }else{
-          swapin=possible(0);
-        }
-        for (int i=0; i<incandsR.size(); i++) {
-          trashR(i) = sqrt( pow( s(swapin-1,0) - s(incandsR(i)-1,0), 2.0) + pow( s(swapin-1,1) - s(incandsR(i)-1,1), 2.0) );
-        }
-        unpossible=incandsR[trashR < swaptol];
-        ncand2=unpossible.size();
-        backprob=1/ncand2;
-        //find guy2
-        for (int i=0; i<M; i++) {
-          match=mapR(i,1);
-          if(match==swapin){
-            guy2=i+1;
-          }
-        }
-        //update ID_R
-        newID=Rcpp::clone(ID_R);
-        newID(guy1-1)=swapin;
-        newID(guy2-1)=swapout;
-
-        //Make new right data set
-        idx=0;
-        for (int i=0; i<M; i++) {
-          for(int j=0; j<J; j++) {
-            for (int k=0; k<K; k++) {
-              yrighttmp(newID(i)-1,j,k)=right(idx);
-              idx+=1;
-            }
-          }
-        }
-        //Calculate likelihoods pre and post switch. Only need to calc for right side data
-        swapped(0)=swapout;
-        swapped(1)=swapin;
-        llpre=0;
-        llpost=0;
-        for(int i=0; i<2; i++) {
-          for(int j=0; j<J; j++){
-            pd1(i,j)=1-exp(-lamd1(swapped(i)-1,j));
-            if(X(j,2)==2){ //if double trap
-              pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-              for(int k=0; k<K; k++){
-                if(tf(j,k)==2){ //if two cams on
-                  prepart(i,j,k)=yrightC(swapped(i)-1,j,k)*log(pd12(i,j))+(1-yrightC(swapped(i)-1,j,k))*log(1-pd12(i,j));
-                  postpart(i,j,k)=yrighttmp(swapped(i)-1,j,k)*log(pd12(i,j))+(1-yrighttmp(swapped(i)-1,j,k))*log(1-pd12(i,j));
-                }else if(tf(j,k)==1){//if one cam on
-                  prepart(i,j,k)=yrightC(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yrightC(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                  postpart(i,j,k)=yrighttmp(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yrighttmp(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                }else{//if no cam on
-                  prepart(i,j,k)=0;
-                  postpart(i,j,k)=0;
-                }
-                if((prepart(i,j,k)==prepart(i,j,k))&(!std::isinf(prepart(i,j,k)))){
-                  llpre+=prepart(i,j,k);
-                }
-                if((postpart(i,j,k)==postpart(i,j,k))&(!std::isinf(postpart(i,j,k)))){
-                  llpost+=postpart(i,j,k);
-                }
-              }
-            }else{ //if single trap
-              for(int k=0; k<K; k++){
-                if(tf(j,k)==1){ //if one cam on
-                  prepart(i,j,k)=yrightC(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yrightC(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                  postpart(i,j,k)=yrighttmp(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yrighttmp(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                }else{//if no cam on
-                  prepart(i,j,k)=yrightC(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yrightC(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                  postpart(i,j,k)=yrighttmp(swapped(i)-1,j,k)*log(pd1(i,j))+(1-yrighttmp(swapped(i)-1,j,k))*log(1-pd1(i,j));
-                }
-                if((prepart(i,j,k)==prepart(i,j,k))&(!std::isinf(prepart(i,j,k)))){
-                  llpre+=prepart(i,j,k);
-                }
-                if((postpart(i,j,k)==postpart(i,j,k))&(!std::isinf(postpart(i,j,k)))){
-                  llpost+=postpart(i,j,k);
-                }
-              }
-            }
-          }
-        }
-        //MH step
-        rand=Rcpp::runif(1);
-        lldiff=llpost-llpre;
-        if(rand(0)<(exp(lldiff)*(backprob/jumpprob))){
-          // likcurr+=lldiff;
-          yrightC=yrighttmp;
-          ID_R=Rcpp::clone(newID);
-          mapR(guy1-1,1)=swapin;
-          mapR(guy2-1,1)=swapout;
-        }
-
-      } //end swapping rights
-    }
-
-    //Recalculate zeroguys
-    for (int i=0; i<M; i++) {
-      guycounts(i)=0;
-      for(int j=0; j<J; j++) {
-        for(int k=0; k<K; k++) {
-          guycounts(i)+=ybothC(i,j,k)+yrightC(i,j,k)+yleftC(i,j,k);
-        }
-      }
-      zeroguys(i)=guycounts(i)==0;
-    }
-
-    //Update Psi
-    //  Calculate probability of no capture and update z
-    for(int i=0; i<M; i++) {
-      prob0(i)=1;
-      for(int j=0; j<J; j++){
-        pd1(i,j)=1-exp(-lamd1(i,j));
-        if(X(j,2)==2){ //if double trap
-          pd2(i,j)=1-exp(-lamd2(i,j));
-          pd12(i,j)=2*pd1(i,j)-pd1(i,j)*pd1(i,j);
-          for(int k=0; k<K; k++){
-            if(tf(j,k)==2){ //if two cams on
-              pd1traps(i,j,k)=pd12(i,j);
-              pd2traps(i,j,k)=pd2(i,j);
-            }else if(tf(j,k)==1){//if one cam on
-              pd1traps(i,j,k)=pd1(i,j);
-              pd2traps(i,j,k)=0;
-            }else{//if no cams on
-              pd1traps(i,j,k)=0;
-              pd2traps(i,j,k)=0;
-            }
-            pbar1(i,j,k)=pow(1-pd1traps(i,j,k),2);
-            pbar2(i,j,k)=1-pd2traps(i,j,k);
-            pbar0(i,j,k)=pbar1(i,j,k)*pbar2(i,j,k);
-            prob0(i)*=pbar0(i,j,k);
-          }
-        }else{ //if single trap
-          for(int k=0; k<K; k++){
-            if(tf(j,k)==1){//if 1 cam on
-              pd1traps(i,j,k)=pd1(i,j);
-              pd2traps(i,j,k)=0;
-            }else{//if no cams on
-              pd1traps(i,j,k)=0;
-              pd2traps(i,j,k)=0;
-            }
-            pbar1(i,j,k)=pow(1-pd1traps(i,j,k),2);
-            //pbar2(i,j,k)=1;
-            pbar0(i,j,k)=pbar1(i,j,k);
-            prob0(i)*=pbar0(i,j,k);
-          }
-        }
-      }
-      fc(i)=prob0(i)*psi(0)/(prob0(i)*psi(0) + 1-psi(0));
-      swappable(i)=(knownvector(i)==0)&zeroguys(i);
-      if(swappable(i)){
-        rand=Rcpp::rbinom(1,1,fc(i));
-        z(i)=rand(0);
-      }
-    }
-    N=sum(z);
-    psi=Rcpp::rbeta(1, 1 + N, 1 + M - N);
-
-    //Update Activity Centers
-    for(int i=0; i<M; i++) {
-      ScandX=Rcpp::rnorm(1,s(i,0),propsx);
-      ScandY=Rcpp::rnorm(1,s(i,1),propsy);
-      if(useverts==FALSE){
-        inbox= (ScandX<xlim[1]) & (ScandX>xlim[0]) & (ScandY<ylim[1]) & (ScandY>ylim[0]);
-      }else{
-        inbox=inoutCpp(ScandX,ScandY,vertices);
-      }
-      if(inbox(0)){
-        dtmp=pow( pow( rep(ScandX,J) - X(_,0), 2.0) + pow( rep(ScandY,J) - X(_,1), 2.0), 0.5 );
-        lamd1candc=lam01*exp(-dtmp*dtmp/(2*sigma*sigma));
-        lamd2candc=lam02*exp(-dtmp*dtmp/(2*sigma*sigma));
-        v=0;
-        vcand=0;
-        if(z[i]==1){ //if in pop, otherwise keep update
-          //Calculate likelihood for original and candidate
-          for(int j=0; j<J; j++){
-            pd1c(j)=1-exp(-lamd1(i,j));
-            pd1ccand(j)=1-exp(-lamd1candc(j));
-            if(X(j,2)==2){ //if double trap
-              pd12c(j)=2*pd1c(j)-pd1c(j)*pd1c(j);
-              pd12ccand(j)=2*pd1ccand(j)-pd1ccand(j)*pd1ccand(j);
-              pd2c(j)=1-exp(-lamd2(i,j));
-              pd2ccand(j)=1-exp(-lamd2candc(j));
-              for(int k=0; k<K; k++){
-                if(tf(j,k)==2){ //if two cams on
-                  partbothc(j,k)=ybothC(i,j,k)*log(pd2c(j))+(1-ybothC(i,j,k))*log(1-pd2c(j));
-                  partleftc(j,k)=yleftC(i,j,k)*log(pd12c(j))+(1-yleftC(i,j,k))*log(1-pd12c(j));
-                  partrightc(j,k)=yrightC(i,j,k)*log(pd12c(j))+(1-yrightC(i,j,k))*log(1-pd12c(j));
-                  partbothcCand(j,k)=ybothC(i,j,k)*log(pd2ccand(j))+(1-ybothC(i,j,k))*log(1-pd2ccand(j));
-                  partleftcCand(j,k)=yleftC(i,j,k)*log(pd12ccand(j))+(1-yleftC(i,j,k))*log(1-pd12ccand(j));
-                  partrightcCand(j,k)=yrightC(i,j,k)*log(pd12ccand(j))+(1-yrightC(i,j,k))*log(1-pd12ccand(j));
-                }else if(tf(j,k)==1){//if one cam on
-                  partbothc(j,k)=0;
-                  partleftc(j,k)=yleftC(i,j,k)*log(pd1c(j))+(1-yleftC(i,j,k))*log(1-pd1c(j));
-                  partrightc(j,k)=yrightC(i,j,k)*log(pd1c(j))+(1-yrightC(i,j,k))*log(1-pd1c(j));
-                  partbothcCand(j,k)=0;
-                  partleftcCand(j,k)=yleftC(i,j,k)*log(pd1ccand(j))+(1-yleftC(i,j,k))*log(1-pd1ccand(j));
-                  partrightcCand(j,k)=yrightC(i,j,k)*log(pd1ccand(j))+(1-yrightC(i,j,k))*log(1-pd1ccand(j));
-                }else{//if no cams on
-                  partbothc(j,k)=0;
-                  partleftc(j,k)=0;
-                  partrightc(j,k)=0;
-                  partbothcCand(j,k)=0;
-                  partleftcCand(j,k)=0;
-                  partrightcCand(j,k)=0;
-                }
-                if(partbothc(j,k)==partbothc(j,k)){
-                  v+=partbothc(j,k);
-                }
-                if(partleftc(j,k)==partleftc(j,k)){
-                  v+=partleftc(j,k);
-                }
-                if(partrightc(j,k)==partrightc(j,k)){
-                  v+=partrightc(j,k);
-                }
-                if(partbothcCand(j,k)==partbothcCand(j,k)){
-                  vcand+=partbothcCand(j,k);
-                }
-                if(partleftcCand(j,k)==partleftcCand(j,k)){
-                  vcand+=partleftcCand(j,k);
-                }
-                if(partrightcCand(j,k)==partrightcCand(j,k)){
-                  vcand+=partrightcCand(j,k);
-                }
-              }
-            }else{ //if single trap
-              for(int k=0; k<K; k++){
-                if(tf(j,k)==1){//if 1 cam on
-                  partbothc(j,k)=0;
-                  partleftc(j,k)=yleftC(i,j,k)*log(pd1c(j))+(1-yleftC(i,j,k))*log(1-pd1c(j));
-                  partrightc(j,k)=yrightC(i,j,k)*log(pd1c(j))+(1-yrightC(i,j,k))*log(1-pd1c(j));
-                  partleftcCand(j,k)=yleftC(i,j,k)*log(pd1ccand(j))+(1-yleftC(i,j,k))*log(1-pd1ccand(j));
-                  partrightcCand(j,k)=yrightC(i,j,k)*log(pd1ccand(j))+(1-yrightC(i,j,k))*log(1-pd1ccand(j));
-                }else{//no cam on
-                  partbothc(j,k)=0;
-                  partleftc(j,k)=0;
-                  partrightc(j,k)=0;
-                  partleftcCand(j,k)=0;
-                  partrightcCand(j,k)=0;
-                }
-                if(partbothc(j,k)==partbothc(j,k)){
-                  v+=partbothc(j,k);
-                }
-                if(partleftc(j,k)==partleftc(j,k)){
-                  v+=partleftc(j,k);
-                }
-                if(partrightc(j,k)==partrightc(j,k)){
-                  v+=partrightc(j,k);
-                }
-                if(partbothcCand(j,k)==partbothcCand(j,k)){
-                  vcand+=partbothcCand(j,k);
-                }
-                if(partleftcCand(j,k)==partleftcCand(j,k)){
-                  vcand+=partleftcCand(j,k);
-                }
-                if(partrightcCand(j,k)==partrightcCand(j,k)){
-                  vcand+=partrightcCand(j,k);
-                }
-              }
-            }
-          }
-        }
-        rand=Rcpp::runif(1);
-        lldiff=vcand-v;
-        if((rand(0)<exp(lldiff))|(z[i]==0)){
-          s(i,0)=ScandX(0);
-          s(i,1)=ScandY(0);
-          for(int j=0; j<J; j++){
-            D(i,j) = dtmp(j);
-            lamd1(i,j) = lamd1candc(j);
-            lamd2(i,j) = lamd2candc(j);
-          }
-        }
-      }
-    }
-
-    //Record output
-    if(((iter+1)>nburn)&((iter+1) % nthin==0)){
-      sxout(iteridx,_)= s(_,0);
-      syout(iteridx,_)= s(_,1);
-      zout(iteridx,_)= z;
-      ID_Lout(iteridx,_)=ID_L;
-      ID_Rout(iteridx,_)=ID_R;
-      out(iteridx,0)=lam01;
-      out(iteridx,1)=lam02;
-      out(iteridx,2)=sigma;
-      out(iteridx,3)=N;
-      iteridx=iteridx+1;
-    }
-  }
-
-  List to_return(6);
-  to_return[0] = out;
-  to_return[1] = sxout;
-  to_return[2] = syout;
-  to_return[3] = ID_Lout;
-  to_return[4] = ID_Rout;
-  to_return[5] = zout;
+  to_return[6] = IDs;
+  to_return[7] = y_left_tmp;
   return to_return;
 }
 /////////////////////Heuristic model////////////////////////
@@ -6270,3 +4817,57 @@ List MCMC2(double lam01,double lam02, double sigma,double beta0, double beta1,
   return to_return;
 }
 
+
+
+
+////////////////////////////////////////Integrated Likelihood///////////////////////////////////////////////
+#include <Rcpp.h>
+using namespace Rcpp;
+// [[Rcpp::export]]
+double intlikRcpp(NumericVector parm, NumericMatrix ymat,IntegerMatrix X, int K, NumericMatrix G,
+           NumericMatrix D,int n){
+  RNGScope scope;
+  double part1;
+  double part2;
+  double LLout;
+  double nG=G.nrow();
+  int J=X.nrow();
+  NumericMatrix Pm(J,nG);
+  NumericMatrix probcap(J,nG);
+  NumericVector lik_cond(nG);
+  NumericVector nv(n+1,1.0);
+  double lik_cond_sum;
+  NumericVector lik_marg(n+1);
+  double p0=1/(1+exp(-parm(0)));
+  double sigma=exp(parm(1));
+  double n0=exp(parm(2));
+  //calculate probcap
+  for (int j=0; j<J; j++) {
+    for (int g=0; g<nG; g++){
+      probcap(j,g)=p0*exp(-1/(2*pow(sigma,2))*D(j,g)*D(j,g));
+    }
+  }
+  nv(n)=n0;
+  // calculate marginal likelihood
+  for (int i=0; i<(n+1); i++){
+    lik_cond_sum=0;
+    for (int g=0; g<nG; g++){
+      lik_cond(g)=0;
+      for (int j=0; j<J; j++) {
+        Pm(j,g)=R::dbinom(ymat(i,j),K,probcap(j,g),TRUE);
+        lik_cond(g)+=Pm(j,g);
+      }
+      lik_cond_sum+=exp(lik_cond(g));
+    }
+    lik_marg(i)=lik_cond_sum*(1/nG);
+  }
+  part1=lgamma(n+n0 +1)-lgamma(n0+1);
+  part2=0;
+  for (int i=0; i<(n+1); i++){
+    part2+=nv(i)*log(lik_marg(i));
+  }
+  LLout=-(part1+part2);
+  double to_return;
+  to_return = LLout;
+  return to_return;
+}

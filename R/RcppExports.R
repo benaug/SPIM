@@ -21,64 +21,24 @@ calclamd <- function(lam, sigma, D) {
     .Call('_SPIM_calclamd', PACKAGE = 'SPIM', lam, sigma, D)
 }
 
-updateDfun <- function(lam0, sigma, lamd, y, z, X, K, D) {
-    .Call('_SPIM_updateDfun', PACKAGE = 'SPIM', lam0, sigma, lamd, y, z, X, K, D)
-}
-
-updatePsi <- function(z, knownvector, lamd, y, X, K, psi) {
-    .Call('_SPIM_updatePsi', PACKAGE = 'SPIM', z, knownvector, lamd, y, X, K, psi)
-}
-
-updateACs <- function(z, s, xlim, ylim, D, lamd, lam0, sigma, y, X, K, useverts, vertices) {
-    .Call('_SPIM_updateACs', PACKAGE = 'SPIM', z, s, xlim, ylim, D, lamd, lam0, sigma, y, X, K, useverts, vertices)
-}
-
-MCMC1 <- function(lam0, sigma, y, lamd, z, X, K, D, knownvector, s, psi, xlim, ylim, useverts, vertices, proplam0, propsigma, propsx, propsy, niter, nburn, nthin, obstype, tf) {
-    .Call('_SPIM_MCMC1', PACKAGE = 'SPIM', lam0, sigma, y, lamd, z, X, K, D, knownvector, s, psi, xlim, ylim, useverts, vertices, proplam0, propsigma, propsx, propsy, niter, nburn, nthin, obstype, tf)
-}
-
-SCRliktf <- function(z, lamd, y, K) {
-    .Call('_SPIM_SCRliktf', PACKAGE = 'SPIM', z, lamd, y, K)
+MCMC1 <- function(lam0, sigma, y, lamd, z, X, K, D, knownvector, s, psi, xlim, ylim, useverts, vertices, proplam0, propsigma, propsx, propsy, niter, nburn, nthin, obstype, tf, storeLatent) {
+    .Call('_SPIM_MCMC1', PACKAGE = 'SPIM', lam0, sigma, y, lamd, z, X, K, D, knownvector, s, psi, xlim, ylim, useverts, vertices, proplam0, propsigma, propsx, propsy, niter, nburn, nthin, obstype, tf, storeLatent)
 }
 
 fulllik <- function(z, lamd1, lamd2, yboth, yleft, yright, X, K) {
     .Call('_SPIM_fulllik', PACKAGE = 'SPIM', z, lamd1, lamd2, yboth, yleft, yright, X, K)
 }
 
-updateparms <- function(lam01, lam02, sigma, lamd1, lamd2, yboth, yleft, yright, z, X, K, D) {
-    .Call('_SPIM_updateparms', PACKAGE = 'SPIM', lam01, lam02, sigma, lamd1, lamd2, yboth, yleft, yright, z, X, K, D)
+MCMC2side <- function(lam01, lam02, sigma, lamd1, lamd2, y_both, y_left_true, y_right_true, y_left_obs, y_right_obs, z, X, tf, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates, storeLatent) {
+    .Call('_SPIM_MCMC2side', PACKAGE = 'SPIM', lam01, lam02, sigma, lamd1, lamd2, y_both, y_left_true, y_right_true, y_left_obs, y_right_obs, z, X, tf, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates, storeLatent)
 }
 
-swapC <- function(z, Nfixed, ID_L, ID_R, s, swap, swaptol, lamd1, lamd2, yboth, yleft, yright, X, K, left, right, likcurr) {
-    .Call('_SPIM_swapC', PACKAGE = 'SPIM', z, Nfixed, ID_L, ID_R, s, swap, swaptol, lamd1, lamd2, yboth, yleft, yright, X, K, left, right, likcurr)
+fullliktf <- function(z, lamd1, lamd2, yboth, yleft, yright, X, K, storeLatent) {
+    .Call('_SPIM_fullliktf', PACKAGE = 'SPIM', z, lamd1, lamd2, yboth, yleft, yright, X, K, storeLatent)
 }
 
-updatePsi2 <- function(z, zeroguys, knownvector, lamd1, lamd2, yboth, yleft, yright, X, K, psi) {
-    .Call('_SPIM_updatePsi2', PACKAGE = 'SPIM', z, zeroguys, knownvector, lamd1, lamd2, yboth, yleft, yright, X, K, psi)
-}
-
-updateACs2 <- function(z, s, xlim, ylim, useverts, vertices, D, lamd1, lamd2, lam01, lam02, sigma, yboth, yleft, yright, X, K) {
-    .Call('_SPIM_updateACs2', PACKAGE = 'SPIM', z, s, xlim, ylim, useverts, vertices, D, lamd1, lamd2, lam01, lam02, sigma, yboth, yleft, yright, X, K)
-}
-
-MCMC <- function(lam01, lam02, sigma, yboth, yleft, yright, z, X, K, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates) {
-    .Call('_SPIM_MCMC', PACKAGE = 'SPIM', lam01, lam02, sigma, yboth, yleft, yright, z, X, K, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates)
-}
-
-fullliktf <- function(z, lamd1, lamd2, yboth, yleft, yright, X, K) {
-    .Call('_SPIM_fullliktf', PACKAGE = 'SPIM', z, lamd1, lamd2, yboth, yleft, yright, X, K)
-}
-
-MCMCtf <- function(lam01, lam02, sigma, yboth, yleft, yright, z, X, K, Kmax, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates) {
-    .Call('_SPIM_MCMCtf', PACKAGE = 'SPIM', lam01, lam02, sigma, yboth, yleft, yright, z, X, K, Kmax, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates)
-}
-
-fullliktf2 <- function(z, lamd1, lamd2, ybothC, yleftC, yrightC, X, tf) {
-    .Call('_SPIM_fullliktf2', PACKAGE = 'SPIM', z, lamd1, lamd2, ybothC, yleftC, yrightC, X, tf)
-}
-
-MCMCtf2 <- function(lam01, lam02, sigma, yboth, yleft, yright, z, X, tf, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates) {
-    .Call('_SPIM_MCMCtf2', PACKAGE = 'SPIM', lam01, lam02, sigma, yboth, yleft, yright, z, X, tf, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates)
+MCMCtf2 <- function(lam01, lam02, sigma, lamd1, lamd2, y_both, y_left_true, y_right_true, y_left_obs, y_right_obs, z, X, tf1, tf2, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates, storeLatent) {
+    .Call('_SPIM_MCMCtf2', PACKAGE = 'SPIM', lam01, lam02, sigma, lamd1, lamd2, y_both, y_left_true, y_right_true, y_left_obs, y_right_obs, z, X, tf1, tf2, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, s, psi, xlim, ylim, useverts, vertices, proplam01, proplam02, propsigma, propsx, propsy, niter, nburn, nthin, updates, storeLatent)
 }
 
 fulllikInd <- function(z1, z2, lamd11, lamd21, lamd12, lamd22, yboth, yleft, yright, X, K, Nknown) {
@@ -151,5 +111,9 @@ MCMC1b <- function(lam0, sigma, beta0, beta1, y, z, X, K, D, N, knownvector, s, 
 
 MCMC2 <- function(lam01, lam02, sigma, beta0, beta1, yboth, yleft, yright, z, X, K, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, scell, psi, grid, cellArea, EN, proplam01, proplam02, propsigma, propbeta0, propbeta1, propsx, propsy, niter, nburn, nthin, updates) {
     .Call('_SPIM_MCMC2', PACKAGE = 'SPIM', lam01, lam02, sigma, beta0, beta1, yboth, yleft, yright, z, X, K, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, scell, psi, grid, cellArea, EN, proplam01, proplam02, propsigma, propbeta0, propbeta1, propsx, propsy, niter, nburn, nthin, updates)
+}
+
+intlikRcpp <- function(parm, ymat, X, K, G, D, n) {
+    .Call('_SPIM_intlikRcpp', PACKAGE = 'SPIM', parm, ymat, X, K, G, D, n)
 }
 
