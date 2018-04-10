@@ -1,27 +1,115 @@
-#' Simulate data from the categorical spatial mark resight model
-#' @description Will document after I defend. Should be able to get the idea in the example found in the mcmc.conCatSMR.ID help file.
+#' Simulate data from the conventional (no marking process) categorical spatial mark resight model with or 
+#' without telemetry data and with a detection function that varies by one categorical
+#' identity covariate. See sim.conCatSMR() for the same function with a single detection function.
+#' @param N Abundance
+#' @param n.marked The number of marked individuals in the population, distributed randomly across the state space.
+#' an error will be produced if fewer than n.marked individuals are captured and marktype=="natural".
+#' @param lam0 a vector of detection function baseline detection rates the same length as the first list 
+#' element in IDcovs. Converted to p0, the baseline detection probability if the obstype="bernoulli".
+#' @param sigma a vector of detection function spatial scale parameters the same length as the first list 
+#' element in IDcovs.
+#' @param K The number of sampling occasions
+#' @param X a matrix with two columns for the X and Y trap locations
+#' @param buff an integer indicating the distance to buffer the trapping array, X, to create the state space
+#' @param obstype a character string indicating the observation model "bernoulli" or "poisson"
+#' @param ncat an integer indicating the number of categorical identity covariates
+#' @param pIDcat a vector of length ncat containing the probability that the value of each categorical identity covariate
+#'  is observed upon capture
+#' @param IDcovs a list of length ncat containing the values each categorical identity covariate can take. The
+#' length of each list element determines the number of values each categorical identity covariate can take.
+#' @param gamma a list of the category level probabilities of the same dimension as IDcovs. The category level
+#' probabilities for each covariate must sum to 1.
+#' @param pMarkID a vector of length 2 containing the probability the marked status is observed upon capture
+#' for marked and unmarked individuals, respectively. If these are less than 1, unknown marked status
+#' samples are produced.
+#' @param tlocs a single integer indicating the number of telemetry locations to simulate for each marked individual.
+#' @param pID the probability a marked individual's identity is obtained upon capture. If this is less
+#' than one, marked but unknown identity samples are produced.
+#' @param marktype a character string indicating whether marks are preallocated or obtained from natural marks, "premarked", or "natural".
+#' @description This function simulates data from a conventional spatial mark resight survey for categorically
+#' marked populations where the detection function parameters vary by the levels of the first categorical
+#' identity covariate. Whether marks are preallocated or identified upon capture (natural
+#' marks) is determined through "marktype". Imperfect determination of marked status is controlled through "pMarkID"
+#' and imperfect individual identification of marked individuals is controlled through "pID". Telemetry data for
+#' marked indiviuals is added through "tlocs".
+#' @return a list with many elements. y.sight is the complete sighting history for all individuals. 
+#' y.sight.marked is the sighting history of the marked, observed marked status, and individually identified samples.
+#' y.sight.unmarked is the sighting history of the observed marked status unmarked individual samples.
+#' y.sight.unk is the sighting history for the samples for which marked status could not be determined.
+#' y.sight.marked.noID is the sighting history of the observed marked status marked, but not individually identified samples.
+#' Not all structures will be produced if there is perfect observation of mark status and/or individual identity of 
+#' marked individuals. y.sight is of dimension N x J x K. y.sight.unmarked is of dimension n_um x J x K, 
+#' where n_um is the number of unmarked samples observed. The other latent identity sighting histories
+#' are similarly structured with one observation per i.
+#' 
+#' G.x structures housing the observed categorical identity covariates correspond to the y.sight.x 
+#' structures, linked by the i dimension. "s" contains the simulated activity centers corresponding 
+#' to y.sight, the complete, perfect identity data. Missing values, if simulated, are indicated with a 0.
+#' 
+#' IDmarked, IDum, IDunk, and IDmnoID indicate which individual
+#' in "s" each ith row of the latent identity sighting histories came from. These could be used to
+#' reassemble the latent identity data sets into y.sight.
+#' 
+#' "locs" contains an n.marked x nlocs x 2 array of telemetry locations, if simulated, for the marked
+#' individuals. The i dimension of locs corresponds to the first n.marked i elements of y.sight and the
+#' i dimension of y.sight.marked.
 #' @author Ben Augustine
+#' @examples
+#' \dontrun{
+#' N=100
+#' n.marked=40
+#' lam0=c(0.1,0.3) #Enter same number of detection function parameters as nlevels[i]
+#' sigma=c(0.7,0.5) #same number of lam0 and sigma parameters
+#' K=20 #occasions
+#' buff=3 #state space buffer
+#' X<- expand.grid(3:11,3:11) #trapping array
+#' pMarkID=c(1,1) #probability of observing marked status of marked and unmarked individuals
+#' pID=1 #Probability marked individuals are identified
+#' ncat=3  #number of ID categories
+#' gamma=IDcovs=vector("list",ncat) #population frequencies of each category level. Assume equal here.
+#' nlevels=rep(2,ncat) #number of levels per IDcovs
+#' for(i in 1:ncat){
+#'   gamma[[i]]=rep(1/nlevels[i],nlevels[i])
+#'   IDcovs[[i]]=1:nlevels[i]
+#' }
+#' pIDcat=rep(1,ncat)#category observation probabilities
+#' tlocs=0 #telemetry locs/marked individual
+#' obstype="poisson" #observation model, count or presence/absence?
+#' marktype="premarked" #premarked or natural ID (marked individuals must be captured)?
+#' data=sim.conCatSMR.df(N=N,n.marked=n.marked,lam0=lam0,sigma=sigma,K=K,X=X,buff=buff,obstype=obstype,ncat=ncat,
+#'                          pIDcat=pIDcat,gamma=gamma,IDcovs=IDcovs,pMarkID=pMarkID,tlocs=tlocs,pID=pID,marktype=marktype)
+#' }
 #' @export
-sim.conCatSMR.ID <-
+sim.conCatSMR.df <-
   function(N=50,n.marked=10,lam0=0.25,sigma=0.50,K=10,X=X,buff=3,obstype="bernoulli",ncat=ncat,
            pIDcat=pIDcat,gamma=gamma,IDcovs=IDcovs,pMarkID=c(1,1),tlocs=0,pID=1,
            marktype="premarked"){
     if(!marktype%in%c("natural","premarked")){
       stop("marktype must be 'natural' or 'premarked'")
     }
-    library(abind)
-    # simulate a population of activity centers
-    X=as.matrix(X)
-    s<- cbind(runif(N, min(X[,1])-buff,max(X[,1])+buff), runif(N,min(X[,2])-buff,max(X[,2])+buff))
-    D<- e2dist(s,X)
-    lamd<- lam0*exp(-D*D/(2*sigma*sigma))
-    J=nrow(X)
-    #simulate IDcovs
-    G.true=matrix(NA,nrow=N,ncol=ncat) #all IDcovs in population.
+    #simulate IDcat
+    G.true=matrix(NA,nrow=N,ncol=ncat) #all IDcat in population.
     for(i in 1:N){
       for(j in 1:ncat){
         G.true[i,j]=sample(IDcovs[[j]],1,prob=gamma[[j]])
       }
+    }
+    library(abind)
+    # simulate a population of activity centers
+    X=as.matrix(X)
+    J=nrow(X)
+    s<- cbind(runif(N, min(X[,1])-buff,max(X[,1])+buff), runif(N,min(X[,2])-buff,max(X[,2])+buff))
+    D<- e2dist(s,X)
+    #Variable df stuff
+    if(length(lam0)!=length(sigma)){
+      stop("Need the same number of values for each detection function parameter")
+    }
+    if(length(IDcovs[[1]])!=length(lam0)){
+      stop("IDcovs[[1]] should have the same number of values as detection function parameter values")
+    }
+    lamd<- lam0*exp(-D*D/(2*sigma*sigma))
+    for(i in 1:length(sigma)){
+      lamd[G.true[,1]==i,]<- lam0[i]*exp(-D[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
     }
     
     # Capture and mark individuals
@@ -50,6 +138,9 @@ sim.conCatSMR.ID <-
       #reorder data so enough marked guys are at the top
       #must be random sample of marked guys, e.g. not ordered by # of captures
       idx=which(rowSums(y.sight)>0)
+      if(length(idx)<n.marked){
+        stop("Fewer than n.marked individuals captured. Cannot naturally mark uncaptured individuals.")
+      }
       move=sample(idx,n.marked)
       idx=setdiff(1:N,move)
       y.sight=y.sight[c(move,idx),,]
@@ -224,7 +315,7 @@ sim.conCatSMR.ID <-
       locs=array(NA,dim=c(n.marked,tlocs,2))
       for(i in 1:n.marked){
         for(j in 1:tlocs){
-          locs[i,j,]=c(rnorm(1,s[IDmarked[i],1],sigma),rnorm(1,s[IDmarked[i],2],sigma))
+          locs[i,j,]=c(rnorm(1,s[IDmarked[i],1],sigma[G.marked[IDmarked[i],1]]),rnorm(1,s[IDmarked[i],2],sigma[G.marked[IDmarked[i],1]]))
         }
       }
     }else{
@@ -258,7 +349,7 @@ sim.conCatSMR.ID <-
     
     
     out<-list(y.sight=y.sight,y.sight.marked=y.sight.marked,y.sight.unmarked=y.sight.unmarked,
-              y.sight.unk=y.sight.unk,y.sight.marked.noID=y.sight.marked.noID,
+              y.sight.unk=y.sight.unk,y.sight.marked.noID=y.sight.marked.noID,G.true=G.true,
               G.marked=G.marked,G.unmarked=G.unmarked,
               G.unk=G.unk,G.marked.noID=G.marked.noID,
               IDlist=list(ncat=ncat,IDcovs=IDcovs),locs=locs,

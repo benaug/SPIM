@@ -1,5 +1,48 @@
-#' Fit the categorical spatial mark resight model for natural marks or other situation where number of marked inds is unknown
-#' @description Will document after I defend. Should be able to get the idea in the example below.
+#' Fit the categorical spatial mark resight model for natural marks or other situation where
+#' the number of marked individuals is unknown
+#' @param data a data list as formatted by sim.conCatSMR(). See description for more details.
+#' @param niter the number of MCMC iterations to perform
+#' @param nburn the number of MCMC iterations to discard as burnin
+#' @param nthin the MCMC thinning interval. Keep every nthin iterations.
+#' @param M1 the level of data augmentation for marked individuals
+#' @param M2 the level of data augmentation for unmarked individuals
+#' @param inits a list of initial values for lam0, sigma, gamma, psi1, and psi2. The list element for 
+#' gamma is itself a list with ncat elements. See the example below.
+#' @param obstype a character string indicating the observation model, "bernoulli" or "poisson".
+#' @param nswap an integer indicating how many samples for which the latent identities
+#' are updated on each iteration.
+#' @param propars a list of proposal distribution tuning parameters for lam0, sigma, s, and st, for the
+#' the activity centers of untelemetered and telemetered individuals, respectively. The tuning parameter
+#' should be smaller for individuals with telemetry and increasingly so as the number of locations per
+#' individual increases.
+#' @param storeLatent a logical indicator for whether or not the posteriors of the latent individual identities, z, and s are
+#' stored and returned
+#' @param storeGamma a logical indicator for whether or not the posteriors for gamma are stored and returned
+#' @param IDup a character string indicating whether the latent identity update is done by Gibbs or Metropolis-
+#' Hastings, "Gibbs", or "MH". For obstype="bernoulli", only "MH" is available because the full conditional is not known.
+#' @description This function fits the conventional categorical spatial mark resight model when the number of
+#' marked individuals is unknown.The distribution of marked individuals across the landscape is assumed to be
+#' spatially uniform. This can be relaxed by modeling the marking process in the generalized spatial mark resight
+#' samplers. An extension of this sampler that allows detection function parameters to vary by the
+#' levels of one categorical covariate is located in mcmc.conCatSMR.df(). A version of this sampler
+#' for a known number of marked individuals is in mcmc.conCatSMR().
+#' 
+#' the data list should be formatted to match the list outputted by sim.conCatSMR(), but not all elements
+#' of that object are necessary. y.sight.marked, y.sight.unmarked, G.marked, and G.unmarked are necessary
+#' list elements. y.sight.x and G.x for x=unk and marke.noID are necessary if there are samples
+#' of unknown marked status or samples from marked samples without individual identities.
+#' 
+#' An element "X", a matrix of trap coordinates, an element "K", the integer number of occasions, and
+#' an element n.marked, the integer number of marked individuals are necessary.
+#'
+#' An element "locs", an n.marked x nloc x  2 array of telemetry locations is optional. This array can
+#' have missing values if not all individuals have the same number of locations and the entry for individuals
+#' with no telemetry should all be missing values (coded NA).
+#' 
+#' I will write a function to build the data object with "secr-like" input in the near future.
+#' 
+#' If you need category level detection functions with an unknown number of marks,
+#' email Ben. He hasn't written this one, yet, but it will be easy to do.
 #' @author Ben Augustine
 #' @examples
 #' \dontrun{library(coda)
@@ -23,33 +66,74 @@
 #' tlocs=0 #telemetry locs/marked individual
 #' obstype="poisson" #observation model, count or presence/absence?
 #' marktype="natural" #premarked or natural ID (marked individuals must be captured)?
-#' data=sim.conCatSMR.ID(N=N,n.marked=n.marked,lam0=lam0,sigma=sigma,K=K,X=X,buff=buff,obstype=obstype,ncat=ncat,
+#' data=sim.conCatSMR(N=N,n.marked=n.marked,lam0=lam0,sigma=sigma,K=K,X=X,buff=buff,obstype=obstype,ncat=ncat,
 #'                       pIDcat=pIDcat,gamma=gamma,IDcovs=IDcovs,pMarkID=pMarkID,tlocs=tlocs,pID=pID,marktype=marktype)
 #' #MCMC
 #' inits=list(lam0=lam0,sigma=sigma,gamma=gamma,psi1=0.5,psi2=0.5) #start at simulated values
 #' proppars=list(lam0=0.1,sigma=0.08,s=0.5,st=0.08) #st only for telemetered inds. Should be smaller than s.
 #' M1=50 #marked data augmentation
 #' M2=100 #unmarked data augmentation
-#' keepACs=TRUE
-#' keepGamma=FALSE
+#' storeLatent=TRUE
+#' storeGamma=FALSE
 #' niter=1000
 #' nburn=0
 #' nthin=1
 #' IDup="Gibbs"
-#' out=mcmc.conCatSMR.natural.ID(data,niter=niter,nburn=nburn, nthin=nthin, M1 = M1,M2=M2, inits=inits,obstype=obstype,
-#'                               proppars=proppars,keepACs=TRUE,keepGamma=TRUE,IDup=IDup)
+#' out=mcmc.conCatSMR.natural(data,niter=niter,nburn=nburn, nthin=nthin, M1 = M1,M2=M2, inits=inits,obstype=obstype,
+#'                               proppars=proppars,storeLatent=TRUE,storeGamma=TRUE,IDup=IDup)
 #' 
 #' 
 #' plot(mcmc(out$out))
 #' 
 #' 1-rejectionRate(mcmc(out$out)) #shoot for 0.2 - 0.4 for lam0 and sigma. If too low, raise proppar. If too high, lower proppar.
 #' 1-rejectionRate(mcmc(out$s1xout)) #marked activity center acceptance in x dimension. Shoot for min of 0.2
-#' 1-rejectionRate(mcmc(out$s2xout)) #unmarked activity center acceptance in x dimension. Shoot for min of 0.2}
+#' 1-rejectionRate(mcmc(out$s2xout)) #unmarked activity center acceptance in x dimension. Shoot for min of 0.2
+#' 
+#' #Example for regular conventional SMR (no identity covariates)
+#' N=50
+#' n.marked=12
+#' lam0=0.35
+#' sigma=0.50
+#' K=10 #number of occasions
+#' buff=3 #state space buffer
+#' X<- expand.grid(3:11,3:11) #make a trapping array
+#' pMarkID=c(.8,.8)#probability of observing marked status of marked and unmarked individuals
+#' pID=.8 #Probability marked individuals are identified
+#' ncat=1  #number of ID categories
+#' gamma=IDcovs=vector("list",ncat) #population frequencies of each category level. Assume equal here.
+#' nlevels=rep(1,ncat) #number of levels per IDcat
+#' for(i in 1:ncat){
+#'   gamma[[i]]=rep(1/nlevels[i],nlevels[i])
+#'   IDcovs[[i]]=1:nlevels[i]
+#' }
+#' pIDcat=rep(1,ncat)#category observation probabilities
+#' tlocs=0 #telemetry locs/marked individual
+#' obstype="poisson" #observation model, count or presence/absence?
+#' marktype="natural" #premarked or natural ID (marked individuals must be captured)?
+#' data=sim.conCatSMR(N=N,n.marked=n.marked,lam0=lam0,sigma=sigma,K=K,X=X,buff=buff,obstype=obstype,ncat=ncat,
+#'                       pIDcat=pIDcat,gamma=gamma,IDcovs=IDcovs,pMarkID=pMarkID,tlocs=tlocs,pID=pID,marktype=marktype)
+#' #MCMC
+#' inits=list(lam0=lam0,sigma=sigma,gamma=gamma,psi1=0.5,psi2=0.5) #start at simulated values
+#' proppars=list(lam0=0.1,sigma=0.08,s=0.5,st=0.08) #st only for telemetered inds. Should be smaller than s.
+#' M1=50 #marked data augmentation
+#' M2=100 #unmarked data augmentation
+#' storeLatent=TRUE
+#' storeGamma=FALSE
+#' niter=1000
+#' nburn=0
+#' nthin=1
+#' IDup="Gibbs"
+#' out=mcmc.conCatSMR.natural(data,niter=niter,nburn=nburn, nthin=nthin, M1 = M1,M2=M2, inits=inits,obstype=obstype,
+#'                               proppars=proppars,storeLatent=TRUE,storeGamma=TRUE,IDup=IDup)
+#' 
+#' 
+#' plot(mcmc(out$out))
+#' }
 #' @export
-mcmc.conCatSMR.natural.ID <-
+mcmc.conCatSMR.natural <-
   function(data,niter=2400,nburn=1200, nthin=5, M1 = 30,M2=200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
-           keepACs=TRUE,keepGamma=TRUE,IDup="Gibbs"){
+           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs"){
     ###
     library(abind)
     y.sight.marked=data$y.sight.marked
@@ -412,13 +496,13 @@ mcmc.conCatSMR.natural.ID <-
     }
     out<-matrix(NA,nrow=nstore,ncol=9)
     dimnames(out)<-list(NULL,c("lam0","sigma","n.m","n.um","N.m","N.um","N.all","psi1","psi2"))
-    if(keepACs){
+    if(storeLatent){
       s1xout<- s1yout<- z1out<-matrix(NA,nrow=nstore,ncol=M1)
       s2xout<- s2yout<- z2out<-matrix(NA,nrow=nstore,ncol=M2)
       IDout=array(NA,dim=c(nstore,nrow(ID),2))
     }
     iteridx=1 #for storing output not recorded every iteration
-    if(keepGamma){
+    if(storeGamma){
       gammaOut=vector("list",ncat)
       for(i in 1:ncat){
         gammaOut[[i]]=matrix(NA,nrow=nstore,ncol=nIDcovs[i])
@@ -910,7 +994,7 @@ mcmc.conCatSMR.natural.ID <-
       }
       #Do we record output on this iteration?
       if(iter>nburn&iter%%nthin==0){
-        if(keepACs){
+        if(storeLatent){
           s1xout[iteridx,]<- s1[,1]
           s1yout[iteridx,]<- s1[,2]
           z1out[iteridx,]<- z1
@@ -919,7 +1003,7 @@ mcmc.conCatSMR.natural.ID <-
           z2out[iteridx,]<- z2
           IDout[iteridx,,]=ID
         }
-        if(keepGamma){
+        if(storeGamma){
           for(k in 1:ncat){
             gammaOut[[k]][iteridx,]=gamma[[k]]
           }
@@ -933,11 +1017,11 @@ mcmc.conCatSMR.natural.ID <-
       }
     }  # end of MCMC algorithm
     
-    if(keepACs&keepGamma){
+    if(storeLatent&storeGamma){
       list(out=out, s1xout=s1xout, s1yout=s1yout, z1out=z1out,s2xout=s2xout, s2yout=s2yout, z2out=z2out,IDout=IDout,gammaOut=gammaOut)
-    }else if(keepACs&!keepGamma){
+    }else if(storeLatent&!storeGamma){
       list(out=out, s1xout=s1xout, s1yout=s1yout, z1out=z1out,s2xout=s2xout, s2yout=s2yout, z2out=z2out,IDout=IDout)
-    }else if(!keepACs&keepGamma){
+    }else if(!storeLatent&storeGamma){
       list(out=out,gammaOut=gammaOut)
     }else{ 
       list(out=out)
