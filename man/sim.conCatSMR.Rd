@@ -22,7 +22,7 @@ an error will be produced if fewer than n.marked individuals are captured and ma
 
 \item{K}{The number of sampling occasions}
 
-\item{X}{a matrix with two columns for the X and Y trap locations}
+\item{X}{a matrix with two columns for the X and Y trap locations. J rows.}
 
 \item{buff}{an integer indicating the distance to buffer the trapping array, X, to create the state space}
 
@@ -57,13 +57,16 @@ y.sight.unmarked is the sighting history of the observed marked status unmarked 
 y.sight.unk is the sighting history for the samples for which marked status could not be determined.
 y.sight.marked.noID is the sighting history of the observed marked status marked, but not individually identified samples.
 Not all structures will be produced if there is perfect observation of mark status and/or individual identity of 
-marked individuals. y.sight is of dimension N x J x K. y.sight.unmarked is of dimension n_um x J x K, 
+marked individuals. y.sight is of dimension N x J x K. y.sight.marked si of dimension
+n.marked X J x K. y.sight.unmarked is of dimension n_um x J x K, 
 where n_um is the number of unmarked samples observed. The other latent identity sighting histories
 are similarly structured with one observation per i.
 
 G.x structures housing the observed categorical identity covariates correspond to the y.sight.x 
 structures, linked by the i dimension. "s" contains the simulated activity centers corresponding 
 to y.sight, the complete, perfect identity data. Missing values, if simulated, are indicated with a 0.
+
+IDlist is a list containing ncat and IDcovs, inputs to the simulation function.
 
 IDmarked, IDum, IDunk, and IDmnoID indicate which individual
 in "s" each ith row of the latent identity sighting histories came from. These could be used to

@@ -9,7 +9,7 @@
 #' @param sigma a vector of detection function spatial scale parameters the same length as the first list 
 #' element in IDcovs.
 #' @param K The number of sampling occasions
-#' @param X a matrix with two columns for the X and Y trap locations
+#' @param X a matrix with two columns for the X and Y trap locations. J rows.
 #' @param buff an integer indicating the distance to buffer the trapping array, X, to create the state space
 #' @param obstype a character string indicating the observation model "bernoulli" or "poisson"
 #' @param ncat an integer indicating the number of categorical identity covariates
@@ -38,13 +38,16 @@
 #' y.sight.unk is the sighting history for the samples for which marked status could not be determined.
 #' y.sight.marked.noID is the sighting history of the observed marked status marked, but not individually identified samples.
 #' Not all structures will be produced if there is perfect observation of mark status and/or individual identity of 
-#' marked individuals. y.sight is of dimension N x J x K. y.sight.unmarked is of dimension n_um x J x K, 
+#' marked individuals. y.sight is of dimension N x J x K. y.sight.marked si of dimension
+#' n.marked X J x K. y.sight.unmarked is of dimension n_um x J x K, 
 #' where n_um is the number of unmarked samples observed. The other latent identity sighting histories
 #' are similarly structured with one observation per i.
 #' 
 #' G.x structures housing the observed categorical identity covariates correspond to the y.sight.x 
 #' structures, linked by the i dimension. "s" contains the simulated activity centers corresponding 
 #' to y.sight, the complete, perfect identity data. Missing values, if simulated, are indicated with a 0.
+#' 
+#' IDlist is a list containing ncat and IDcovs, inputs to the simulation function.
 #' 
 #' IDmarked, IDum, IDunk, and IDmnoID indicate which individual
 #' in "s" each ith row of the latent identity sighting histories came from. These could be used to

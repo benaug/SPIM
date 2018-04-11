@@ -61,12 +61,15 @@ of unknown marked status or samples from marked samples without individual ident
 An element "X", a matrix of trap coordinates, an element "K", the integer number of occasions, and
 an element n.marked, the integer number of marked individuals are necessary.
 
+IDlist is a list containing elements ncat and IDcovs. ncat is an integer for the number
+of categorical identity covariates and IDcovs is a list of length ncat with elements containing the
+values each categorical identity covariate may take.
+
 An element "locs", an n.marked x nloc x  2 array of telemetry locations is optional. This array can
 have missing values if not all individuals have the same number of locations and the entry for individuals
 with no telemetry should all be missing values (coded NA).
 
 I will write a function to build the data object with "secr-like" input in the near future.
-#' @author Ben Augustine
 }
 \examples{
 \dontrun{library(coda)
@@ -152,4 +155,7 @@ out=mcmc.conCatSMR.df(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=in
 
 plot(mcmc(out$out))
 }
+}
+\author{
+Ben Augustine
 }
