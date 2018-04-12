@@ -464,9 +464,9 @@ mcmc.genCatSMR.movea <-
     if(obstype[2]=="bernoulli"){
       pd.sight=1-exp(-lamd.sight)
       pd.sight.cand=pd.sight
-      ll.y.sight=dbinom(y.sight.true,K2,pd.sight*z,log=TRUE)
+      ll.y.sight=dbinom(y.sight.true,K2D2,pd.sight*z,log=TRUE)
     }else if(obstype[2]=="poisson"){
-      ll.y.sight=dpois(y.sight.true,K2*lamd.sight*z,log=TRUE)
+      ll.y.sight=dpois(y.sight.true,K2D2*lamd.sight*z,log=TRUE)
     }
     
     lamd.trap.cand=lamd.trap
@@ -528,7 +528,7 @@ mcmc.genCatSMR.movea <-
         if(obstype[2]=="bernoulli"){
           lamd.sight.cand<- lam0.sight.cand*exp(-D2*D2/(2*sigma_d*sigma_d))
           pd.sight.cand=1-exp(-lamd.sight.cand)
-          ll.y.sight.cand= dbinom(y.sight.true,K2,pd.sight.cand*z,log=TRUE)
+          ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
           llysightcandsum=sum(ll.y.sight.cand)
           if(runif(1) < exp(llysightcandsum-llysightsum)){
             lam0.sight<- lam0.sight.cand
@@ -542,7 +542,7 @@ mcmc.genCatSMR.movea <-
           lam0.sight.cand<- rnorm(1,lam0.sight,proppars$lam0.sight)
           if(lam0.sight.cand > 0){
             lamd.sight.cand<- lam0.sight.cand*exp(-D2*D2/(2*sigma_d*sigma_d))
-            ll.y.sight.cand= dpois(y.sight.true,K2*lamd.sight.cand*z,log=TRUE)
+            ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
             llysightcandsum=sum(ll.y.sight.cand)
             if(runif(1) < exp(llysightcandsum-llysightsum)){
               lam0.sight<- lam0.sight.cand
@@ -569,10 +569,10 @@ mcmc.genCatSMR.movea <-
         if(obstype[2]=="bernoulli"){
           lamd.sight.cand<- lam0.sight*exp(-D2*D2/(2*sigma_d.cand*sigma_d.cand))
           pd.sight.cand=1-exp(-lamd.sight.cand)
-          ll.y.sight.cand= dbinom(y.sight.true,K2,pd.sight.cand*z,log=TRUE)
+          ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
         }else{
           lamd.sight.cand<- lam0.sight*exp(-D2*D2/(2*sigma_d.cand*sigma_d.cand))
-          ll.y.sight.cand= dpois(y.sight.true,K2*lamd.sight.cand*z,log=TRUE)
+          ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
         }
         llysightcandsum=sum(ll.y.sight.cand)
         if(uselocs){
@@ -636,9 +636,9 @@ mcmc.genCatSMR.movea <-
             y.sight.true[newID,]=y.sight.true[newID,]+y.sight.latent[l,]
             ID[l]=newID
             if(obstype[2]=="bernoulli"){
-              ll.y.sight[swapped,]= dbinom(y.sight.true[swapped,],K2,pd.sight[swapped,],log=TRUE)
+              ll.y.sight[swapped,]= dbinom(y.sight.true[swapped,],K2D2[swapped,],pd.sight[swapped,],log=TRUE)
             }else{
-              ll.y.sight[swapped,]= dpois(y.sight.true[swapped,],K2*lamd.sight[swapped,],log=TRUE)
+              ll.y.sight[swapped,]= dpois(y.sight.true[swapped,],K2D2[swapped,]*lamd.sight[swapped,],log=TRUE)
             }
           }
         }
@@ -697,9 +697,9 @@ mcmc.genCatSMR.movea <-
           y.sight.cand[newID[l],]=y.sight.true[newID[l],]+y.sight.latent[l,]
           ##update ll.y
           if(obstype[2]=="poisson"){
-            ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2*lamd.sight[swapped,],log=TRUE)
+            ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2D2[swapped,]*lamd.sight[swapped,],log=TRUE)
           }else{
-            ll.y.sight.cand[swapped,]=dbinom(y.sight.cand[swapped,],K2,pd.sight[swapped,],log=TRUE)
+            ll.y.sight.cand[swapped,]=dbinom(y.sight.cand[swapped,],K2D2[swapped,],pd.sight[swapped,],log=TRUE)
           }
           if(runif(1)<exp(sum(ll.y.sight.cand[swapped,])-sum(ll.y.sight[swapped,]))*
              (backprob/propprob)*(focalbackprob/focalprob)){
@@ -750,7 +750,7 @@ mcmc.genCatSMR.movea <-
         pd.sight=1-exp(-lamd.sight)
       }
       pbar.trap=(1-pd.trap)^K2D1
-      pbar.sight=(1-pd.sight)^K2
+      pbar.sight=(1-pd.sight)^K2D2
       prob0.trap<- exp(rowSums(log(pbar.trap)))
       prob0.sight<- exp(rowSums(log(pbar.sight)))
       prob0=prob0.trap*prob0.sight
@@ -764,9 +764,9 @@ mcmc.genCatSMR.movea <-
         ll.y.mark= dpois(y.mark2D,K2D1*lamd.trap*z,log=TRUE)
       }
       if(obstype[2]=="bernoulli"){
-        ll.y.sight= dbinom(y.sight.true,K2,pd.sight*z,log=TRUE)
+        ll.y.sight= dbinom(y.sight.true,K2D2,pd.sight*z,log=TRUE)
       }else{
-        ll.y.sight= dpois(y.sight.true,K2*lamd.sight*z,log=TRUE)
+        ll.y.sight= dpois(y.sight.true,K2D2*lamd.sight*z,log=TRUE)
       }
       psi=rbeta(1,1+sum(z),1+M-sum(z))
       ## Now we have to update the activity centers
@@ -833,7 +833,7 @@ mcmc.genCatSMR.movea <-
                                             (pnorm(ylim[2],s1[i,2],sigma_p)-pnorm(ylim[1],s1[i,2],sigma_p)))
           if(obstype[2]=="bernoulli"){
             pd.sight.cand[i,]=1-exp(-lamd.sight.cand[i,])
-            ll.y.sight.cand[i,]= dbinom(y.sight.true[i,],K2,pd.sight.cand[i,]*z[i],log=TRUE)
+            ll.y.sight.cand[i,]= dbinom(y.sight.true[i,],K2D2[i,],pd.sight.cand[i,]*z[i],log=TRUE)
             if(uselocs&(i%in%telguys)){
               ll.tel.cand[i,]=dnorm(locs[i,,1],Scand[1],sigma_d,log=TRUE)+dnorm(locs[i,,2],Scand[2],sigma_d,log=TRUE)
               if (runif(1) < exp((sum(ll.y.sight.cand[i,])+sum(ll.tel.cand[i,],na.rm=TRUE)+ll.s2.cand[i]) -
@@ -858,7 +858,7 @@ mcmc.genCatSMR.movea <-
               }
             }
           }else{#poisson
-            ll.y.sight.cand[i,]= dpois(y.sight.true[i,],K2*lamd.sight.cand[i,]*z[i],log=TRUE)
+            ll.y.sight.cand[i,]= dpois(y.sight.true[i,],K2D2[i,]*lamd.sight.cand[i,]*z[i],log=TRUE)
             if(uselocs&(i%in%telguys)){
               ll.tel.cand[i,]=dnorm(locs[i,,1],Scand[1],sigma_d,log=TRUE)+dnorm(locs[i,,2],Scand[2],sigma_d,log=TRUE)
               if (runif(1) < exp((sum(ll.y.sight.cand[i,])+sum(ll.tel.cand[i,],na.rm=TRUE)+ll.s2.cand[i]) -
