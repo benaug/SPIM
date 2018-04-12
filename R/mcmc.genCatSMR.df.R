@@ -1,11 +1,14 @@
-#' Fit the generalized categorical spatial mark resight model
+#' Fit the generalized categorical spatial mark resight model with detection function parameters that vary
+#' by the category levels of one categorical identity covariate, e.g. sex
 #' @param data a data list as formatted by sim.genCatSMR(). See description for more details.
 #' @param niter the number of MCMC iterations to perform
 #' @param nburn the number of MCMC iterations to discard as burnin
 #' @param nthin the MCMC thinning interval. Keep every nthin iterations.
 #' @param M the level of data augmentation
 #' @param inits a list of initial values for lam0.mark,lam0.sight, sigma, gamma, and psi. The list element for 
-#' gamma is itself a list with ncat elements. See the example below.
+#' gamma is itself a list with ncat elements. List elements for lam0.mark, lam0.sight, and sigma are
+#' themselves a list, housing starting vectors the same length as the first list element in IDcovs. 
+#' See the example below.
 #' @param obstype a vector of length two indicating the observation model, "bernoulli" or "poisson", for the 
 #' marking and sighting process
 #' @param nswap an integer indicating how many samples for which the latent identities
@@ -13,7 +16,8 @@
 #' @param propars a list of proposal distribution tuning parameters for lam0.mark, lam0.sight, sigma, s, and st, for the
 #' the activity centers of untelemetered and telemetered individuals, respectively. The tuning parameter
 #' should be smaller for individuals with telemetry and increasingly so as the number of locations per
-#' individual increases
+#' individual increases. List elements for lam0.mark, lam0.sight, and sigma are
+#' themselves a list, housing vectors of tuning parameters the same length as the first list element in IDcovs.
 #' @param storeLatent a logical indicator for whether or not the posteriors of the latent individual identities, z, and s are
 #' stored and returned
 #' @param storeGamma a logical indicator for whether or not the posteriors for gamma are stored and returned
@@ -36,13 +40,15 @@
 #' the n.marked+1 ... M uncaptured individuals should be the
 #'  same as the number of occasions each trap was operational. We can't account for unknown
 #'  additions and removals.
-#' @description This function fits the generalized categorical spatial mark resight model.
+#' @description This function fits the generalized categorical spatial mark resight model with detection function parameters that vary
+#' by the category levels of one categorical identity covariate, e.g. sex.
 #' Modelling the marking process relaxes the assumption that the distribution of marked 
-#' individuals across the landscape is
-#' spatially uniform. An extension of this sampler that allows detection function parameters to vary by the
-#' levels of one categorical covariate is located in mcmc.genCatSMR.df(). A version of this sampler
+#' individuals across the landscape is spatially uniform. Category level-specific detection function
+#' parameters reduces individual heterogeneity and improves the probabilistic association of latent
+#' and partial identity samples. This is an expanded version of the sampler located in mcmc.genCatSMR.df().
+#'  A version of that sampler
 #' that allows individual activity centers to move between marking and sighting processes
-#' is in mcmc.conCatSMR.move().
+#' is in mcmc.conCatSMR.move(). Email Ben if you need both of these features simultaneously.
 #' 
 #' the data list should be formatted to match the list outputted by sim.genCatSMR(), but not all elements
 #' of that object are necessary. y.mark, y.sight.marked, y.sight.unmarked, G.marked, and G.unmarked are necessary
@@ -71,10 +77,10 @@
 #' @examples
 #' \dontrun{
 #' #Using categorical identity covariates
-#' N=50
-#' lam0.mark=0.05 #marking process baseline detection rate
-#' lam0.sight=0.25 #sighting process baseline detection rate
-#' sigma=0.50 #shared spatial scale parameter
+#' N=100
+#' lam0.mark=c(0.075,0.01)
+#' lam0.sight=c(0.3,0.2)
+#' sigma=c(0.6,0.5)
 #' K1=10 #number of marking occasions
 #' K2=10 #number of sighting occasions
 #' buff=2 #state space buffer
@@ -98,34 +104,34 @@
 #' Korder=c("M","M","S","S","S","S","M","M","S","M","M","S","M","M","S","S","S","S","M","M")
 #' #Example with no interspersed marking and sighting.
 #' Korder=c(rep("M",10),rep("S",10))
-#' tlocs=25
-#' data=sim.genCatSMR(N=N,lam0.mark=lam0.mark,lam0.sight=lam0.sight,sigma=sigma,K1=K1,
-#'                    K2=K2,Korder=Korder,X1=X1,X2=X2,buff=buff,obstype=obstype,ncat=ncat,
-#'                    pIDcat=pIDcat,IDcovs=IDcovs,gamma=gamma,pMarkID=pMarkID,pID=pID,tlocs=tlocs)
+#' tlocs=5
+#' data=sim.genCatSMR.df(N=N,lam0.mark=lam0.mark,lam0.sight=lam0.sight,sigma=sigma,K1=K1,
+#'                       K2=K2,Korder=Korder,X1=X1,X2=X2,buff=buff,obstype=obstype,ncat=ncat,
+#'                       pIDcat=pIDcat,IDcovs=IDcovs,gamma=gamma,pMarkID=pMarkID,pID=pID,tlocs=tlocs)
+#' 
 #' 
 #' inits=list(lam0.mark=lam0.mark,lam0.sight=lam0.sight,sigma=sigma,gamma=gamma,psi=0.7)
-#' proppars=list(lam0.mark=0.05,lam0.sight=0.05,sigma=0.01,s=0.25,st=0.25)
-#' M=100
+#' proppars=list(lam0.mark=c(0.05,0.025),lam0.sight=c(0.09,0.09),sigma=c(0.04,0.045),s=0.45,st=0.45)
+#' M=150
 #' storeLatent=TRUE
 #' storeGamma=FALSE
-#' niter=1000
+#' niter=500
 #' nburn=0
 #' nthin=1
 #' IDup="Gibbs"
-#' out=mcmc.genCatSMR(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,obstype=obstype,
-#'                    proppars=proppars,storeLatent=storeLatent,storeGamma=storeGamma,IDup=IDup)
-#' library(coda)
-#' plot(mcmc(out$out))
-#' 1-rejectionRate(mcmc(out$out)) #shoot for between 0.2 and 0.4 for df parameters
-#' 1-rejectionRate(mcmc(out$sxout)) #make sure none are <0.1?
-#' length(unique(data$IDum)) #true number of unmarked individuals captured
+#' out=mcmc.genCatSMR.df(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,obstype=obstype,
+#'                       proppars=proppars,storeLatent=TRUE,storeGamma=TRUE,IDup=IDup)
 #' 
-#' ####regular generalized SMR with no identity covariates
-#' #Using categorical identity covariates
-#' N=50
-#' lam0.mark=0.05 #marking process baseline detection rate
-#' lam0.sight=0.25 #sighting process baseline detection rate
-#' sigma=0.50 #shared spatial scale parameter
+#' plot(mcmc(out$out))
+#' 1-rejectionRate(mcmc(out$out))#shoot for between 0.2 and 0.4 for df parameters
+#' 1-rejectionRate(mcmc(out$sxout))#make sure none are <0.1?
+#' length(unique(data$IDum)) #true number of unmarked individuals captured
+#'
+#' #####regular generalized SMR with no identity covariates
+#' N=100
+#' lam0.mark=c(0.075,0.01)
+#' lam0.sight=c(0.3,0.2)
+#' sigma=c(0.6,0.5)
 #' K1=10 #number of marking occasions
 #' K2=10 #number of sighting occasions
 #' buff=2 #state space buffer
@@ -149,37 +155,37 @@
 #' Korder=c("M","M","S","S","S","S","M","M","S","M","M","S","M","M","S","S","S","S","M","M")
 #' #Example with no interspersed marking and sighting.
 #' Korder=c(rep("M",10),rep("S",10))
-#' tlocs=25
-#' data=sim.genCatSMR(N=N,lam0.mark=lam0.mark,lam0.sight=lam0.sight,sigma=sigma,K1=K1,
-#'                    K2=K2,Korder=Korder,X1=X1,X2=X2,buff=buff,obstype=obstype,ncat=ncat,
-#'                    pIDcat=pIDcat,IDcovs=IDcovs,gamma=gamma,pMarkID=pMarkID,pID=pID,tlocs=tlocs)
+#' tlocs=5
+#' data=sim.genCatSMR.df(N=N,lam0.mark=lam0.mark,lam0.sight=lam0.sight,sigma=sigma,K1=K1,
+#'                       K2=K2,Korder=Korder,X1=X1,X2=X2,buff=buff,obstype=obstype,ncat=ncat,
+#'                       pIDcat=pIDcat,IDcovs=IDcovs,gamma=gamma,pMarkID=pMarkID,pID=pID,tlocs=tlocs)
+#' 
 #' 
 #' inits=list(lam0.mark=lam0.mark,lam0.sight=lam0.sight,sigma=sigma,gamma=gamma,psi=0.7)
-#' proppars=list(lam0.mark=0.05,lam0.sight=0.05,sigma=0.01,s=0.25,st=0.25)
-#' M=100
+#' proppars=list(lam0.mark=c(0.05,0.025),lam0.sight=c(0.09,0.09),sigma=c(0.04,0.045),s=0.45,st=0.45)
+#' M=150
 #' storeLatent=TRUE
 #' storeGamma=FALSE
-#' niter=1000
+#' niter=500
 #' nburn=0
 #' nthin=1
 #' IDup="Gibbs"
-#' out=mcmc.genCatSMR(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,obstype=obstype,
-#'                    proppars=proppars,storeLatent=storeLatent,storeGamma=storeGamma,IDup=IDup)
-#' library(coda)
+#' out=mcmc.genCatSMR.df(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,obstype=obstype,
+#'                       proppars=proppars,storeLatent=TRUE,storeGamma=TRUE,IDup=IDup)
 #' plot(mcmc(out$out))
-#'}
+#' }
 #' @export
 
-mcmc.genCatSMR <-
+mcmc.genCatSMR.df <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype=c("bernoulli","poisson"),nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
            storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf1=NA,tf2=NA){
     if(any(data$markedS==0)){#capture order constraints
-      mcmc.genCatSMRb(data,niter=niter,nburn=nburn,nthin=nthin,M=M,inits=inits,
+      mcmc.genCatSMR.dfb(data,niter=niter,nburn=nburn,nthin=nthin,M=M,inits=inits,
                       obstype=obstype,nswap=nswap,proppars=proppars,
                       storeLatent=storeLatent,storeGamma=storeGamma,IDup=IDup,tf1=tf1,tf2=tf2)
     }else{#no capture order constraints
-      mcmc.genCatSMRa(data,niter=niter,nburn=nburn,nthin=nthin,M=M,inits=inits,
+      mcmc.genCatSMR.dfa(data,niter=niter,nburn=nburn,nthin=nthin,M=M,inits=inits,
                       obstype=obstype,nswap=nswap,proppars=proppars,
                       storeLatent=storeLatent,storeGamma=storeGamma,IDup=IDup,tf1=tf1,tf2=tf2)
     }

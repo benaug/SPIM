@@ -1,4 +1,4 @@
-mcmc.genCatSMRb <-
+mcmc.genCatSMR.dfb <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype=c("bernoulli","poisson"),nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
            storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf1=NA,tf2=NA){
@@ -100,6 +100,7 @@ mcmc.genCatSMRb <-
         stop("dim(y.sight.marked.noID) must be 3. Reduced to 2 during initialization")
       }
     }
+    
     if(!length(obstype)==2){
       stop("obstype must be of length 2 (capture and sighting processes)")
     }
@@ -108,6 +109,14 @@ mcmc.genCatSMRb <-
     }
     if(obstype[2]=="bernoulli"&IDup=="Gibbs"){
       stop("Must use MH IDup for bernoulli data")
+    }
+    #multiple df check
+    ndf=length(IDcovs[[1]])
+    if(length(inits$lam0.mark)!=ndf|length(inits$lam0.sight)!=ndf|length(inits$sigma)!=ndf){
+      stop("Must provide same number of detection function inits as category levels for first covariate")
+    }
+    if(length(proppars$lam0.mark)!=ndf|length(proppars$lam0.sight)!=ndf|length(proppars$sigma)!=ndf){
+      stop("Must provide same number of detection function proposal parameters as category levels for first covariate")
     }
     #If using polygon state space
     if("vertices"%in%names(data)){
@@ -168,51 +177,51 @@ mcmc.genCatSMRb <-
     }
     
     #make constraints for data initialization
-      constraints=matrix(1,nrow=n.samp.latent,ncol=n.samp.latent)
-      for(i in 1:n.samp.latent){
-        for(j in 1:n.samp.latent){
-          guys1=which(G.use[i,]!=0)
-          guys2=which(G.use[j,]!=0)
-          comp=guys1[which(guys1%in%guys2)]
-          if(any(G.use[i,comp]!=G.use[j,comp])){
-            constraints[i,j]=0
-          }
+    constraints=matrix(1,nrow=n.samp.latent,ncol=n.samp.latent)
+    for(i in 1:n.samp.latent){
+      for(j in 1:n.samp.latent){
+        guys1=which(G.use[i,]!=0)
+        guys2=which(G.use[j,]!=0)
+        comp=guys1[which(guys1%in%guys2)]
+        if(any(G.use[i,comp]!=G.use[j,comp])){
+          constraints[i,j]=0
         }
       }
-      #If bernoulli data, add constraints that prevent y.true[i,j,k]>1
-      binconstraints=FALSE
-      if(obstype[2]=="bernoulli"){
-        idx=which(y.sight.latent>0,arr.ind=TRUE)
-        for(i in 1:n.samp.latent){
-          for(j in 1:n.samp.latent){
-            if(i!=j){
-              if(all(idx[i,2:3]==idx[j,2:3])){
-                constraints[i,j]=0 #can't combine samples from same trap and occasion in binomial model
-                constraints[j,i]=0
-                binconstraints=TRUE
-              }
+    }
+    #If bernoulli data, add constraints that prevent y.true[i,j,k]>1
+    binconstraints=FALSE
+    if(obstype[2]=="bernoulli"){
+      idx=which(y.sight.latent>0,arr.ind=TRUE)
+      for(i in 1:n.samp.latent){
+        for(j in 1:n.samp.latent){
+          if(i!=j){
+            if(all(idx[i,2:3]==idx[j,2:3])){
+              constraints[i,j]=0 #can't combine samples from same trap and occasion in binomial model
+              constraints[j,i]=0
+              binconstraints=TRUE
             }
           }
         }
       }
-      ###marking occasion order constraints
-      Kconstraints=matrix(0,nrow=M,ncol=n.samp.latent)
-      if("markedS"%in%names(data)){
-        markedS=data$markedS
-      }else{
-        markedS=matrix(1,nrow=n.marked,ncol=K2)
-      }
-      for(i in 1:n.marked){
-        for(j in 1:n.samp.latent){
-          occ=which(apply(y.sight.latent[j,,],2,sum)>0)
-          if(markedS[i,occ]==1){
-            Kconstraints[i,j]=1
-          }else if(markedS[i,occ]==2){
-            Kconstraints[i,j]=2
-          }
+    }
+    ###marking occasion order constraints
+    Kconstraints=matrix(0,nrow=M,ncol=n.samp.latent)
+    if("markedS"%in%names(data)){
+      markedS=data$markedS
+    }else{
+      markedS=matrix(1,nrow=n.marked,ncol=K2)
+    }
+    for(i in 1:n.marked){
+      for(j in 1:n.samp.latent){
+        occ=which(apply(y.sight.latent[j,,],2,sum)>0)
+        if(markedS[i,occ]==1){
+          Kconstraints[i,j]=1
+        }else if(markedS[i,occ]==2){
+          Kconstraints[i,j]=2
         }
       }
-      
+    }
+    
     #Build y.sight.true
     y.sight.true=array(0,dim=c(M,J2,K2))
     y.sight.true[1:n.marked,,]=y.sight.marked
@@ -316,7 +325,6 @@ mcmc.genCatSMRb <-
         stop("ID initialized improperly for marked no ID samples")
       }
     }
-   
     y.sight.true=apply(y.sight.true,c(1,2),sum)
     y.mark=abind(y.mark,array(0,dim=c(M-n.marked,J1,K1)),along=1)
     y.mark2D=apply(y.mark,c(1,2),sum)
@@ -398,8 +406,8 @@ mcmc.genCatSMRb <-
     if(nburn%%nthin!=0){
       nstore=nstore+1
     }
-    out<-matrix(NA,nrow=nstore,ncol=6)
-    dimnames(out)<-list(NULL,c("lam0.mark","lam0.sight","sigma","N","n.um","psi"))
+    out<-matrix(NA,nrow=nstore,ncol=ndf*3+3)
+    dimnames(out)<-list(NULL,c(paste("lam0.mark",1:ndf),paste("lam0.sight",1:ndf),paste("sigma",1:ndf),"N","n.um","psi"))
     if(storeLatent){
       sxout<- syout<- zout<-matrix(NA,nrow=nstore,ncol=M)
       IDout=matrix(NA,nrow=nstore,ncol=length(ID))
@@ -422,7 +430,7 @@ mcmc.genCatSMRb <-
           s[i,]<- c(mean(locs[i,,1],na.rm=TRUE),mean(locs[i,,2],na.rm=TRUE))
       }
       for(i in telguys){
-        ll.tel[i,]=dnorm(locs[i,,1],s[i,1],sigma,log=TRUE)+dnorm(locs[i,,2],s[i,2],sigma,log=TRUE)
+        ll.tel[i,]=dnorm(locs[i,,1],s[i,1],sigma[G.true[i,1]],log=TRUE)+dnorm(locs[i,,2],s[i,2],sigma[G.true[i,1]],log=TRUE)
       }
       ll.tel.cand=ll.tel
     }else{
@@ -473,8 +481,12 @@ mcmc.genCatSMRb <-
     }
     D1=e2dist(s, X1)
     D2=e2dist(s, X2)
-    lamd.trap<- lam0.mark*exp(-D1*D1/(2*sigma*sigma))
-    lamd.sight<- lam0.sight*exp(-D2*D2/(2*sigma*sigma))
+    lamd.trap<- lam0.mark[1]*exp(-D1*D1/(2*sigma[1]*sigma[1]))
+    lamd.sight<- lam0.sight[1]*exp(-D2*D2/(2*sigma[1]*sigma[1]))
+    for(i in 2:ndf){
+      lamd.trap[G.true[,1]==i,]=lam0.mark[i]*exp(-D1[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
+      lamd.sight[G.true[,1]==i,]=lam0.sight[i]*exp(-D2[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
+    }
     ll.y.mark=array(0,dim=c(M,J1))
     ll.y.sight=array(0,dim=c(M,J2))
     if(obstype[1]=="bernoulli"){
@@ -501,117 +513,145 @@ mcmc.genCatSMRb <-
     if(!is.finite(sum(ll.y.sight))){
       stop("Sighting obs likelihood not finite. Try raising lam0.sight and/or sigma inits")
     }
+    ll.cat=rep(0,M)
+    for(i in 1:M){
+      mn=rep(0,ndf)
+      mn[G.true[i,1]]=1
+      ll.cat[i]=dmultinom(mn,prob=gamma[[1]],log=TRUE)
+    }
+    ll.cat.cand=ll.cat
+
     for(iter in 1:niter){
-      #Update lam0.mark
       llytrapsum=sum(ll.y.mark)
-      lam0.mark.cand<- rnorm(1,lam0.mark,proppars$lam0.mark)
-      if(lam0.mark.cand > 0){
-        if(obstype[1]=="bernoulli"){
-          lamd.trap.cand<- lam0.mark.cand*exp(-D1*D1/(2*sigma*sigma))
-          pd.trap.cand=1-exp(-lamd.trap.cand)
-          ll.y.mark.cand= dbinom(y.mark2D,K2D1,pd.trap.cand*z,log=TRUE)
-          llytrapcandsum=sum(ll.y.mark.cand)
-          if(runif(1) < exp(llytrapcandsum-llytrapsum)){
-            lam0.mark<- lam0.mark.cand
-            lamd.trap=lamd.trap.cand
-            pd.trap=pd.trap.cand
-            ll.y.mark=ll.y.mark.cand
-            llytrapsum=llytrapcandsum
-          }
-        }else{#poisson
-          llytrapsum=sum(ll.y.mark)
-          lam0.mark.cand<- rnorm(1,lam0.mark,proppars$lam0.mark)
-          if(lam0.mark.cand > 0){
-            lamd.trap.cand<- lam0.mark.cand*exp(-D1*D1/(2*sigma*sigma))
-            ll.y.mark.cand= dpois(y.mark2D,K2D1*lamd.trap.cand*z,log=TRUE)
+      llysightsum=sum(ll.y.sight)
+      lamd.trap.cand=lamd.trap
+      lamd.sight.cand=lamd.sight
+      #Update lam0.mark
+      for(i in 1:ndf){
+        lam0.mark.cand<- rnorm(1,lam0.mark[i],proppars$lam0.mark[i])
+        if(lam0.mark.cand > 0){
+          if(obstype[1]=="bernoulli"){
+            lamd.trap.cand[G.true[,1]==i,]<- lam0.mark.cand*exp(-D1[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
+            pd.trap.cand=1-exp(-lamd.trap.cand)
+            ll.y.mark.cand= dbinom(y.mark2D,K2D1,pd.trap.cand*z,log=TRUE)
             llytrapcandsum=sum(ll.y.mark.cand)
             if(runif(1) < exp(llytrapcandsum-llytrapsum)){
-              lam0.mark<- lam0.mark.cand
+              lam0.mark[i]<- lam0.mark.cand
               lamd.trap=lamd.trap.cand
+              pd.trap=pd.trap.cand
               ll.y.mark=ll.y.mark.cand
               llytrapsum=llytrapcandsum
+            }else{
+              lamd.trap.cand=lamd.trap
+              lamd.sight.cand=lamd.sight
+            }
+          }else{#poisson
+            lam0.mark.cand<- rnorm(1,lam0.mark[i],proppars$lam0.mark[i])
+            if(lam0.mark.cand > 0){
+              lamd.trap.cand[G.true[,1]==i,]<- lam0.mark.cand*exp(-D1[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
+              ll.y.mark.cand= dpois(y.mark2D,K2D1*lamd.trap.cand*z,log=TRUE)
+              llytrapcandsum=sum(ll.y.mark.cand)
+              if(runif(1) < exp(llytrapcandsum-llytrapsum)){
+                lam0.mark[i]<- lam0.mark.cand
+                lamd.trap=lamd.trap.cand
+                ll.y.mark=ll.y.mark.cand
+                llytrapsum=llytrapcandsum
+              }else{
+                lamd.trap.cand=lamd.trap
+                lamd.sight.cand=lamd.sight
+              }
             }
           }
         }
-      }
-      #Update lam0.sight
-      llysightsum=sum(ll.y.sight)
-      lam0.sight.cand<- rnorm(1,lam0.sight,proppars$lam0.sight)
-      if(lam0.sight.cand > 0){
-        if(obstype[2]=="bernoulli"){
-          lamd.sight.cand<- lam0.sight.cand*exp(-D2*D2/(2*sigma*sigma))
-          pd.sight.cand=1-exp(-lamd.sight.cand)
-          ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
-          llysightcandsum=sum(ll.y.sight.cand)
-          if(runif(1) < exp(llysightcandsum-llysightsum)){
-            lam0.sight<- lam0.sight.cand
-            lamd.sight=lamd.sight.cand
-            pd.sight=pd.sight.cand
-            ll.y.sight=ll.y.sight.cand
-            llysightsum=llysightcandsum
-          }
-        }else{#poisson
-          llysightsum=sum(ll.y.sight)
-          lam0.sight.cand<- rnorm(1,lam0.sight,proppars$lam0.sight)
-          if(lam0.sight.cand > 0){
-            lamd.sight.cand<- lam0.sight.cand*exp(-D2*D2/(2*sigma*sigma))
-            ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
+        #Update lam0.sight
+        lam0.sight.cand<- rnorm(1,lam0.sight[i],proppars$lam0.sight[i])
+        if(lam0.sight.cand > 0){
+          if(obstype[2]=="bernoulli"){
+            lamd.sight.cand[G.true[,1]==i,]<- lam0.sight.cand*exp(-D2[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
+            pd.sight.cand=1-exp(-lamd.sight.cand)
+            ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
             llysightcandsum=sum(ll.y.sight.cand)
             if(runif(1) < exp(llysightcandsum-llysightsum)){
-              lam0.sight<- lam0.sight.cand
+              lam0.sight[i]<- lam0.sight.cand
               lamd.sight=lamd.sight.cand
+              pd.sight=pd.sight.cand
               ll.y.sight=ll.y.sight.cand
               llysightsum=llysightcandsum
+            }else{
+              lamd.trap.cand=lamd.trap
+              lamd.sight.cand=lamd.sight
+            }
+          }else{#poisson
+            lam0.sight.cand<- rnorm(1,lam0.sight[i],proppars$lam0.sight[i])
+            if(lam0.sight.cand > 0){
+              lamd.sight.cand[G.true[,1]==i,]<- lam0.sight.cand*exp(-D2[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
+              ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
+              llysightcandsum=sum(ll.y.sight.cand)
+              if(runif(1) < exp(llysightcandsum-llysightsum)){
+                lam0.sight[i]<- lam0.sight.cand
+                lamd.sight=lamd.sight.cand
+                ll.y.sight=ll.y.sight.cand
+                llysightsum=llysightcandsum
+              }else{
+                lamd.trap.cand=lamd.trap
+                lamd.sight.cand=lamd.sight
+              }
             }
           }
         }
-      }
-      #Update sigma
-      sigma.cand<- rnorm(1,sigma,proppars$sigma)
-      if(sigma.cand > 0){
-        if(obstype[1]=="bernoulli"){
-          lamd.trap.cand<- lam0.mark*exp(-D1*D1/(2*sigma.cand*sigma.cand))
-          pd.trap.cand=1-exp(-lamd.trap.cand)
-          ll.y.mark.cand= dbinom(y.mark2D,K2D1,pd.trap.cand*z,log=TRUE)
-        }else{
-          lamd.trap.cand<- lam0.mark*exp(-D1*D1/(2*sigma.cand*sigma.cand))
-          ll.y.mark.cand= dpois(y.mark2D,K2D1*lamd.trap.cand*z,log=TRUE)
-          llytrapcandsum=sum(ll.y.mark.cand)
-        }
-        llytrapcandsum=sum(ll.y.mark.cand)
-        if(obstype[2]=="bernoulli"){
-          lamd.sight.cand<- lam0.sight*exp(-D2*D2/(2*sigma.cand*sigma.cand))
-          pd.sight.cand=1-exp(-lamd.sight.cand)
-          ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
-        }else{
-          lamd.sight.cand<- lam0.sight*exp(-D2*D2/(2*sigma.cand*sigma.cand))
-          ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
-        }
-        llysightcandsum=sum(ll.y.sight.cand)
-        if(uselocs){
-          for(i in telguys){
-            ll.tel.cand[i,]=dnorm(locs[i,,1],s[i,1],sigma.cand,log=TRUE)+dnorm(locs[i,,2],s[i,2],sigma.cand,log=TRUE)
-          }
-        }else{
-          ll.tel.cand=ll.tel=0
-        }
-        if(runif(1) < exp((llytrapcandsum+llysightcandsum+sum(ll.tel.cand,na.rm=TRUE))-
-                          (llytrapsum+llysightsum+sum(ll.tel,na.rm=TRUE)))){
-          sigma<- sigma.cand
-          lamd.trap=lamd.trap.cand
-          lamd.sight=lamd.sight.cand
-          ll.y.mark=ll.y.mark.cand
-          ll.y.sight=ll.y.sight.cand
-          ll.tel=ll.tel.cand
+        #Update sigma
+        sigma.cand<- rnorm(1,sigma[i],proppars$sigma[i])
+        if(sigma.cand > 0){
           if(obstype[1]=="bernoulli"){
-            pd.trap=pd.trap.cand
+            lamd.trap.cand[G.true[,1]==i,]<- lam0.mark[i]*exp(-D1[G.true[,1]==i,]^2/(2*sigma.cand*sigma.cand))
+            pd.trap.cand=1-exp(-lamd.trap.cand)
+            ll.y.mark.cand= dbinom(y.mark2D,K2D1,pd.trap.cand*z,log=TRUE)
+          }else{
+            lamd.trap.cand[G.true[,1]==i,]<- lam0.mark[i]*exp(-D1[G.true[,1]==i,]^2/(2*sigma.cand*sigma.cand))
+            ll.y.mark.cand= dpois(y.mark2D,K2D1*lamd.trap.cand*z,log=TRUE)
           }
+          llytrapcandsum=sum(ll.y.mark.cand)
           if(obstype[2]=="bernoulli"){
-            pd.sight=pd.sight.cand
+            lamd.sight.cand[G.true[,1]==i,]<- lam0.sight[i]*exp(-D2[G.true[,1]==i,]^2/(2*sigma.cand*sigma.cand))
+            pd.sight.cand=1-exp(-lamd.sight.cand)
+            ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
+          }else{
+            lamd.sight.cand[G.true[,1]==i,]<- lam0.sight[i]*exp(-D2[G.true[,1]==i,]^2/(2*sigma.cand*sigma.cand))
+            ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
+          }
+          llysightcandsum=sum(ll.y.sight.cand)
+          if(uselocs){
+            ll.tel.cand=ll.tel
+            for(j in telguys){
+              if(G.true[j,1]==i){
+                ll.tel.cand[j,]=dnorm(locs[j,,1],s[j,1],sigma.cand,log=TRUE)+dnorm(locs[j,,2],s[j,2],sigma.cand,log=TRUE)
+              }
+            }
+          }else{
+            ll.tel.cand=ll.tel=0
+          }
+          if(runif(1) < exp((llytrapcandsum+llysightcandsum+sum(ll.tel.cand,na.rm=TRUE))-
+                            (llytrapsum+llysightsum+sum(ll.tel,na.rm=TRUE)))){
+            sigma[i]<- sigma.cand
+            lamd.trap=lamd.trap.cand
+            lamd.sight=lamd.sight.cand
+            ll.y.mark=ll.y.mark.cand
+            ll.y.sight=ll.y.sight.cand
+            llytrapsum=llytrapcandsum
+            llysightsum=llysightcandsum
+            ll.tel=ll.tel.cand
+            if(obstype[1]=="bernoulli"){
+              pd.trap=pd.trap.cand
+            }
+            if(obstype[2]=="bernoulli"){
+              pd.sight=pd.sight.cand
+            }
+          }else{
+            lamd.trap.cand=lamd.trap
+            lamd.sight.cand=lamd.sight
           }
         }
       }
-      
       # ID update
       if(IDup=="Gibbs"){
         #Update y.sight.true from full conditional canceling out inconsistent combos with constraints.
@@ -662,7 +702,6 @@ mcmc.genCatSMRb <-
         up=sample(1:n.samp.latent,nswap,replace=FALSE)
         y.sight.cand=y.sight.true
         for(l in up){
-          #find legal guys to swap with. z=1 and consistent constraints
           nj=which(y.sight.latent[l,]>0)
           #Can only swap if IDcovs match
           idx2=which(G.use[l,]!=0)
@@ -716,9 +755,9 @@ mcmc.genCatSMRb <-
           y.sight.cand[newID[l],]=y.sight.true[newID[l],]+y.sight.latent[l,]
           ##update ll.y
           if(obstype[2]=="poisson"){
-            ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2D2[swapped,]*lamd.sight[swapped,],log=TRUE)
+            ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2[swapped,]*lamd.sight[swapped,],log=TRUE)
           }else{
-            ll.y.sight.cand[swapped,]=dbinom(y.sight.cand[swapped,],K2D2[swapped,],pd.sight[swapped,],log=TRUE)
+            ll.y.sight.cand[swapped,]=dbinom(y.sight.cand[swapped,],K2[swapped,],pd.sight[swapped,],log=TRUE)
           }
           if(runif(1)<exp(sum(ll.y.sight.cand[swapped,])-sum(ll.y.sight[swapped,]))*
              (backprob/propprob)*(focalbackprob/focalprob)){
@@ -745,10 +784,66 @@ mcmc.genCatSMRb <-
         }
       }
       G.latent=G.true.tmp==0
-      #update G.true
-      for(j in 1:ncat){
-        swap=G.latent[,j]
-        G.true[swap,j]=sample(IDcovs[[j]],sum(swap),replace=TRUE,prob=gamma[[j]])
+      #update G.true with no df attached
+      if(ncat>1){
+        for(j in 2:ncat){
+          swap=G.latent[,j]
+          G.true[swap,j]=sample(IDcovs[[j]],sum(swap),replace=TRUE,prob=gamma[[j]])
+        }
+      }else{
+        swap=G.latent[,1]
+        G.true[swap,1]=sample(IDcovs[[1]],sum(swap),replace=TRUE,prob=gamma[[1]])
+      }
+      #update df loci
+      idx2=which(G.latent[,1])
+      if(length(idx2)>nswap){
+        updf=sample(idx2,nswap)
+      }else{
+        updf=idx2
+      }
+      for(i in updf){
+        G.cand=rmultinom(1,1,gamma[[1]])
+        G.cand=which(G.cand==1)
+        if(G.cand==G.true[i,1])next
+        #update ll.ys
+        if(obstype[1]=="bernoulli"){
+          lamd.trap.cand[i,]<- lam0.mark[G.cand]*exp(-D1[i,]^2/(2*sigma[G.cand]*sigma[G.cand]))
+          pd.trap.cand[i,]=1-exp(-lamd.trap.cand[i,])
+          ll.y.mark.cand[i,]= dbinom(y.mark2D[i,],K2D1[i,],pd.trap.cand[i,]*z[i],log=TRUE)
+        }else{
+          lamd.trap.cand[i,]<- lam0.mark[G.cand]*exp(-D1[i,]^2/(2*sigma[G.cand]*sigma[G.cand]))
+          ll.y.mark.cand[i,]= dpois(y.mark2D[i,],K2D1[i,]*lamd.trap.cand[i,]*z[i],log=TRUE)
+        }
+        llytrapcandsum=sum(ll.y.mark.cand)
+        if(obstype[2]=="bernoulli"){
+          lamd.sight.cand[i,]<- lam0.sight[G.cand]*exp(-D2[i,]^2/(2*sigma[G.cand]*sigma[G.cand]))
+          pd.sight.cand[i,]=1-exp(-lamd.sight.cand[i,])
+          ll.y.sight.cand[i,]= dbinom(y.sight.true[i,],K2D2[i,],pd.sight.cand[i,]*z[i],log=TRUE)
+        }else{
+          lamd.sight.cand[i,]<- lam0.sight[G.cand]*exp(-D2[i,]^2/(2*sigma[G.cand]*sigma[G.cand]))
+          ll.y.sight.cand[i,]= dpois(y.sight.true[i,],K2D2[i,]*lamd.sight.cand[i,]*z[i],log=TRUE)
+        }
+        mn=rep(0,ndf)
+        mn[G.cand]=1
+        ll.cat.cand[i]=dmultinom(mn,prob=gamma[[1]],log=TRUE)
+        prop.for=gamma[[1]][G.cand]
+        prop.back=gamma[[1]][G.true[i,1]]
+        
+        if(runif(1) < exp((ll.cat.cand[i]+sum(ll.y.mark.cand[i,])+sum(ll.y.sight.cand[i,]))-
+                          (ll.cat[i]+sum(ll.y.mark[i,])+sum(ll.y.sight[i,])))*(prop.back/prop.for)){
+          G.true[i,1]=G.cand
+          ll.cat[i]=ll.cat.cand[i]
+          lamd.trap[i,]=lamd.trap.cand[i,]
+          lamd.sight[i,]=lamd.sight.cand[i,]
+          if(obstype[1]=="bernoulli"){
+            pd.trap[i,]=pd.trap.cand[i,]
+          }
+          if(obstype[2]=="bernoulli"){
+            pd.sight[i,]=pd.sight.cand[i,]
+          }
+          ll.y.mark[i,]=ll.y.mark.cand[i,]
+          ll.y.sight[i,]=ll.y.sight.cand[i,]
+        }
       }
       
       #update genotype frequencies
@@ -759,6 +854,12 @@ mcmc.genCatSMRb <-
         }
         gam=rgamma(rep(1,nlevels[[j]]),1+x)
         gamma[[j]]=gam/sum(gam)
+      }
+      #update ll.cat
+      for(i in 1:M){
+        mn=rep(0,ndf)
+        mn[G.true[i,1]]=1
+        ll.cat[i]=dmultinom(mn,prob=gamma[[1]],log=TRUE)
       }
       
       ## probability of not being captured in a trap AT ALL by either method
@@ -804,8 +905,9 @@ mcmc.genCatSMRb <-
         if (inbox) {
           d1tmp <- sqrt((Scand[1] - X1[, 1])^2 + (Scand[2] - X1[, 2])^2)
           d2tmp <- sqrt((Scand[1] - X2[, 1])^2 + (Scand[2] - X2[, 2])^2)
-          lamd.trap.cand[i,]<- lam0.mark*exp(-d1tmp*d1tmp/(2*sigma*sigma))
-          lamd.sight.cand[i,]<- lam0.sight*exp(-d2tmp*d2tmp/(2*sigma*sigma))
+          dfi=G.true[i,1]
+          lamd.trap.cand[i,]<- lam0.mark[dfi]*exp(-d1tmp*d1tmp/(2*sigma[dfi]*sigma[dfi]))
+          lamd.sight.cand[i,]<- lam0.sight[dfi]*exp(-d2tmp*d2tmp/(2*sigma[dfi]*sigma[dfi]))
           if(obstype[1]=="bernoulli"){
             pd.trap.cand[i,]=1-exp(-lamd.trap.cand[i,])
             ll.y.mark.cand[i,]= dbinom(y.mark2D[i,],K2D1[i,],pd.trap.cand[i,]*z[i],log=TRUE)
@@ -820,7 +922,7 @@ mcmc.genCatSMRb <-
           }
           
           if(uselocs&(i%in%telguys)){
-            ll.tel.cand[i,]=dnorm(locs[i,,1],Scand[1],sigma,log=TRUE)+dnorm(locs[i,,2],Scand[2],sigma,log=TRUE)
+            ll.tel.cand[i,]=dnorm(locs[i,,1],Scand[1],sigma[dfi],log=TRUE)+dnorm(locs[i,,2],Scand[2],sigma[dfi],log=TRUE)
             if (runif(1) < exp((sum(ll.y.mark.cand[i,])+sum(ll.y.sight.cand[i,])+sum(ll.tel.cand[i,],na.rm=TRUE)) -
                                (sum(ll.y.mark[i,])+sum(ll.y.sight[i,])+sum(ll.tel[i,],na.rm=TRUE)))) {
               s[i,]=Scand
@@ -883,7 +985,6 @@ mcmc.genCatSMRb <-
         idx=idx+1
       }
     }  # end of MCMC algorithm
-    
     #CheckID
     if(storeLatent){
       if(!(useUnk|useMarkednoID)){
@@ -899,7 +1000,6 @@ mcmc.genCatSMRb <-
         }
       }
     }
-    
     if(storeLatent&storeGamma){
       list(out=out, sxout=sxout, syout=syout, zout=zout,IDout=IDout,gammaOut=gammaOut)
     }else if(storeLatent&!storeGamma){

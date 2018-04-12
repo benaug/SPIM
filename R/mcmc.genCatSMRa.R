@@ -1,7 +1,7 @@
 mcmc.genCatSMRa <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype=c("bernoulli","poisson"),nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
-           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs"){
+           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf1=NA,tf2=NA){
     ###
     library(abind)
     y.mark<-data$y.mark
@@ -403,14 +403,50 @@ mcmc.genCatSMRa <-
       uselocs=FALSE
       telguys=c()
     }
-    if("tf1"%in%names(data)){
-      tf1=data$tf1
+    if(!any(is.na(tf1))){
+      if(any(tf1>K1)){
+        stop("Some entries in tf1 are greater than K1.")
+      }
+      if(is.null(dim(tf1))){
+        if(length(tf1)!=J1){
+          stop("2D tf1 vector must be of length J1.")
+        }
+        K2D1=matrix(rep(tf1,M),nrow=M,ncol=J1,byrow=TRUE)
+        warning("Since 1D tf1 entered, assuming all individuals exposed to equal capture")
+      }else{
+        if(!all(dim(tf1)==c(M,J1))){
+          stop("tf1 must be dim M by J1 if tf1 varies by individual")
+        }
+        K2D1=tf1
+        warning("Since 2D tf1 entered, assuming individual exposure to traps differ")
+      }
     }else{
       tf1=rep(K1,J1)
+      K2D1=matrix(rep(tf1,M),nrow=M,ncol=J1,byrow=TRUE)
     }
-    K2D1=matrix(rep(tf1,M),nrow=M,ncol=J1,byrow=TRUE)
-    D1=e2dist(s, X1)
-    D2=e2dist(s, X2)
+    if(!any(is.na(tf2))){
+      if(any(tf2>K2)){
+        stop("Some entries in tf2 are greater than K2.")
+      }
+      if(is.null(dim(tf2))){
+        if(length(tf2)!=J2){
+          stop("tf2 vector must be of length J2.")
+        }
+        if(!all(dim(K2D2)==c(M,J2))){
+          stop("K2D2 must be dim M by J2 if K2D2 varies by individual")
+        }
+        K2D2=matrix(rep(tf2,M),nrow=M,ncol=J2,byrow=TRUE)
+        warning("Since 1D tf2 entered, assuming all individuals exposed to equal sighting effort")
+      }else{
+        K2D2=tf2
+        warning("Since 2D tf2 entered, assuming individual exposure to sighting effort differs")
+      }
+    }else{
+      tf1=rep(K1,J1)
+      K2D2=matrix(rep(tf1,M),nrow=M,ncol=J1,byrow=TRUE)
+    }
+    D1=e2dist(s,X1)
+    D2=e2dist(s,X2)
     lamd.trap<- lam0.mark*exp(-D1*D1/(2*sigma*sigma))
     lamd.sight<- lam0.sight*exp(-D2*D2/(2*sigma*sigma))
     ll.y.mark=array(0,dim=c(M,J1))
@@ -479,7 +515,7 @@ mcmc.genCatSMRa <-
         if(obstype[2]=="bernoulli"){
           lamd.sight.cand<- lam0.sight.cand*exp(-D2*D2/(2*sigma*sigma))
           pd.sight.cand=1-exp(-lamd.sight.cand)
-          ll.y.sight.cand= dbinom(y.sight.true,K2,pd.sight.cand*z,log=TRUE)
+          ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
           llysightcandsum=sum(ll.y.sight.cand)
           if(runif(1) < exp(llysightcandsum-llysightsum)){
             lam0.sight<- lam0.sight.cand
@@ -493,7 +529,7 @@ mcmc.genCatSMRa <-
           lam0.sight.cand<- rnorm(1,lam0.sight,proppars$lam0.sight)
           if(lam0.sight.cand > 0){
             lamd.sight.cand<- lam0.sight.cand*exp(-D2*D2/(2*sigma*sigma))
-            ll.y.sight.cand= dpois(y.sight.true,K2*lamd.sight.cand*z,log=TRUE)
+            ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
             llysightcandsum=sum(ll.y.sight.cand)
             if(runif(1) < exp(llysightcandsum-llysightsum)){
               lam0.sight<- lam0.sight.cand
@@ -520,10 +556,10 @@ mcmc.genCatSMRa <-
         if(obstype[2]=="bernoulli"){
           lamd.sight.cand<- lam0.sight*exp(-D2*D2/(2*sigma.cand*sigma.cand))
           pd.sight.cand=1-exp(-lamd.sight.cand)
-          ll.y.sight.cand= dbinom(y.sight.true,K2,pd.sight.cand*z,log=TRUE)
+          ll.y.sight.cand= dbinom(y.sight.true,K2D2,pd.sight.cand*z,log=TRUE)
         }else{
           lamd.sight.cand<- lam0.sight*exp(-D2*D2/(2*sigma.cand*sigma.cand))
-          ll.y.sight.cand= dpois(y.sight.true,K2*lamd.sight.cand*z,log=TRUE)
+          ll.y.sight.cand= dpois(y.sight.true,K2D2*lamd.sight.cand*z,log=TRUE)
         }
         llysightcandsum=sum(ll.y.sight.cand)
         if(uselocs){
@@ -587,9 +623,9 @@ mcmc.genCatSMRa <-
             y.sight.true[newID,]=y.sight.true[newID,]+y.sight.latent[l,]
             ID[l]=newID
             if(obstype[2]=="bernoulli"){
-              ll.y.sight[swapped,]= dbinom(y.sight.true[swapped,],K2,pd.sight[swapped,],log=TRUE)
+              ll.y.sight[swapped,]= dbinom(y.sight.true[swapped,],K2D2[swapped,],pd.sight[swapped,],log=TRUE)
             }else{
-              ll.y.sight[swapped,]= dpois(y.sight.true[swapped,],K2*lamd.sight[swapped,],log=TRUE)
+              ll.y.sight[swapped,]= dpois(y.sight.true[swapped,],K2D2[swapped,]*lamd.sight[swapped,],log=TRUE)
             }
           }
         }
@@ -648,9 +684,9 @@ mcmc.genCatSMRa <-
           y.sight.cand[newID[l],]=y.sight.true[newID[l],]+y.sight.latent[l,]
           ##update ll.y
           if(obstype[2]=="poisson"){
-            ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2*lamd.sight[swapped,],log=TRUE)
+            ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2D2[swapped,]*lamd.sight[swapped,],log=TRUE)
           }else{
-            ll.y.sight.cand[swapped,]=dbinom(y.sight.cand[swapped,],K2,pd.sight[swapped,],log=TRUE)
+            ll.y.sight.cand[swapped,]=dbinom(y.sight.cand[swapped,],K2D2[swapped,],pd.sight[swapped,],log=TRUE)
           }
           if(runif(1)<exp(sum(ll.y.sight.cand[swapped,])-sum(ll.y.sight[swapped,]))*
              (backprob/propprob)*(focalbackprob/focalprob)){
@@ -701,7 +737,7 @@ mcmc.genCatSMRa <-
         pd.sight=1-exp(-lamd.sight)
       }
       pbar.trap=(1-pd.trap)^K2D1
-      pbar.sight=(1-pd.sight)^K2
+      pbar.sight=(1-pd.sight)^K2D2
       prob0.trap<- exp(rowSums(log(pbar.trap)))
       prob0.sight<- exp(rowSums(log(pbar.sight)))
       prob0=prob0.trap*prob0.sight
@@ -715,9 +751,9 @@ mcmc.genCatSMRa <-
         ll.y.mark= dpois(y.mark2D,K2D1*lamd.trap*z,log=TRUE)
       }
       if(obstype[2]=="bernoulli"){
-        ll.y.sight= dbinom(y.sight.true,K2,pd.sight*z,log=TRUE)
+        ll.y.sight= dbinom(y.sight.true,K2D2,pd.sight*z,log=TRUE)
       }else{
-        ll.y.sight= dpois(y.sight.true,K2*lamd.sight*z,log=TRUE)
+        ll.y.sight= dpois(y.sight.true,K2D2*lamd.sight*z,log=TRUE)
       }
       # psi=rbeta(1,1+sum(z[unmarked]),1+M-n.marked-sum(z[unmarked]))
       psi=rbeta(1,1+sum(z),1+M-sum(z))
@@ -746,9 +782,9 @@ mcmc.genCatSMRa <-
           }
           if(obstype[2]=="bernoulli"){
             pd.sight.cand[i,]=1-exp(-lamd.sight.cand[i,])
-            ll.y.sight.cand[i,]= dbinom(y.sight.true[i,],K2,pd.sight.cand[i,]*z[i],log=TRUE)
+            ll.y.sight.cand[i,]= dbinom(y.sight.true[i,],K2D2[i,],pd.sight.cand[i,]*z[i],log=TRUE)
           }else{
-            ll.y.sight.cand[i,]= dpois(y.sight.true[i,],K2*lamd.sight.cand[i,]*z[i],log=TRUE)
+            ll.y.sight.cand[i,]= dpois(y.sight.true[i,],K2D2[i,]*lamd.sight.cand[i,]*z[i],log=TRUE)
           }
           
           if(uselocs&(i%in%telguys)){
