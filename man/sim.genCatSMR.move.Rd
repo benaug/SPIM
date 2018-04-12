@@ -52,7 +52,9 @@ length of each list element determines the number of values each categorical ide
 for marked and unmarked individuals, respectively. If these are less than 1, unknown marked status
 samples are produced.}
 
-\item{tlocs}{a single integer indicating the number of telemetry locations to simulate for each marked individual.}
+\item{tlocs}{a single integer indicating the number of telemetry locations to simulate for each marked individual.
+These telemetry locations are around the sighting process activity centers only. Marking process telemetry
+could be added. In the models with no activity center relocation, it does not matter.}
 
 \item{pID}{the probability a marked individual's identity is obtained upon capture. If this is less
 than one, marked but unknown identity samples are produced.}
@@ -90,7 +92,8 @@ i dimension of y.sight.marked.
 }
 \description{
 This function simulates data from a generalized spatial mark resight survey for categorically
-marked populations. Capture histories from the marking and sighting process are produced. If there is
+marked populations where the activity centers move between the marking and sighting process following a bivariate
+normal Markov transition kernel. Capture histories from the marking and sighting process are produced. If there is
 only one categorical identity covariate with one value, the function simulates
 from typical generalized mark resight. Imperfect determination of marked status is controlled through "pMarkID"
 and imperfect individual identification of marked individuals is controlled through "pID". Telemetry data for

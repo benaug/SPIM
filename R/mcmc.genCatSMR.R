@@ -141,9 +141,6 @@
 #'   gamma[[i]]=rep(1/nlevels[i],nlevels[i])
 #'   IDcovs[[i]]=1:nlevels[i]
 #' }
-#' #inspect ID covariates and level probabilities
-#' str(IDcovs) #3 covariates with 2 levels
-#' str(gamma) #each of the two levels are equally probable
 #' pIDcat=rep(1,ncat) #category observation probabilities
 #' #Example of interspersed marking and sighting. 
 #' Korder=c("M","M","S","S","S","S","M","M","S","M","M","S","M","M","S","S","S","S","M","M")

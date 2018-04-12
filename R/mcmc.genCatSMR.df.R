@@ -50,7 +50,7 @@
 #' that allows individual activity centers to move between marking and sighting processes
 #' is in mcmc.conCatSMR.move(). Email Ben if you need both of these features simultaneously.
 #' 
-#' the data list should be formatted to match the list outputted by sim.genCatSMR(), but not all elements
+#' the data list should be formatted to match the list outputted by sim.genCatSMR.df(), but not all elements
 #' of that object are necessary. y.mark, y.sight.marked, y.sight.unmarked, G.marked, and G.unmarked are necessary
 #' list elements. y.sight.x and G.x for x=unk and marke.noID are necessary if there are samples
 #' of unknown marked status or samples from marked samples without individual identities.
@@ -147,9 +147,6 @@
 #'   gamma[[i]]=rep(1/nlevels[i],nlevels[i])
 #'   IDcovs[[i]]=1:nlevels[i]
 #' }
-#' #inspect ID covariates and level probabilities
-#' str(IDcovs) #3 covariates with 2 levels
-#' str(gamma) #each of the two levels are equally probable
 #' pIDcat=rep(1,ncat) #category observation probabilities
 #' #Example of interspersed marking and sighting. 
 #' Korder=c("M","M","S","S","S","S","M","M","S","M","M","S","M","M","S","S","S","S","M","M")
