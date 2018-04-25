@@ -13,11 +13,11 @@
 #'obstype="poisson"
 #'
 #'#categorical identity covariate stuff
-#'ncat=2  #number of ID covariates loci
+#'ncat=2  #number of ID covariates
 #'gamma=vector("list",ncat) #population frequencies of each category level
 #'
 #'#Do this if you want to use the number of alleles at a locus to generate all possible genotypes
-#'nlevels=rep(NA,ncat) #Number of IDcovs at each loci given nallele
+#'nlevels=rep(NA,ncat) #Number of levels per ID covariate
 #'nallele=rep(3,ncat)  #number of alleles at each loci
 #'for(i in 1:ncat){
 #'  nlevels[i]=nallele[i]*(nallele[i]+1)/2
@@ -35,7 +35,7 @@
 #'
 #'#Or this for generic ID covariates
 #'gamma=vector("list",ncat)
-#'nlevels=rep(3,ncat)
+#'nlevels=rep(3,ncat) #Number of levels per ID covariate
 #'for(i in 1:ncat){
 #'  gamma[[i]]=rep(1/nlevels[i],nlevels[i]) #generating all equal category level frequencies
 #'}
@@ -445,11 +445,11 @@ mcmc.CatSPIM <-
             y.true[ID[l],]=y.true[ID[l],]-y.obs[l,]
             y.true[newID,]=y.true[newID,]+y.obs[l,]
             ID[l]=newID
-            if(obstype=="bernoulli"){
-              ll.y[swapped,]= dbinom(y.true[swapped,],K,pd[swapped,],log=TRUE)
-            }else{
+            # if(obstype=="bernoulli"){
+            #   ll.y[swapped,]= dbinom(y.true[swapped,],K,pd[swapped,],log=TRUE)
+            # }else{
               ll.y[swapped,]= dpois(y.true[swapped,],K*lamd[swapped,],log=TRUE)
-            }
+            # }
           }
         }
       }else{

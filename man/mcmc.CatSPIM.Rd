@@ -24,11 +24,11 @@ X<- expand.grid(3:11,3:11)
 obstype="poisson"
 
 #categorical identity covariate stuff
-ncat=2  #number of ID covariates loci
+ncat=2  #number of ID covariates
 gamma=vector("list",ncat) #population frequencies of each category level
 
 #Do this if you want to use the number of alleles at a locus to generate all possible genotypes
-nlevels=rep(NA,ncat) #Number of IDcovs at each loci given nallele
+nlevels=rep(NA,ncat) #Number of levels per ID covariate
 nallele=rep(3,ncat)  #number of alleles at each loci
 for(i in 1:ncat){
  nlevels[i]=nallele[i]*(nallele[i]+1)/2
@@ -46,7 +46,7 @@ for(i in 1:ncat){
 
 #Or this for generic ID covariates
 gamma=vector("list",ncat)
-nlevels=rep(3,ncat)
+nlevels=rep(3,ncat) #Number of levels per ID covariate
 for(i in 1:ncat){
  gamma[[i]]=rep(1/nlevels[i],nlevels[i]) #generating all equal category level frequencies
 }
