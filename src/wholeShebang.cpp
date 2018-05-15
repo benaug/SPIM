@@ -4871,3 +4871,36 @@ double intlikRcpp(NumericVector parm, NumericMatrix ymat,IntegerMatrix X, int K,
   to_return = LLout;
   return to_return;
 }
+
+using namespace Rcpp;
+// [[Rcpp::export]]
+LogicalVector findPossible2D(IntegerVector z,IntegerMatrix G_true,
+                           IntegerVector G_obs_true,int M,int ncat) {
+  LogicalMatrix equals(M,ncat);
+  LogicalVector allequals(M);
+  for(int i=0; i<M; i++) {
+    allequals(i)=TRUE;
+    for(int l=0; l<ncat; l++) {
+      equals(i,l)=G_true(i,l)==G_obs_true(l);
+      allequals(i)=allequals(i)*equals(i,l);
+    }
+    allequals(i)=allequals(i)*(z(i)==1);
+  }
+  return allequals;
+}
+
+// [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::export]]
+Rcpp::NumericVector arma_setdiff(arma::uvec& x, arma::uvec& y){
+  x = arma::unique(x);
+  y = arma::unique(y);
+  for (size_t j = 0; j < y.n_elem; j++) {
+    arma::uvec q1 = arma::find(x == y[j]);
+    if (!q1.empty()) {
+      x.shed_row(q1(0));
+    }
+  }
+  Rcpp::NumericVector x2 = Rcpp::wrap(x);
+  x2.attr("dim") = R_NilValue;
+  return x2;
+}

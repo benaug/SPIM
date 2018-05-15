@@ -139,17 +139,17 @@ sim.genCatSMR <-
     }
 
     for(i in 1:length(sigma)){
-      lamd.trap<- lam0.mark*exp(-D1^2/(2*sigma*sigma))
+      lamd.mark<- lam0.mark*exp(-D1^2/(2*sigma*sigma))
       lamd.sight<- lam0.sight*exp(-D2^2/(2*sigma*sigma))
     }
     # Capture and mark individuals
     y.mark <-array(0,dim=c(N,J1,K1))
     if(obstype[1]=="bernoulli"){
-      pd.trap=1-exp(-lamd.trap)
+      pd.mark=1-exp(-lamd.mark)
       for(i in 1:N){
         for(j in 1:J1){
           for(k in 1:K1){
-            y.mark[i,j,k]=rbinom(1,1,pd.trap[i,j]) 
+            y.mark[i,j,k]=rbinom(1,1,pd.mark[i,j]) 
           }
         }
       }
@@ -157,7 +157,7 @@ sim.genCatSMR <-
       for(i in 1:N){
         for(j in 1:J1){
           for(k in 1:K1){
-            y.mark[i,j,k]=rpois(1,lamd.trap[i,j])
+            y.mark[i,j,k]=rpois(1,lamd.mark[i,j])
           }
         }
       }

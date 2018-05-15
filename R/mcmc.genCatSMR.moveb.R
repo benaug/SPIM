@@ -458,8 +458,8 @@ mcmc.genCatSMR.moveb <-
         warning("Since 2D tf2 entered, assuming individual exposure to sighting effort differs")
       }
     }else{
-      tf1=rep(K1,J1)
-      K2D2=matrix(rep(tf1,M),nrow=M,ncol=J1,byrow=TRUE)
+      tf2=rep(K2,J2)
+      K2D2=matrix(rep(tf2,M),nrow=M,ncol=J2,byrow=TRUE)
     }
     D1=e2dist(s1, X1)
     D2=e2dist(s2, X2)

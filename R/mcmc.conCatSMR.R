@@ -138,7 +138,7 @@
 mcmc.conCatSMR <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,s=0.2,st=0.2),
-           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs"){
+           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf=NA){
     ###
     library(abind)
     y.sight.marked=data$y.sight.marked
@@ -244,8 +244,7 @@ mcmc.conCatSMR <-
     }else{
       stop("user must supply either 'buff' or 'vertices' in data object")
     }
-    if("tf"%in%names(data)){
-      tf=data$tf
+    if(!any(is.na(tf))){
       if(any(tf>K)){
         stop("Some entries in tf are greater than K.")
       }

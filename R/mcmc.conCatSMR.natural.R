@@ -137,7 +137,7 @@
 mcmc.conCatSMR.natural <-
   function(data,niter=2400,nburn=1200, nthin=5, M1 = 30,M2=200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
-           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs"){
+           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf=NA){
     ###
     library(abind)
     y.sight.marked=data$y.sight.marked
@@ -246,7 +246,29 @@ mcmc.conCatSMR.natural <-
     }else{
       stop("user must supply either 'buff' or 'vertices' in data object")
     }
-    
+    if(!any(is.na(tf))){
+      if(any(tf>K)){
+        stop("Some entries in tf are greater than K.")
+      }
+      if(is.null(dim(tf))){
+        if(length(tf)!=J){
+          stop("tf vector must be of length J.")
+        }
+        K2D.M=matrix(rep(tf,M1),nrow=M1,ncol=J,byrow=TRUE)
+        K2D.UM=matrix(rep(tf,M2),nrow=M2,ncol=J,byrow=TRUE)
+      }else{
+        stop("2D tf not accepted by this function since marks are natural so unlikely deaths are known")
+        # if(!all(dim(tf)==c(M,J))){
+        #   stop("tf must be dim M by J if tf varies by individual")
+        # }
+        # K2D=tf
+        # warning("Since 2D tf entered, assuming individual exposure to traps differ")
+      }
+    }else{
+      tf=rep(K,J)
+      K2D.M=matrix(rep(tf,M1),nrow=M1,ncol=J,byrow=TRUE)
+      K2D.UM=matrix(rep(tf,M2),nrow=M2,ncol=J,byrow=TRUE)
+    }
     ##pull out initial values
     if(!(("psi1"%in%names(inits))|("psi2"%in%names(inits)))){
       stop("Must supply psi1 and psi2 inits.")
@@ -542,11 +564,11 @@ mcmc.conCatSMR.natural <-
       pd.sight.unmarked=1-exp(-lamd.sight.unmarked)
       pd.sight.marked.cand=pd.sight.marked
       pd.sight.unmarked.cand=pd.sight.unmarked
-      ll.y.sight.marked=dbinom(y.sight.marked.true,K,pd.sight.marked*z1,log=TRUE)
-      ll.y.sight.unmarked=dbinom(y.sight.unmarked.true,K,pd.sight.unmarked*z2,log=TRUE)
+      ll.y.sight.marked=dbinom(y.sight.marked.true,K2D.M,pd.sight.marked*z1,log=TRUE)
+      ll.y.sight.unmarked=dbinom(y.sight.unmarked.true,K2D.UM,pd.sight.unmarked*z2,log=TRUE)
     }else if(obstype=="poisson"){
-      ll.y.sight.marked=dpois(y.sight.marked.true,K*lamd.sight.marked*z1,log=TRUE)
-      ll.y.sight.unmarked=dpois(y.sight.unmarked.true,K*lamd.sight.unmarked*z2,log=TRUE)
+      ll.y.sight.marked=dpois(y.sight.marked.true,K2D.M*lamd.sight.marked*z1,log=TRUE)
+      ll.y.sight.unmarked=dpois(y.sight.unmarked.true,K2D.UM*lamd.sight.unmarked*z2,log=TRUE)
     }
     lamd.sight.marked.cand=lamd.sight.marked
     lamd.sight.unmarked.cand=lamd.sight.unmarked
@@ -564,8 +586,8 @@ mcmc.conCatSMR.natural <-
           lamd.sight.unmarked.cand<- lam0.cand*exp(-D2*D2/(2*sigma*sigma))
           pd.sight.marked.cand=1-exp(-lamd.sight.marked.cand)
           pd.sight.unmarked.cand=1-exp(-lamd.sight.unmarked.cand)
-          ll.y.sight.marked.cand= dbinom(y.sight.marked.true,K,pd.sight.marked.cand*z1,log=TRUE)
-          ll.y.sight.unmarked.cand= dbinom(y.sight.unmarked.true,K,pd.sight.unmarked.cand*z2,log=TRUE)
+          ll.y.sight.marked.cand= dbinom(y.sight.marked.true,K2D.M,pd.sight.marked.cand*z1,log=TRUE)
+          ll.y.sight.unmarked.cand= dbinom(y.sight.unmarked.true,K2D.UM,pd.sight.unmarked.cand*z2,log=TRUE)
           llysightcandsum=sum(ll.y.sight.marked.cand)+sum(ll.y.sight.unmarked.cand)
           if(runif(1) < exp(llysightcandsum-llysightsum)){
             lam0<- lam0.cand
@@ -585,8 +607,8 @@ mcmc.conCatSMR.natural <-
           lamd.sight.unmarked.cand<- lam0*exp(-D2*D2/(2*sigma.cand*sigma.cand))
           pd.sight.marked.cand=1-exp(-lamd.sight.marked.cand)
           pd.sight.unmarked.cand=1-exp(-lamd.sight.unmarked.cand)
-          ll.y.sight.marked.cand= dbinom(y.sight.marked.true,K,pd.sight.marked.cand*z1,log=TRUE)
-          ll.y.sight.unmarked.cand= dbinom(y.sight.unmarked.true,K,pd.sight.unmarked.cand*z2,log=TRUE)
+          ll.y.sight.marked.cand= dbinom(y.sight.marked.true,K2D.M,pd.sight.marked.cand*z1,log=TRUE)
+          ll.y.sight.unmarked.cand= dbinom(y.sight.unmarked.true,K2D.UM,pd.sight.unmarked.cand*z2,log=TRUE)
           llysightcandsum=sum(ll.y.sight.marked.cand)+sum(ll.y.sight.unmarked.cand)
           if(uselocs){
             for(i in telguys){
@@ -613,8 +635,8 @@ mcmc.conCatSMR.natural <-
         if(lam0.cand > 0){
           lamd.sight.marked.cand<- lam0.cand*exp(-D1*D1/(2*sigma*sigma))
           lamd.sight.unmarked.cand<- lam0.cand*exp(-D2*D2/(2*sigma*sigma))
-          ll.y.sight.marked.cand= dpois(y.sight.marked.true,K*lamd.sight.marked.cand*z1,log=TRUE)
-          ll.y.sight.unmarked.cand= dpois(y.sight.unmarked.true,K*lamd.sight.unmarked.cand*z2,log=TRUE)
+          ll.y.sight.marked.cand= dpois(y.sight.marked.true,K2D.M*lamd.sight.marked.cand*z1,log=TRUE)
+          ll.y.sight.unmarked.cand= dpois(y.sight.unmarked.true,K2D.UM*lamd.sight.unmarked.cand*z2,log=TRUE)
           llysightcandsum=sum(ll.y.sight.marked.cand)+sum(ll.y.sight.unmarked.cand)
           if(runif(1) < exp(llysightcandsum-llysightsum)){
             lam0<- lam0.cand
@@ -630,8 +652,8 @@ mcmc.conCatSMR.natural <-
         if(sigma.cand > 0){
           lamd.sight.marked.cand<- lam0*exp(-D1*D1/(2*sigma.cand*sigma.cand))
           lamd.sight.unmarked.cand<- lam0*exp(-D2*D2/(2*sigma.cand*sigma.cand))
-          ll.y.sight.marked.cand= dpois(y.sight.marked.true,K*lamd.sight.marked.cand*z1,log=TRUE)
-          ll.y.sight.unmarked.cand= dpois(y.sight.unmarked.true,K*lamd.sight.unmarked.cand*z2,log=TRUE)
+          ll.y.sight.marked.cand= dpois(y.sight.marked.true,K2D.M*lamd.sight.marked.cand*z1,log=TRUE)
+          ll.y.sight.unmarked.cand= dpois(y.sight.unmarked.true,K2D.UM*lamd.sight.unmarked.cand*z2,log=TRUE)
           llysightcandsum=sum(ll.y.sight.marked.cand)+sum(ll.y.sight.unmarked.cand)
           if(uselocs){
             for(i in telguys){
@@ -686,13 +708,6 @@ mcmc.conCatSMR.natural <-
           njprobs.UM[setdiff(1:M2,possible.UM)]=0
           njprobs=c(njprobs.M,njprobs.UM)
           njprobs=njprobs/sum(njprobs)
-          # if(length(possible.M)==0){
-          #   samptype="unmarked"
-          # }else if(length(possible.UM)){
-          #   samptype="marked"
-          # }else{
-          #   samptype="unk"
-          # }
           
           newID=sample(1:(M1+M2),1,prob=njprobs)
           if(newID<=M1){
@@ -716,112 +731,45 @@ mcmc.conCatSMR.natural <-
               y.sight.marked.true[ID[l,1],]=y.sight.marked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.marked.true[newID[1],]=y.sight.marked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.marked.sight[swapped,]= dbinom(y.sight.marked.true[swapped,],K,pd.sight.marked[swapped,],log=TRUE)
+                ll.y.marked.sight[swapped,]= dbinom(y.sight.marked.true[swapped,],K2D.M[swapped,],pd.sight.marked[swapped,],log=TRUE)
               }else{
-                ll.y.sight.marked[swapped,]= dpois(y.sight.marked.true[swapped,],K*lamd.sight.marked[swapped,],log=TRUE)
+                ll.y.sight.marked[swapped,]= dpois(y.sight.marked.true[swapped,],K2D.M[swapped,]*lamd.sight.marked[swapped,],log=TRUE)
               }
             }else if(samptype=="UM2UM"){#unmarked guy
               y.sight.unmarked.true[ID[l,1],]=y.sight.unmarked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.unmarked.true[newID[1],]=y.sight.unmarked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.unmarked.sight[swapped,]= dbinom(y.sight.unmarked.true[swapped,],K,pd.sight.unmarked[swapped,],log=TRUE)
+                ll.y.unmarked.sight[swapped,]= dbinom(y.sight.unmarked.true[swapped,],K2D.UM[swapped,],pd.sight.unmarked[swapped,],log=TRUE)
               }else{
-                ll.y.sight.unmarked[swapped,]= dpois(y.sight.unmarked.true[swapped,],K*lamd.sight.unmarked[swapped,],log=TRUE)
+                ll.y.sight.unmarked[swapped,]= dpois(y.sight.unmarked.true[swapped,],K2D.UM[swapped,]*lamd.sight.unmarked[swapped,],log=TRUE)
               }
             }else if(samptype=="M2UM"){
               y.sight.marked.true[ID[l,1],]=y.sight.marked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.unmarked.true[newID[1],]=y.sight.unmarked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.marked.sight[swapped[1],]= dbinom(y.sight.marked.true[swapped[1],],K,pd.sight.marked[swapped[1],],log=TRUE)
-                ll.y.unmarked.sight[swapped[2],]= dbinom(y.sight.unmarked.true[swapped[2],],K,pd.sight.unmarked[swapped[2],],log=TRUE)
+                ll.y.marked.sight[swapped[1],]= dbinom(y.sight.marked.true[swapped[1],],K2D.M[swapped[1],],pd.sight.marked[swapped[1],],log=TRUE)
+                ll.y.unmarked.sight[swapped[2],]= dbinom(y.sight.unmarked.true[swapped[2],],K2D.UM[swapped[2],],pd.sight.unmarked[swapped[2],],log=TRUE)
               }else{
-                ll.y.sight.marked[swapped[1],]= dpois(y.sight.marked.true[swapped[1],],K*lamd.sight.marked[swapped[1],],log=TRUE)
-                ll.y.sight.unmarked[swapped[2],]= dpois(y.sight.unmarked.true[swapped[2],],K*lamd.sight.unmarked[swapped[2],],log=TRUE)
+                ll.y.sight.marked[swapped[1],]= dpois(y.sight.marked.true[swapped[1],],K2D.M[swapped[1],]*lamd.sight.marked[swapped[1],],log=TRUE)
+                ll.y.sight.unmarked[swapped[2],]= dpois(y.sight.unmarked.true[swapped[2],],K2D.UM[swapped[2],]*lamd.sight.unmarked[swapped[2],],log=TRUE)
               }
             }else if(samptype=="UM2M"){
               y.sight.unmarked.true[ID[l,1],]=y.sight.unmarked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.marked.true[newID[1],]=y.sight.marked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.marked.sight[swapped[2],]= dbinom(y.sight.marked.true[swapped[2],],K,pd.sight.marked[swapped[2],],log=TRUE)
-                ll.y.unmarked.sight[swapped[1],]= dbinom(y.sight.unmarked.true[swapped[1],],K,pd.sight.unmarked[swapped[1],],log=TRUE)
+                ll.y.marked.sight[swapped[2],]= dbinom(y.sight.marked.true[swapped[2],],K2D.M[swapped[2],],pd.sight.marked[swapped[2],],log=TRUE)
+                ll.y.unmarked.sight[swapped[1],]= dbinom(y.sight.unmarked.true[swapped[1],],K2D.UM[swapped[1],],pd.sight.unmarked[swapped[1],],log=TRUE)
               }else{
-                ll.y.sight.marked[swapped[2],]= dpois(y.sight.marked.true[swapped[2],],K*lamd.sight.marked[swapped[2],],log=TRUE)
-                ll.y.sight.unmarked[swapped[1],]= dpois(y.sight.unmarked.true[swapped[1],],K*lamd.sight.unmarked[swapped[1],],log=TRUE)
+                ll.y.sight.marked[swapped[2],]= dpois(y.sight.marked.true[swapped[2],],K2D.M[swapped[2],]*lamd.sight.marked[swapped[2],],log=TRUE)
+                ll.y.sight.unmarked[swapped[1],]= dpois(y.sight.unmarked.true[swapped[1],],K2D.UM[swapped[1],]*lamd.sight.unmarked[swapped[1],],log=TRUE)
               }
             }
             ID[l,]=newID
           }
         }
       }else{
-        
-        stop("MH for unknown number of marks not yet coded.")
+        stop("MH for unknown number of marks not yet coded. Only needed for binomial observation model.")
         #### Fix this for unknown # marks
-# 
-#         up=sample(1:n.samp.latent,nswap,replace=FALSE)
-#         y.sight.cand=y.sight.true
-#         for(l in up){
-#           #find legal guys to swap with. z=1 and consistent constraints
-#           nj=which(y.sight.latent[l,]>0)
-#           #Can only swap if IDcovs match
-#           idX=which(G.use[l,]!=0)
-#           if(length(idX)>1){#multiple loci observed
-#             possible=which(z==1&apply(G.true[,idX],1,function(x){all(x==G.use[l,idX])}))
-#           }else if(length(idX)==1){#single loci observed
-#             possible=which(z==1&G.true[,idX]==G.use[l,idX])
-#           }else{#fully latent G.obs
-#             possible=which(z==1)#Can match anyone
-#           }
-#           if(!(useUnk|useMarkednoID)){#mark status exclusions handled through G.true
-#             possible=possible[possible>n.marked]#Can't swap to a marked guy
-#           }else{
-#             if(Mark.obs[l]==2){#This is an unmarked sample
-#               possible=possible[possible>n.marked]#Can't swap to a marked guy
-#             }
-#             if(Mark.obs[l]==1){#This is a marked sample
-#               possible=possible[possible<=n.marked]#Can't swap to an unmarked guy
-#             }
-#           }
-#           if(binconstraints){#can't have a y[i,j,k]>1
-#             legal=rep(TRUE,length(possible))
-#             for(i in 1:length(possible)){
-#               check=which(ID==possible[i])#Who else is currently assigned this possible new ID?
-#               if(length(check)>0){#if false, no samples assigned to this guy and legal stays true
-#                 if(any(constraints[l,check]==0)){#if any members of the possible cluster are inconsistent with sample, illegal move
-#                   legal[i]=FALSE
-#                 }
-#               }
-#             }
-#             possible=possible[legal]
-#           }
-#           if(length(possible)==0)next
-#           njprobs=lamd.sight[,nj]
-#           njprobs[setdiff(1:M,possible)]=0
-#           njprobs=njprobs/sum(njprobs)
-#           newID=ID
-#           newID[l]=sample(1:M,1,prob=njprobs)
-#           if(ID[l]==newID[l])next
-# 
-#           swapped=c(ID[l],newID[l])#order swap.out then swap.in
-#           propprob=njprobs[swapped[2]]
-#           backprob=njprobs[swapped[1]]
-#           focalprob=1/n.samp.latent
-#           focalbackprob=1/length(possible)
-#           #update y.true
-#           y.sight.cand[ID[l],]=y.sight.true[ID[l],]-y.sight.latent[l,]
-#           y.sight.cand[newID[l],]=y.sight.true[newID[l],]+y.sight.latent[l,]
-#           ##update ll.y
-#           if(obstype=="poisson"){
-#             ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K*lamd.sight[swapped,],log=TRUE)
-#           }else{
-#             ll.y.sight.cand[swapped,]=dbinom(y.sight.cand[swapped,],K,pd.sight[swapped,],log=TRUE)
-#           }
-#           if(runif(1)<exp(sum(ll.y.sight.cand[swapped,])-sum(ll.y.sight[swapped,]))*
-#              (backprob/propprob)*(focalbackprob/focalprob)){
-#             y.sight.true[swapped,]=y.sight.cand[swapped,]
-#             ll.y.sight[swapped,]=ll.y.sight.cand[swapped,]
-#             ID[l]=newID[l]
-#           }
-#         }
       }
       #update known.vector
       known.vector.marked=1*(rowSums(y.sight.marked.true>0))
@@ -892,11 +840,11 @@ mcmc.conCatSMR.natural <-
       z1[known.vector.marked==0]<- rbinom(sum(known.vector.marked ==0), 1, fc.marked[known.vector.marked==0])
       z2[known.vector.unmarked==0]<- rbinom(sum(known.vector.unmarked ==0), 1, fc.unmarked[known.vector.unmarked==0])
       if(obstype=="bernoulli"){
-        ll.y.sight.marked= dbinom(y.sight.marked.true,K,pd.sight.marked*z1,log=TRUE)
-        ll.y.sight.unmarked= dbinom(y.sight.unmarked.true,K,pd.sight.unmarked*z2,log=TRUE)
+        ll.y.sight.marked= dbinom(y.sight.marked.true,K2D.M,pd.sight.marked*z1,log=TRUE)
+        ll.y.sight.unmarked= dbinom(y.sight.unmarked.true,K2D.UM,pd.sight.unmarked*z2,log=TRUE)
       }else{
-        ll.y.sight.marked= dpois(y.sight.marked.true,K*lamd.sight.marked*z1,log=TRUE)
-        ll.y.sight.unmarked= dpois(y.sight.unmarked.true,K*lamd.sight.unmarked*z2,log=TRUE)
+        ll.y.sight.marked= dpois(y.sight.marked.true,K2D.M*lamd.sight.marked*z1,log=TRUE)
+        ll.y.sight.unmarked= dpois(y.sight.unmarked.true,K2D.UM*lamd.sight.unmarked*z2,log=TRUE)
       }
       psi1=rbeta(1,1+sum(z1),1+M1-sum(z1))
       psi2=rbeta(1,1+sum(z2),1+M2-sum(z2))
@@ -918,7 +866,7 @@ mcmc.conCatSMR.natural <-
           lamd.sight.marked.cand[i,]<- lam0*exp(-dtmp*dtmp/(2*sigma*sigma))
           if(obstype=="bernoulli"){
             pd.sight.marked.cand[i,]=1-exp(-lamd.sight.marked.cand[i,])
-            ll.y.sight.marked.cand[i,]= dbinom(y.sight.marked.true[i,],K,pd.sight.marked.cand[i,]*z1[i],log=TRUE)
+            ll.y.sight.marked.cand[i,]= dbinom(y.sight.marked.true[i,],K2D.M[i,],pd.sight.marked.cand[i,]*z1[i],log=TRUE)
             if(uselocs&(i%in%telguys)){
               ll.tel.cand[i,]=dnorm(locs[i,,1],Scand[1],sigma,log=TRUE)+dnorm(locs[i,,2],Scand[2],sigma,log=TRUE)
               if (runif(1) < exp((sum(ll.y.sight.marked.cand[i,])+sum(ll.tel.cand[i,])) -
@@ -940,7 +888,7 @@ mcmc.conCatSMR.natural <-
               }
             }
           }else{#poisson
-            ll.y.sight.marked.cand[i,]= dpois(y.sight.marked.true[i,],K*lamd.sight.marked.cand[i,]*z1[i],log=TRUE)
+            ll.y.sight.marked.cand[i,]= dpois(y.sight.marked.true[i,],K2D.M[i,]*lamd.sight.marked.cand[i,]*z1[i],log=TRUE)
             if(uselocs&(i%in%telguys)){
               ll.tel.cand[i,]=dnorm(locs[i,,1],Scand[1],sigma,log=TRUE)+dnorm(locs[i,,2],Scand[2],sigma,log=TRUE)
               if (runif(1) < exp((sum(ll.y.sight.marked.cand[i,])+sum(ll.tel.cand[i,])) -
@@ -975,7 +923,7 @@ mcmc.conCatSMR.natural <-
           lamd.sight.unmarked.cand[i,]<- lam0*exp(-dtmp*dtmp/(2*sigma*sigma))
           if(obstype=="bernoulli"){
             pd.sight.unmarked.cand[i,]=1-exp(-lamd.sight.unmarked.cand[i,])
-            ll.y.sight.unmarked.cand[i,]= dbinom(y.sight.unmarked.true[i,],K,pd.sight.unmarked.cand[i,]*z2[i],log=TRUE)
+            ll.y.sight.unmarked.cand[i,]= dbinom(y.sight.unmarked.true[i,],K2D.UM[i,],pd.sight.unmarked.cand[i,]*z2[i],log=TRUE)
             if (runif(1) < exp(sum(ll.y.sight.unmarked.cand[i,]) -sum(ll.y.sight.unmarked[i,]))) {
               s2[i,]=Scand
               D2[i,]=dtmp
@@ -984,7 +932,7 @@ mcmc.conCatSMR.natural <-
               ll.y.sight.unmarked[i,]=ll.y.sight.unmarked.cand[i,]            
             }
           }else{#poisson
-            ll.y.sight.unmarked.cand[i,]= dpois(y.sight.unmarked.true[i,],K*lamd.sight.unmarked.cand[i,]*z2[i],log=TRUE)
+            ll.y.sight.unmarked.cand[i,]= dpois(y.sight.unmarked.true[i,],K2D.UM[i,]*lamd.sight.unmarked.cand[i,]*z2[i],log=TRUE)
             
             if (runif(1) < exp(sum(ll.y.sight.unmarked.cand[i,]) -sum(ll.y.sight.unmarked[i,]))) {
               s2[i,]=Scand

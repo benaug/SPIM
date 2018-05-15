@@ -117,3 +117,11 @@ intlikRcpp <- function(parm, ymat, X, K, G, D, n) {
     .Call('_SPIM_intlikRcpp', PACKAGE = 'SPIM', parm, ymat, X, K, G, D, n)
 }
 
+findPossible2D <- function(z, G_true, G_obs_true, M, ncat) {
+    .Call('_SPIM_findPossible2D', PACKAGE = 'SPIM', z, G_true, G_obs_true, M, ncat)
+}
+
+arma_setdiff <- function(x, y) {
+    .Call('_SPIM_arma_setdiff', PACKAGE = 'SPIM', x, y)
+}
+

@@ -815,6 +815,33 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// findPossible2D
+LogicalVector findPossible2D(IntegerVector z, IntegerMatrix G_true, IntegerVector G_obs_true, int M, int ncat);
+RcppExport SEXP _SPIM_findPossible2D(SEXP zSEXP, SEXP G_trueSEXP, SEXP G_obs_trueSEXP, SEXP MSEXP, SEXP ncatSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type z(zSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type G_true(G_trueSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type G_obs_true(G_obs_trueSEXP);
+    Rcpp::traits::input_parameter< int >::type M(MSEXP);
+    Rcpp::traits::input_parameter< int >::type ncat(ncatSEXP);
+    rcpp_result_gen = Rcpp::wrap(findPossible2D(z, G_true, G_obs_true, M, ncat));
+    return rcpp_result_gen;
+END_RCPP
+}
+// arma_setdiff
+Rcpp::NumericVector arma_setdiff(arma::uvec& x, arma::uvec& y);
+RcppExport SEXP _SPIM_arma_setdiff(SEXP xSEXP, SEXP ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::uvec& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< arma::uvec& >::type y(ySEXP);
+    rcpp_result_gen = Rcpp::wrap(arma_setdiff(x, y));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SPIM_inoutCppOpen", (DL_FUNC) &_SPIM_inoutCppOpen, 3},
@@ -846,6 +873,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SPIM_MCMC1b", (DL_FUNC) &_SPIM_MCMC1b, 26},
     {"_SPIM_MCMC2", (DL_FUNC) &_SPIM_MCMC2, 37},
     {"_SPIM_intlikRcpp", (DL_FUNC) &_SPIM_intlikRcpp, 7},
+    {"_SPIM_findPossible2D", (DL_FUNC) &_SPIM_findPossible2D, 5},
+    {"_SPIM_arma_setdiff", (DL_FUNC) &_SPIM_arma_setdiff, 2},
     {NULL, NULL, 0}
 };
 

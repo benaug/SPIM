@@ -169,15 +169,14 @@ mcmc.genCatSMR.move <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype=c("bernoulli","poisson"),nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
            storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf1=NA,tf2=NA){
-    #no capture order constraints allowed
-    # if(any(data$markedS==0)){#capture order constraints
-    #   mcmc.genCatSMR.moveb(data,niter=niter,nburn=nburn,nthin=nthin,M=M,inits=inits,
-    #                   obstype=obstype,nswap=nswap,proppars=proppars,
-    #                   storeLatent=storeLatent,storeGamma=storeGamma,IDup=IDup,tf1=tf1,tf2=tf2)
-    # }else{#no capture order constraints
+    if(any(data$markedS==0|data$markedS==2)){#capture order constraints
+      mcmc.genCatSMR.moveb(data,niter=niter,nburn=nburn,nthin=nthin,M=M,inits=inits,
+                      obstype=obstype,nswap=nswap,proppars=proppars,
+                      storeLatent=storeLatent,storeGamma=storeGamma,IDup=IDup,tf1=tf1,tf2=tf2)
+    }else{#no capture order constraints
       mcmc.genCatSMR.movea(data,niter=niter,nburn=nburn,nthin=nthin,M=M,inits=inits,
                       obstype=obstype,nswap=nswap,proppars=proppars,
                       storeLatent=storeLatent,storeGamma=storeGamma,IDup=IDup,tf1=tf1,tf2=tf2)
-    # }
+    }
   }
 

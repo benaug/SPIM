@@ -147,20 +147,20 @@ sim.genCatSMR.df <-
     if(length(IDcovs[[1]])!=length(lam0.mark)){
       stop("IDcovs[[1]] should have the same number of values as detection function parameter values")
     }
-    lamd.trap=matrix(0,nrow=N,ncol=J1)
+    lamd.mark=matrix(0,nrow=N,ncol=J1)
     lamd.sight=matrix(0,nrow=N,ncol=J2)
     for(i in 1:length(sigma)){
-      lamd.trap[G.true[,1]==i,]<- lam0.mark[i]*exp(-D1[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
+      lamd.mark[G.true[,1]==i,]<- lam0.mark[i]*exp(-D1[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
       lamd.sight[G.true[,1]==i,]<- lam0.sight[i]*exp(-D2[G.true[,1]==i,]^2/(2*sigma[i]*sigma[i]))
     }
     # Capture and mark individuals
     y.mark <-array(0,dim=c(N,J1,K1))
     if(obstype[1]=="bernoulli"){
-      pd.trap=1-exp(-lamd.trap)
+      pd.mark=1-exp(-lamd.mark)
       for(i in 1:N){
         for(j in 1:J1){
           for(k in 1:K1){
-            y.mark[i,j,k]=rbinom(1,1,pd.trap[i,j]) 
+            y.mark[i,j,k]=rbinom(1,1,pd.mark[i,j]) 
           }
         }
       }
@@ -168,7 +168,7 @@ sim.genCatSMR.df <-
       for(i in 1:N){
         for(j in 1:J1){
           for(k in 1:K1){
-            y.mark[i,j,k]=rpois(1,lamd.trap[i,j])
+            y.mark[i,j,k]=rpois(1,lamd.mark[i,j])
           }
         }
       }
