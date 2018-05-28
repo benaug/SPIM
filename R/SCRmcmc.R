@@ -1,5 +1,5 @@
 SCRmcmc <-
-  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype="poisson",
+  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype="bernoulli",
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
            storeLatent=TRUE){
     ###

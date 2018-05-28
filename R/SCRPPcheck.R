@@ -16,8 +16,8 @@ SCRPPcheck=function(data,posterior,use){
     data$y=data$y[-rem,,]
   }
   yijobs=apply(data$y,c(1,3),sum)
-  yjobs=rbind(yijobs,matrix(0,nrow=M-n,ncol=127))
-  yijobs=rbind(yijobs,matrix(0,nrow=M-n,ncol=127))
+  yjobs=rbind(yijobs,matrix(0,nrow=M-n,ncol=J))
+  yijobs=rbind(yijobs,matrix(0,nrow=M-n,ncol=J))
   yiobs=rowSums(yijobs)
   yjobs=colSums(yijobs)
   niter=length(use)

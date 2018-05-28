@@ -18,8 +18,8 @@ SCR2DNAPPcheck=function(data,posterior,use,sharesig){
   
   y1ijobs=apply(data$y1,c(1,2),sum)
   y2ijobs=apply(data$y2,c(1,2),sum)
-  y1ijobs=rbind(y1ijobs,matrix(0,nrow=M-n,ncol=127))
-  y2ijobs=rbind(y2ijobs,matrix(0,nrow=M-n,ncol=98))
+  y1ijobs=rbind(y1ijobs,matrix(0,nrow=M-n,ncol=J1))
+  y2ijobs=rbind(y2ijobs,matrix(0,nrow=M-n,ncol=J2))
   y1iobs=rowSums(y1ijobs)
   y2iobs=rowSums(y2ijobs)
   y1jobs=colSums(y1ijobs)

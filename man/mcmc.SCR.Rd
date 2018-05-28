@@ -6,7 +6,7 @@
 \usage{
 mcmc.SCR(data, niter = 1000, nburn = 0, nthin = 1, M = M,
   inits = inits, proppars = list(lam0 = 0.05, sigma = 0.1, sx = 0.2, sy =
-  0.2), storeLatent = TRUE, Rcpp = TRUE)
+  0.2), storeLatent = TRUE, Rcpp = TRUE, obstype = "bernoulli")
 }
 \arguments{
 \item{data}{a list produced by simSCR or in the same format}

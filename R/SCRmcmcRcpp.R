@@ -1,5 +1,6 @@
 SCRmcmcRcpp <-
-  function(data,niter=1000,nburn=0, nthin=1, M =NA,K=NA, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=TRUE){
+  function(data,niter=1000,nburn=0, nthin=1, M =NA,K=NA, inits=inits,proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
+           storeLatent=TRUE,obstype="bernoulli"){
     library(abind)
     y<-data$y
     X<-as.matrix(data$X)
