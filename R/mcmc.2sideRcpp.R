@@ -124,7 +124,9 @@ mcmc.2sideRcpp <-
     known.vector<- c( rep(1,Nfixed), rep(0, M-Nfixed) )
     
     zero.guys<- apply(y.both+y.left.true + y.right.true ,1,sum) == 0
-    
+    trapno=matrix(rep(X[,3],2),nrow=M,ncol=J,byrow=TRUE) #trap number multiplier for left and right captures.
+    ones=trapno==1
+    twos=trapno==2
     D<- e2dist(s, X)
     lamd1<- lam01*exp(-D*D/(2*sigma*sigma))
     lamd2<- lam02*exp(-D*D/(2*sigma*sigma))
