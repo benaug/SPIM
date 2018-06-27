@@ -128,6 +128,24 @@ mcmc.2sideRcpp <-
     D<- e2dist(s, X)
     lamd1<- lam01*exp(-D*D/(2*sigma*sigma))
     lamd2<- lam02*exp(-D*D/(2*sigma*sigma))
+    pd1=1-exp(-lamd1)
+    pd1b=ones*pd1+twos*(2*pd1-pd1*pd1)
+    pd2=1-exp(-lamd2)
+    lamd1.cand=lamd1
+    lamd2.cand=lamd2
+    pd1.cand=pd1
+    pd2.cand=pd2
+    pd1b.cand=pd1b
+    
+    ll.y.both <- dbinom(y.both,tf,z*pd2*twos,log=TRUE)
+    ll.y.left <-  dbinom(y.left.true,tf,z*pd1b,log=TRUE)
+    ll.y.right <-  dbinom(y.right.true,tf,z*pd1b,log=TRUE)
+    ll.y.both.cand=ll.y.both
+    ll.y.left.cand=ll.y.left
+    ll.y.right.cand=ll.y.right
+    if(!is.finite(sum(ll.y.both)))stop("Both side likelihood not finite. Make sure all camera stations recroding both side captures have 2 cameras. Then try changing lam02 or sigma inits.")
+    if(!is.finite(sum(ll.y.left)))stop("Left side likelihood not finite. Try changing lam01 or sigma inits.")
+    if(!is.finite(sum(ll.y.right)))stop("right side likelihood not finite. Try changing lam01 or sigma inits.")
     
     #Run MCMC
     store=MCMC2side(lam01,lam02,sigma,lamd1,lamd2,y.both,y.left.true,y.right.true,

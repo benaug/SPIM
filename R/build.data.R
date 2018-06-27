@@ -90,36 +90,36 @@ build.data=function(input,K,X,IDknown=NA,buff=NA,vertices=NA,model="2side",tf=NA
     }
     #Make data sets
     maxID=max(c(B[,1]),L[,1],R[,1])
-    both=array(0,dim=c(maxID,3,K,J))
-    left=array(0,dim=c(maxID,3,K,J))
-    right=array(0,dim=c(maxID,3,K,J))
+    both=array(0,dim=c(maxID,J,K))
+    left=array(0,dim=c(maxID,J,K))
+    right=array(0,dim=c(maxID,J,K))
     if(nB>0){
       for(i in 1:nB){
-        both[B[i,1],1,B[i,3],B[i,2]]=1
+        both[B[i,1],B[i,2],B[i,3]]=1
       }
     }
     if(nL>0){
       for(i in 1:nL){
-        left[L[i,1],2,L[i,3],L[i,2]]=1
+        left[L[i,1],L[i,2],L[i,3]]=1
       }
     }
     if(nR>0){
       for(i in 1:nR){
-        right[R[i,1],3,R[i,3],R[i,2]]=1
+        right[R[i,1],R[i,2],R[i,3]]=1
       }
     }
-    both=both[rowSums(both)>0,,,]
+    both=both[rowSums(both)>0,,]
     nb=nrow(both)
     #Remove 0s from left and right
     idx=which(rowSums(left)==0)
     idx=idx[idx>nC]
     if(length(idx)>0){
-      left=left[-idx,,,]
+      left=left[-idx,,]
     }
     idx=which(rowSums(right)==0)
     idx=idx[idx>nC]
     if(length(idx)>0){
-      right=right[-idx,,,]
+      right=right[-idx,,]
     }
     #IDs
     ID_L=rep(NA,nrow(left))
