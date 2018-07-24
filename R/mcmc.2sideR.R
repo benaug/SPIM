@@ -153,7 +153,7 @@ mcmc.2sideR <-
     ll.y.both.cand=ll.y.both
     ll.y.left.cand=ll.y.left
     ll.y.right.cand=ll.y.right
-    if(!is.finite(sum(ll.y.both)))stop("Both side likelihood not finite. Make sure all camera stations recroding both side captures have 2 cameras. Then try changing lam02 or sigma inits.")
+    if(!is.finite(sum(ll.y.both)))stop("Both side likelihood not finite. Make sure all camera stations recording both side captures have 2 cameras. Then try changing lam02 or sigma inits.")
     if(!is.finite(sum(ll.y.left)))stop("Left side likelihood not finite. Try changing lam01 or sigma inits.")
     if(!is.finite(sum(ll.y.right)))stop("right side likelihood not finite. Try changing lam01 or sigma inits.")
     

@@ -2,7 +2,8 @@
 % Please edit documentation in R/SCRPPcheck.R
 \name{SCRPPcheck}
 \alias{SCRPPcheck}
-\title{Calculate goodness of fit statistics for a model fit by mcmc.SCR}
+\title{Calculate goodness of fit statistics for a model fit by mcmc.SCR. Currently won't calculate
+#necessary statistics for individual-level p-values.}
 \usage{
 SCRPPcheck(data, posterior, use)
 }

@@ -25,7 +25,6 @@ SCR2DNAPPcheck=function(data,posterior,use,sharesig){
   y1jobs=colSums(y1ijobs)
   y2jobs=colSums(y2ijobs)
   
-  
   niter=length(use)
   T11obs=T12obs=T11=T12=rep(NA,niter)
   T21obs=T22obs=T21=T22=rep(NA,niter)
@@ -33,8 +32,8 @@ SCR2DNAPPcheck=function(data,posterior,use,sharesig){
   ncap1=ncap2=ncap3=bothcap=bothcap2=rep(NA,niter)
   T21full=T21fullobs=matrix(NA,nrow=M,ncol=niter)
   T22full=T22fullobs=matrix(NA,nrow=M,ncol=niter)
-  T31full=T31fullobs=matrix(NA,nrow=127,ncol=niter)
-  T32full=T32fullobs=matrix(NA,nrow=98,ncol=niter)
+  T31full=T31fullobs=matrix(NA,nrow=J1,ncol=niter)
+  T32full=T32fullobs=matrix(NA,nrow=J2,ncol=niter)
 
   
   idx=1
@@ -59,28 +58,28 @@ SCR2DNAPPcheck=function(data,posterior,use,sharesig){
     J1<- nrow(X1)
     J2<- nrow(X2)
     # Simulate hair encounter history
-    y1 <-array(0,dim=c(M,K1,J1))
+    y1 <-array(0,dim=c(M,J1,K1))
     for(i in 1:M){
       for(j in 1:J1){
         for(k in 1:K1){
-          y1[i,k,j]=rbinom(1,1,z[i]*pd1[i,j])
+          y1[i,j,k]=rbinom(1,1,z[i]*pd1[i,j])
         }
       }
     }
     # Simulate scat encounter history
-    y2 <-array(0,dim=c(M,K2,J2))
+    y2 <-array(0,dim=c(M,J2,K2))
     for(i in 1:M){
       for(j in 1:J2){
         for(k in 1:K2){
-          y2[i,k,j]=rbinom(1,1,z[i]*pd2[i,j])
+          y2[i,j,k]=rbinom(1,1,z[i]*pd2[i,j])
         }
       }
     }
     #T1 - ind by trap probs
     Eyij1=pd1*K1
     Eyij2=pd2*K2
-    y1ij=apply(y1,c(1,3),sum)
-    y2ij=apply(y2,c(1,3),sum)
+    y1ij=apply(y1,c(1,2),sum)
+    y2ij=apply(y2,c(1,2),sum)
     T11[idx]=sum((sqrt(y1ij)-sqrt(Eyij1))^2)
     T12[idx]=sum((sqrt(y2ij)-sqrt(Eyij2))^2)
     T11obs[idx]=sum((sqrt(y1ijobs)-sqrt(Eyij1))^2)
@@ -119,9 +118,13 @@ SCR2DNAPPcheck=function(data,posterior,use,sharesig){
     ncap3[idx]=sum(rowSums(y1)>0&rowSums(y2)>0)
     idx=idx+1
   }
-
-  allstats=data.frame(T11=T11,T12=T12,T21=T21,T22=T22,T31=T31,T32=T32,
-                      T11obs=T11obs,T12obs=T12obs,T21obs=T21obs,T22obs=T22obs,T31obs=T31obs,T32obs=T32obs,
+  allstats=list(T11=T11,T12=T12,T21=T21,T22=T22,T31=T31,T32=T32,
+                      T11obs=T11obs,T12obs=T12obs,T21obs=T21obs,T22obs=T22obs,
+                      T31obs=T31obs,T32obs=T32obs,
+                      T21full=T21full,T22full=T22full,
+                      T31full=T31full,T32full=T32full,
+                      T21fullobs=T21fullobs,T22fullobs=T22fullobs,
+                      T31fullobs=T31fullobs,T32fullobs=T32fullobs,
                       ncap1=ncap1,ncap2=ncap2,ncap3=ncap3)
   return(allstats)
   

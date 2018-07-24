@@ -113,6 +113,10 @@ MCMC2 <- function(lam01, lam02, sigma, beta0, beta1, yboth, yleft, yright, z, X,
     .Call('_SPIM_MCMC2', PACKAGE = 'SPIM', lam01, lam02, sigma, beta0, beta1, yboth, yleft, yright, z, X, K, D, Nfixed, knownvector, ID_L, ID_R, swap, swaptol, left, right, s, scell, psi, grid, cellArea, EN, proplam01, proplam02, propsigma, propbeta0, propbeta1, propsx, propsy, niter, nburn, nthin, updates)
 }
 
+HazACup <- function(y, pd, X, D, s, z, ll_y_curr, beta0, beta1, sigma, M, J, tf, props, xlim, ylim) {
+    .Call('_SPIM_HazACup', PACKAGE = 'SPIM', y, pd, X, D, s, z, ll_y_curr, beta0, beta1, sigma, M, J, tf, props, xlim, ylim)
+}
+
 intlikRcpp <- function(parm, ymat, X, K, G, D, n) {
     .Call('_SPIM_intlikRcpp', PACKAGE = 'SPIM', parm, ymat, X, K, G, D, n)
 }

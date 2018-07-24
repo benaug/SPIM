@@ -31,43 +31,43 @@ simSCR2DNA <-
     J1<- nrow(X1)
     J2<- nrow(X2)
     # Simulate hair encounter history
-    y1 <-array(0,dim=c(N,K1,J1))
-    pd1=cellprobsSCR(lamd1)
+    y1 <-array(0,dim=c(N,J1,K1))
+    pd1=1-exp(-lamd1)
     if(lam01b==0){ #if no behavioral response
       for(i in 1:N){
         for(j in 1:J1){
           for(k in 1:K1){
-            y1[i,k,j]=rbinom(1,1,pd1[i,j])
+            y1[i,j,k]=rbinom(1,1,pd1[i,j])
           }
         }
       }
     }else{
       lamd1b=lam01b*exp(-D1*D1/(2*sigma[1]*sigma[1]))
-      pd1b=cellprobsSCR(lamd1b)
+      pd1b=1-exp(-lamd1b)
       state=matrix(0,nrow=N,ncol=J1) #Matrix of indices 1 indicating previously captured at trap 0 o.w.
       for(i in 1:N){
         for(j in 1:J1){
           for(k in 1:K1){
-            y1[i,k,j]=rbinom(1,1,pd1[i,j]*(1-state[i,j])+pd1b[i,j]*state[i,j])
+            y1[i,j,k]=rbinom(1,1,pd1[i,j]*(1-state[i,j])+pd1b[i,j]*state[i,j])
             state[i,j]=max(state[i,j],y1[i,k,j])  #update state
           }
         }
       }
     }
     # Simulate scat encounter history
-    y2 <-array(0,dim=c(N,K2,J2))
-    pd2=cellprobsSCR(lamd2)
+    y2 <-array(0,dim=c(N,J2,K2))
+    pd2=1-exp(-lamd2)
     for(i in 1:N){
       for(j in 1:J2){
         for(k in 1:K2){
-          y2[i,k,j]=rbinom(1,1,pd2[i,j])
+          y2[i,j,k]=rbinom(1,1,pd2[i,j])
         }
       }
     }
     #Remove guys not captured.  or not for now
     rem=which(rowSums(y1)==0&rowSums(y2)==0)
-    # y1=y1[-rem,,]
-    # y2=y2[-rem,,]
+    y1=y1[-rem,,]
+    y2=y2[-rem,,]
     n=c(nrow(y1)-length(rem),length(which(rowSums(y1)>0)),length(which(rowSums(y2)>0)))
     out<-list(y1=y1,y2=y2,s=s,X1=X1,X2=X2,K1=K1,K2=K2,n=n,buff=buff)
     return(out)

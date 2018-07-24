@@ -445,11 +445,7 @@ mcmc.CatSPIM <-
             y.true[ID[l],]=y.true[ID[l],]-y.obs[l,]
             y.true[newID,]=y.true[newID,]+y.obs[l,]
             ID[l]=newID
-            # if(obstype=="bernoulli"){
-            #   ll.y[swapped,]= dbinom(y.true[swapped,],K,pd[swapped,],log=TRUE)
-            # }else{
-              ll.y[swapped,]= dpois(y.true[swapped,],K*lamd[swapped,],log=TRUE)
-            # }
+            ll.y[swapped,]= dpois(y.true[swapped,],K*lamd[swapped,],log=TRUE)
           }
         }
       }else{
@@ -541,7 +537,7 @@ mcmc.CatSPIM <-
         gamma[[j]]=gam/sum(gam)
       }
       
-      ## probability of not being captured in a trap AT ALL
+      # probability of not being captured in a trap AT ALL
       if(obstype=="poisson"){
         pd=1-exp(-lamd)
       }
@@ -554,6 +550,8 @@ mcmc.CatSPIM <-
       }else{
         ll.y= dpois(y.true,K*lamd*z,log=TRUE)
       }
+      
+      
       psi=rbeta(1,1+sum(z),1+M-sum(z))
       
       ## Now we have to update the activity centers

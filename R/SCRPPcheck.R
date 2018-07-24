@@ -1,4 +1,5 @@
-#' Calculate goodness of fit statistics for a model fit by mcmc.SCR
+#' Calculate goodness of fit statistics for a model fit by mcmc.SCR. Currently won't calculate
+#' #necessary statistics for individual-level p-values.
 #' @param data a list produced by simSCR2DNA or in the same format
 #' @param posterior a posterior produced by mcmc.SCR
 #' @param  use a vector if iteration values at which the statistics should be calculated
@@ -7,15 +8,15 @@
 #' @export
 SCRPPcheck=function(data,posterior,use){
   X=data$X
-  K=dim(data$y)[2]
-  J=dim(data$y)[3]
+  J=dim(data$y)[2]
+  K=dim(data$y)[3]
   M=dim(posterior$zout)[2]
   n=data$n
   rem=which(rowSums(data$y)==0)
   if(length(rem)>0){
     data$y=data$y[-rem,,]
   }
-  yijobs=apply(data$y,c(1,3),sum)
+  yijobs=apply(data$y,c(1,2),sum)
   yjobs=rbind(yijobs,matrix(0,nrow=M-n,ncol=J))
   yijobs=rbind(yijobs,matrix(0,nrow=M-n,ncol=J))
   yiobs=rowSums(yijobs)
@@ -36,17 +37,17 @@ SCRPPcheck=function(data,posterior,use){
     D<- e2dist(s,X)
     lamd<- lam0*exp(-D*D/(2*sigma*sigma))
     pd=1-exp(-lamd)
-    y <-array(0,dim=c(M,K,J))
+    y <-array(0,dim=c(M,J,K))
     for(i in 1:M){
       for(j in 1:J){
         for(k in 1:K){
-          y[i,k,j]=rbinom(1,1,z[i]*pd[i,j])
+          y[i,j,k]=rbinom(1,1,z[i]*pd[i,j])
         }
       }
     }
     #T1 - ind by trap probs
     Eyij=pd*K
-    yij=apply(y,c(1,3),sum)
+    yij=apply(y,c(1,2),sum)
     T1[idx]=sum((sqrt(yij)-sqrt(Eyij))^2)
     T1obs[idx]=sum((sqrt(yijobs)-sqrt(Eyij))^2)
     #T2 - individual probs
