@@ -91,7 +91,7 @@ SCRmcmc <-
       sxout<- syout<- zout<-matrix(NA,nrow=nstore,ncol=M)
     }
     idx=1 #for storing output not recorded every iteration
-    
+    if(!is.finite(sum(ll.y)))stop("Observation model likelihood is not finite. Try raising starting values for lam0 and/or sigma.")
     for(iter in 1:niter){
       #Update lam0
       if(obstype=="bernoulli"){

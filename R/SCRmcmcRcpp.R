@@ -94,7 +94,8 @@ SCRmcmcRcpp <-
     }else{
       obstypein=2
     }
-  
+    if(!is.finite(sum(ll.y)))stop("Observation model likelihood is not finite. Try raising starting values for lam0 and/or sigma.")
+    
   
 #Run MCMC
 store=MCMC1(lam0,sigma,y,lamd,z,X,K,D,known.vector,s,
