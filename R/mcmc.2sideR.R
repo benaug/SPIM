@@ -131,7 +131,7 @@ mcmc.2sideR <-
     }
     idx=1 #for storing output not recorded every iteration
     zero.guys<- apply(y.both+y.left.true + y.right.true ,1,sum) == 0
-    trapno=matrix(rep(X[,3],2),nrow=M,ncol=J,byrow=TRUE) #trap number multiplier for left and right captures.
+    trapno=matrix(X[,3],nrow=M,ncol=J,byrow=TRUE) #trap number multiplier for left and right captures.
     ones=trapno==1
     twos=trapno==2
     

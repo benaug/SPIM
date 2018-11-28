@@ -124,7 +124,7 @@ mcmc.2sideRcpp <-
     known.vector<- c( rep(1,Nfixed), rep(0, M-Nfixed) )
     
     zero.guys<- apply(y.both+y.left.true + y.right.true ,1,sum) == 0
-    trapno=matrix(rep(X[,3],2),nrow=M,ncol=J,byrow=TRUE) #trap number multiplier for left and right captures.
+    trapno=matrix(X[,3],nrow=M,ncol=J,byrow=TRUE) #trap number multiplier for left and right captures.
     ones=trapno==1
     twos=trapno==2
     D<- e2dist(s, X)
@@ -155,9 +155,11 @@ mcmc.2sideRcpp <-
                 z,X,tf,D,Nfixed,known.vector,ID_L,ID_R,swap,swap.tol,
                 s,psi,xlim,ylim,useverts,vertices,proppars$lam01,proppars$lam02,proppars$sigma,proppars$sx,
                    proppars$sy,niter,nburn,nthin,updates,storeLatent=storeLatent)
+    out=store[[1]]
+    colnames(out)=c("lam01","lam02","sigma","N")
     if(storeLatent){
-      list(out=store[[1]], sxout=store[[2]], syout=store[[3]], ID_Lout=store[[4]],ID_Rout=store[[5]],zout=store[[6]])
+      list(out=out, sxout=store[[2]], syout=store[[3]], ID_Lout=store[[4]],ID_Rout=store[[5]],zout=store[[6]])
     }else{
-      list(out=store[[1]])
+      list(out=out)
     }
   }
