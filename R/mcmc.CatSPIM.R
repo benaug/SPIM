@@ -485,11 +485,11 @@ mcmc.CatSPIM <-
           swapped=c(ID[l],newID[l])#order swap.out then swap.in
           propprob=njprobs[swapped[2]]
           backprob=njprobs[swapped[1]]
-          focalprob=1/n.samples
-          focalbackprob=1/length(possible)
           #update y.true
           y.cand[ID[l],]=y.true[ID[l],]-y.obs[l,]
           y.cand[newID[l],]=y.true[newID[l],]+y.obs[l,]
+          focalprob=(sum(ID==ID[l])/n.samples)*(y.true[ID[l],nj]/sum(y.true[ID[l],]))
+          focalbackprob=(sum(newID==newID[l])/n.samples)*(y.cand[newID[l],nj]/sum(y.cand[newID[l],]))
           ##update ll.y
           if(obstype=="poisson"){
             ll.y.cand[swapped,]=dpois(y.cand[swapped,],K*lamd[swapped,],log=TRUE)

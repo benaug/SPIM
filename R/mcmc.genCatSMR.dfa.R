@@ -715,11 +715,13 @@ mcmc.genCatSMR.dfa <-
           swapped=c(ID[l],newID[l])#order swap.out then swap.in
           propprob=njprobs[swapped[2]]
           backprob=njprobs[swapped[1]]
-          focalprob=1/n.samp.latent
-          focalbackprob=1/length(possible)
+          # focalprob=1/n.samp.latent
+          # focalbackprob=1/length(possible)
           #update y.true
           y.sight.cand[ID[l],]=y.sight.true[ID[l],]-y.sight.latent[l,]
           y.sight.cand[newID[l],]=y.sight.true[newID[l],]+y.sight.latent[l,]
+          focalprob=(sum(ID==ID[l])/n.samples)*(y.sight.true[ID[l],nj]/sum(y.sight.true[ID[l],]))
+          focalbackprob=(sum(newID==newID[l])/n.samples)*(y.sight.cand[newID[l],nj]/sum(y.sight.cand[newID[l],]))
           ##update ll.y
           if(obstype[2]=="poisson"){
             ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2D2[swapped,]*lamd.sight[swapped,],log=TRUE)
