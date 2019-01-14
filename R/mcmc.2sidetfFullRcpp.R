@@ -77,7 +77,8 @@ mcmc.2sidetfFullRcpp <-
     y.right.obs<-abind(y.right.obs,array(0,dim=c( M-dim(y.right.obs)[1],J,K)), along=1)
     
     #sort to minimize distance between initial matches. Skip if no single sides.
-    if(nleft>0|nright>0){
+    # if(nleft>0|nright>0){
+    if(nleft>0&nright>0){ #change 1/14/19
       y.left.tmp=apply(y.left.obs,c(1,2),sum)
       y.right.tmp=apply(y.right.obs,c(1,2),sum)
       IDs<- LRmatch(M=M,left=y.left.tmp, nleft=nleft, right=y.right.tmp, nright=nright, X, Nfixed=Nfixed)

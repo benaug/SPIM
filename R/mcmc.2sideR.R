@@ -74,7 +74,8 @@ mcmc.2sideR <-
     y.right.obs<-abind(y.right.obs,array(0,dim=c( M-dim(y.right.obs)[1],J)), along=1)
 
     #sort to minimize distance between initial matches. Skip if no single sides.
-    if(nleft>0|nright>0){
+    # if(nleft>0|nright>0){
+    if(nleft>0&nright>0){ #change 1/14/19
       IDs<- LRmatch(M=M,left=y.left.obs, nleft=nleft, right=y.right.obs, nright=nright, X, Nfixed=Nfixed)
       #Add unused augmented indivuals back in
       notusedL<- (1:M)[is.na(match(1:M,IDs$ID_L))]

@@ -72,6 +72,9 @@ mcmc.2side <-
           }
           out2=mcmc.2sidetfFullRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
                                     proppars=proppars,storeLatent=storeLatent)
+        }else{ #1D trap file
+          out2=mcmc.2sideRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
+                            proppars=proppars,storeLatent=storeLatent)
         }
       }else{#No trap file
         out2=mcmc.2sideRcpp(data,niter=niter,nburn=nburn, nthin=nthin, M = M, inits=inits,swap=swap,swap.tol=swap.tol,
