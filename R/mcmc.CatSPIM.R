@@ -213,11 +213,13 @@ mcmc.CatSPIM <-
     #If bernoulli data, add constraints that prevent y.true[i,j,k]>1
     binconstraints=FALSE
     if(obstype=="bernoulli"){
-      idx=which(y.obs>0,arr.ind=TRUE)
+      # idx=which(y.obs>0,arr.ind=TRUE)
+      idx=t(apply(y.obs,1,function(x){which(x>0,arr.ind=TRUE)}))
       for(i in 1:n.samples){
         for(j in 1:n.samples){
           if(i!=j){
-            if(all(idx[i,2:3]==idx[j,2:3])){
+            # if(all(idx[i,2:3]==idx[j,2:3])){
+            if(all(idx[i,1:2]==idx[j,1:2])){
               constraints[i,j]=0 #can't combine samples from same trap and occasion in binomial model
               constraints[j,i]=0
               binconstraints=TRUE
@@ -229,18 +231,16 @@ mcmc.CatSPIM <-
     
     #Build y.true
     y.true=array(0,dim=c(M,J,K))
+    y.true2D=matrix(0,nrow=M,ncol=J)
+    y.obs2D=apply(y.obs,c(1,2),sum)
     ID=rep(NA,n.samples)
     idx=1
     for(i in 1:n.samples){
       if(idx>M){
         stop("Need to raise M to initialize y.true")
       }
-      if(K>1){
-        traps=which(rowSums(y.obs[i,,])>0)
-      }else{
-        traps=which(y.obs[i,,]>0)
-      }
-      y.true2D=apply(y.true,c(1,2),sum)
+      traps=which(y.obs2D[i,]>0)
+      # y.true2D=apply(y.true,c(1,2),sum)
       if(length(traps)==1){
         cand=which(y.true2D[,traps]>0)#guys caught at same traps
       }else{
@@ -257,14 +257,21 @@ mcmc.CatSPIM <-
           ID[i]=cand
         }else{#focal not consistent
           y.true[idx,,]=y.obs[i,,]
+          y.true2D[idx,traps]=y.true2D[idx,traps]+1
           ID[i]=idx
           idx=idx+1
         }
       }else{#no assigned samples at this trap
         y.true[idx,,]=y.obs[i,,]
+        y.true2D[idx,traps]=y.true2D[idx,traps]+1
         ID[i]=idx
         idx=idx+1
       }
+    }
+    y.true2D=apply(y.true,c(1,2),sum)
+    known.vector=c(rep(1,max(ID)),rep(0,M-max(ID)))
+    if(binconstraints){
+      if(any(y.true>1))stop("bernoulli data not initialized correctly")
     }
     #Check assignment consistency with constraints
     checkID=unique(ID)

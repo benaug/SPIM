@@ -182,11 +182,11 @@ mcmc.genCatSMRb <-
       #If bernoulli data, add constraints that prevent y.true[i,j,k]>1
       binconstraints=FALSE
       if(obstype[2]=="bernoulli"){
-        idx=which(y.sight.latent>0,arr.ind=TRUE)
+        idx=t(apply(y.sight.latent,1,function(x){which(x>0,arr.ind=TRUE)}))
         for(i in 1:n.samp.latent){
           for(j in 1:n.samp.latent){
             if(i!=j){
-              if(all(idx[i,2:3]==idx[j,2:3])){
+              if(all(idx[i,1:2]==idx[j,1:2])){
                 constraints[i,j]=0 #can't combine samples from same trap and occasion in binomial model
                 constraints[j,i]=0
                 binconstraints=TRUE
@@ -298,6 +298,9 @@ mcmc.genCatSMRb <-
         ID[fix[i]]=which(dists==min(dists,na.rm=TRUE))[1]
         y.sight.true[ID[fix[i]],,]=y.sight.true[ID[fix[i]],,]+y.sight.latent[fix[i],,]
       }
+    }
+    if(binconstraints){
+      if(any(y.sight.true>1))stop("bernoulli data not initialized correctly")
     }
     
     #Check assignment consistency with constraints
