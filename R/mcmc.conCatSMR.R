@@ -320,7 +320,7 @@ mcmc.conCatSMR <-
       }
       #If bernoulli data, add constraints that prevent y.true[i,j,k]>1
       binconstraints=FALSE
-      if(obstype[2]=="bernoulli"){
+      if(obstype=="bernoulli"){
         idx=t(apply(y.sight.latent,1,function(x){which(x>0,arr.ind=TRUE)}))
         for(i in 1:n.samp.latent){
           for(j in 1:n.samp.latent){
