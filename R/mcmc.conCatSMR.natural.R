@@ -217,10 +217,6 @@ mcmc.conCatSMR.natural <-
       }
     }
 
-    # if(is.na(nswap)){
-    #   nswap=n.samp.latent/2
-    #   warning("nswap not specified, using n.samp.latent/2")
-    # }
     if(!IDup%in%c("MH","Gibbs")){
       stop("IDup must be MH or Gibbs")
     }
@@ -315,33 +311,33 @@ mcmc.conCatSMR.natural <-
     }
     
     #make constraints for data initialization
-      constraints=matrix(1,nrow=n.samp.latent,ncol=n.samp.latent)
-      for(i in 1:n.samp.latent){
-        for(j in 1:n.samp.latent){
-          guys1=which(G.use[i,]!=0)
-          guys2=which(G.use[j,]!=0)
-          comp=guys1[which(guys1%in%guys2)]
-          if(any(G.use[i,comp]!=G.use[j,comp])){
-            constraints[i,j]=0
-          }
+    constraints=matrix(1,nrow=n.samp.latent,ncol=n.samp.latent)
+    for(i in 1:n.samp.latent){
+      for(j in 1:n.samp.latent){
+        guys1=which(G.use[i,]!=0)
+        guys2=which(G.use[j,]!=0)
+        comp=guys1[which(guys1%in%guys2)]
+        if(any(G.use[i,comp]!=G.use[j,comp])){
+          constraints[i,j]=0
         }
       }
-      #If bernoulli data, add constraints that prevent y.true[i,j,k]>1
-      binconstraints=FALSE
-      if(obstype=="bernoulli"){
-        idx=which(y.sight.latent>0,arr.ind=TRUE)
-        for(i in 1:n.samp.latent){
-          for(j in 1:n.samp.latent){
-            if(i!=j){
-              if(all(idx[i,2:3]==idx[j,2:3])){
-                constraints[i,j]=0 #can't combine samples from same trap and occasion in binomial model
-                constraints[j,i]=0
-                binconstraints=TRUE
-              }
+    }
+    #If bernoulli data, add constraints that prevent y.true[i,j,k]>1
+    binconstraints=FALSE
+    if(obstype=="bernoulli"){
+      idx=t(apply(y.sight.latent,1,function(x){which(x>0,arr.ind=TRUE)}))
+      for(i in 1:n.samp.latent){
+        for(j in 1:n.samp.latent){
+          if(i!=j){
+            if(all(idx[i,1:2]==idx[j,1:2])){
+              constraints[i,j]=0 #can't combine samples from same trap and occasion in binomial model
+              constraints[j,i]=0
+              binconstraints=TRUE
             }
           }
         }
       }
+    }
     
     #Build y.sight.true
     y.sight.marked.true=array(0,dim=c(M1,J,K))
@@ -420,8 +416,8 @@ mcmc.conCatSMR.natural <-
     y.sight.unmarked.true=apply(y.sight.unmarked.true,c(1,2),sum)
     y.sight.latent=apply(y.sight.latent,c(1,2),sum)
     
-    known.vector.marked=1*(rowSums(y.sight.marked.true>0))
-    known.vector.unmarked=1*(rowSums(y.sight.unmarked.true>0))
+    known.vector.marked=1*(rowSums(y.sight.marked.true)>0)
+    known.vector.unmarked=1*(rowSums(y.sight.unmarked.true)>0)
     
     #Initialize zs
     z1=1*(known.vector.marked>0)
@@ -457,8 +453,6 @@ mcmc.conCatSMR.natural <-
       }
     }
     
-    #collapse unmarked data to 2D
-
     #Initialize G.true
     G.true.marked=matrix(0,nrow=M1,ncol=ncat)
     G.true.marked[marked.guys,]=G.marked
@@ -574,6 +568,8 @@ mcmc.conCatSMR.natural <-
     lamd.sight.unmarked.cand=lamd.sight.unmarked
     ll.y.sight.marked.cand=ll.y.sight.marked
     ll.y.sight.unmarked.cand=ll.y.sight.unmarked
+    y.sight.marked.cand=y.sight.marked.true
+    y.sight.unmarked.cand=y.sight.unmarked.true
     
     for(iter in 1:niter){
       #Update both observation models
@@ -715,8 +711,8 @@ mcmc.conCatSMR.natural <-
           }else{
             newID=c(newID-M1,2)
           }
-      
-          if(!all(ID[l,]==newID)){
+          
+          if(!all(ID[l,]==newID)){ #did you change ID number or marked/unmarked status?
             swapped=c(ID[l,1],newID[1])
             if(ID[l,2]==1&newID[2]==1){
               samptype="M2M"
@@ -731,7 +727,7 @@ mcmc.conCatSMR.natural <-
               y.sight.marked.true[ID[l,1],]=y.sight.marked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.marked.true[newID[1],]=y.sight.marked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.marked.sight[swapped,]= dbinom(y.sight.marked.true[swapped,],K2D.M[swapped,],pd.sight.marked[swapped,],log=TRUE)
+                ll.y.sight.marked[swapped,]= dbinom(y.sight.marked.true[swapped,],K2D.M[swapped,],pd.sight.marked[swapped,],log=TRUE)
               }else{
                 ll.y.sight.marked[swapped,]= dpois(y.sight.marked.true[swapped,],K2D.M[swapped,]*lamd.sight.marked[swapped,],log=TRUE)
               }
@@ -739,7 +735,7 @@ mcmc.conCatSMR.natural <-
               y.sight.unmarked.true[ID[l,1],]=y.sight.unmarked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.unmarked.true[newID[1],]=y.sight.unmarked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.unmarked.sight[swapped,]= dbinom(y.sight.unmarked.true[swapped,],K2D.UM[swapped,],pd.sight.unmarked[swapped,],log=TRUE)
+                ll.y.sight.unmarked[swapped,]= dbinom(y.sight.unmarked.true[swapped,],K2D.UM[swapped,],pd.sight.unmarked[swapped,],log=TRUE)
               }else{
                 ll.y.sight.unmarked[swapped,]= dpois(y.sight.unmarked.true[swapped,],K2D.UM[swapped,]*lamd.sight.unmarked[swapped,],log=TRUE)
               }
@@ -747,8 +743,8 @@ mcmc.conCatSMR.natural <-
               y.sight.marked.true[ID[l,1],]=y.sight.marked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.unmarked.true[newID[1],]=y.sight.unmarked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.marked.sight[swapped[1],]= dbinom(y.sight.marked.true[swapped[1],],K2D.M[swapped[1],],pd.sight.marked[swapped[1],],log=TRUE)
-                ll.y.unmarked.sight[swapped[2],]= dbinom(y.sight.unmarked.true[swapped[2],],K2D.UM[swapped[2],],pd.sight.unmarked[swapped[2],],log=TRUE)
+                ll.y.sight.marked[swapped[1],]= dbinom(y.sight.marked.true[swapped[1],],K2D.M[swapped[1],],pd.sight.marked[swapped[1],],log=TRUE)
+                ll.y.sight.unmarked[swapped[2],]= dbinom(y.sight.unmarked.true[swapped[2],],K2D.UM[swapped[2],],pd.sight.unmarked[swapped[2],],log=TRUE)
               }else{
                 ll.y.sight.marked[swapped[1],]= dpois(y.sight.marked.true[swapped[1],],K2D.M[swapped[1],]*lamd.sight.marked[swapped[1],],log=TRUE)
                 ll.y.sight.unmarked[swapped[2],]= dpois(y.sight.unmarked.true[swapped[2],],K2D.UM[swapped[2],]*lamd.sight.unmarked[swapped[2],],log=TRUE)
@@ -757,8 +753,8 @@ mcmc.conCatSMR.natural <-
               y.sight.unmarked.true[ID[l,1],]=y.sight.unmarked.true[ID[l,1],]-y.sight.latent[l,]
               y.sight.marked.true[newID[1],]=y.sight.marked.true[newID[1],]+y.sight.latent[l,]
               if(obstype=="bernoulli"){
-                ll.y.marked.sight[swapped[2],]= dbinom(y.sight.marked.true[swapped[2],],K2D.M[swapped[2],],pd.sight.marked[swapped[2],],log=TRUE)
-                ll.y.unmarked.sight[swapped[1],]= dbinom(y.sight.unmarked.true[swapped[1],],K2D.UM[swapped[1],],pd.sight.unmarked[swapped[1],],log=TRUE)
+                ll.y.sight.marked[swapped[2],]= dbinom(y.sight.marked.true[swapped[2],],K2D.M[swapped[2],],pd.sight.marked[swapped[2],],log=TRUE)
+                ll.y.sight.marked[swapped[1],]= dbinom(y.sight.unmarked.true[swapped[1],],K2D.UM[swapped[1],],pd.sight.unmarked[swapped[1],],log=TRUE)
               }else{
                 ll.y.sight.marked[swapped[2],]= dpois(y.sight.marked.true[swapped[2],],K2D.M[swapped[2],]*lamd.sight.marked[swapped[2],],log=TRUE)
                 ll.y.sight.unmarked[swapped[1],]= dpois(y.sight.unmarked.true[swapped[1],],K2D.UM[swapped[1],]*lamd.sight.unmarked[swapped[1],],log=TRUE)
@@ -767,13 +763,154 @@ mcmc.conCatSMR.natural <-
             ID[l,]=newID
           }
         }
-      }else{
-        stop("MH for unknown number of marks not yet coded. Only needed for binomial observation model.")
-        #### Fix this for unknown # marks
+      }else{#MH update
+        up=sample(1:n.samp.latent,nswap,replace=FALSE)
+        for(l in up){
+          nj=which(y.sight.latent[l,]>0)
+          #Can only swap if IDcovs match
+          idx=which(G.use[l,]!=0)
+          if(length(idx)>1){#multiple loci observed
+            possible.M=which(z1==1&apply(G.true.marked[,idx],1,function(x){all(x==G.use[l,idx])}))
+            possible.UM=which(z2==1&apply(G.true.unmarked[,idx],1,function(x){all(x==G.use[l,idx])}))
+          }else if(length(idx)==1){#single loci observed
+            possible.M=which(z1==1&G.true.marked[,idx]==G.use[l,idx])
+            possible.UM=which(z2==1&G.true.unmarked[,idx]==G.use[l,idx])
+          }else{#fully latent G.obs
+            possible.M=which(z1==1)#Can match anyone
+            possible.UM=which(z2==1)#Can match anyone
+          }
+          if(!(useUnk|useMarkednoID)){#mark status exclusions handled through G.true
+            possible.M=c() #Can't swap to a marked guy
+          }else{
+            if(Mark.obs[l]==2){#This is an unmarked sample
+              possible.M=c()#Can't swap to a marked guy
+            }
+            if(Mark.obs[l]==1){#This is a marked sample
+              possible.UM=c()#Can't swap to an unmarked guy
+            }
+          }
+          if(length(c(possible.M,possible.UM))==0)next
+          njprobs.M=lamd.sight.marked[,nj]
+          njprobs.M[setdiff(1:M1,possible.M)]=0
+          njprobs.UM=lamd.sight.unmarked[,nj]
+          njprobs.UM[setdiff(1:M2,possible.UM)]=0
+          njprobs=c(njprobs.M,njprobs.UM)
+          njprobs=njprobs/sum(njprobs)
+          newID=ID
+          newID[l,1]=sample(1:(M1+M2),1,prob=njprobs)
+          if(newID[l,1]<=M1){
+            newID[l,]=c(newID[l,1],1)
+          }else{
+            newID[l,]=c(newID[l,1]-M1,2)
+          }
+          if(all(ID[l,]==newID[l,]))next #did you change ID number or marked/unmarked status?
+          swapped=c(ID[l,1],newID[l,1])
+          #proposal probabilities for proposing to this individual
+          swapped2=swapped
+          if(ID[l,2]==2){
+            swapped2[1]=swapped2[1]+M1
+          }
+          if(newID[l,2]==2){
+            swapped2[2]=swapped2[2]+M1
+          }
+          
+          propprob=njprobs[swapped2[2]]
+          backprob=njprobs[swapped2[1]]
+          if(ID[l,2]==1&newID[l,2]==1){
+            samptype="M2M"
+          }else if(ID[l,2]==1&newID[l,2]==2){
+            samptype="M2UM"
+          }else if(ID[l,2]==2&newID[l,2]==2){
+            samptype="UM2UM"
+          }else if(ID[l,2]==2&newID[l,2]==1){
+            samptype="UM2M"
+          }
+          if(samptype=="M2M"){#marked guy
+            y.sight.marked.cand[ID[l,1],]=y.sight.marked.true[ID[l,1],]-y.sight.latent[l,]
+            y.sight.marked.cand[newID[l,1],]=y.sight.marked.true[newID[l,1],]+y.sight.latent[l,]
+            if(obstype=="bernoulli"){
+              ll.y.sight.marked.cand[swapped,]= dbinom(y.sight.marked.cand[swapped,],K2D.M[swapped,],pd.sight.marked[swapped,],log=TRUE)
+            }else{
+              ll.y.sight.marked.cand[swapped,]= dpois(y.sight.marked.cand[swapped,],K2D.M[swapped,]*lamd.sight.marked[swapped,],log=TRUE)
+            }
+            llysum=sum(ll.y.sight.marked[swapped,])
+            llycandsum=sum(ll.y.sight.marked.cand[swapped,])
+            #proposal probabilities for selecting this sample to update
+            focalprob=(sum(ID[l,1]==ID[,1]&ID[l,2]==ID[,2])/n.samp.latent)*(y.sight.marked.true[ID[l,1],nj]/sum(y.sight.marked.true[ID[l,1],]))
+            focalbackprob=(sum(newID[l,1]==newID[,1]&newID[l,2]==newID[,2])/n.samp.latent)*(y.sight.marked.cand[newID[l,1],nj]/sum(y.sight.marked.cand[newID[l,1],]))
+            
+          }else if(samptype=="UM2UM"){#unmarked guy
+            y.sight.unmarked.cand[ID[l,1],]=y.sight.unmarked.true[ID[l,1],]-y.sight.latent[l,]
+            y.sight.unmarked.cand[newID[l,1],]=y.sight.unmarked.true[newID[l,1],]+y.sight.latent[l,]
+            if(obstype=="bernoulli"){
+              ll.y.sight.unmarked.cand[swapped,]= dbinom(y.sight.unmarked.cand[swapped,],K2D.UM[swapped,],pd.sight.unmarked[swapped,],log=TRUE)
+            }else{
+              ll.y.sight.unmarked.cand[swapped,]= dpois(y.sight.unmarked.cand[swapped,],K2D.UM[swapped,]*lamd.sight.unmarked[swapped,],log=TRUE)
+            }
+            llysum=sum(ll.y.sight.unmarked[swapped,])
+            llycandsum=sum(ll.y.sight.unmarked.cand[swapped,])
+            #proposal probabilities for selecting this sample to update
+            focalprob=(sum(ID[l,1]==ID[,1]&ID[l,2]==ID[,2])/n.samp.latent)*(y.sight.unmarked.true[ID[l,1],nj]/sum(y.sight.unmarked.true[ID[l,1],]))
+            focalbackprob=(sum(newID[l,1]==newID[,1]&newID[l,2]==newID[,2])/n.samp.latent)*(y.sight.unmarked.cand[newID[l,1],nj]/sum(y.sight.unmarked.cand[newID[l,1],]))
+          }else if(samptype=="M2UM"){
+            
+            y.sight.marked.cand[ID[l,1],]=y.sight.marked.true[ID[l,1],]-y.sight.latent[l,]
+            y.sight.unmarked.cand[newID[l,1],]=y.sight.unmarked.true[newID[l,1],]+y.sight.latent[l,]
+            if(obstype=="bernoulli"){
+              ll.y.sight.marked.cand[swapped[1],]= dbinom(y.sight.marked.cand[swapped[1],],K2D.M[swapped[1],],pd.sight.marked[swapped[1],],log=TRUE)
+              ll.y.sight.unmarked.cand[swapped[2],]= dbinom(y.sight.unmarked.cand[swapped[2],],K2D.UM[swapped[2],],pd.sight.unmarked[swapped[2],],log=TRUE)
+            }else{
+              ll.y.sight.marked.cand[swapped[1],]= dpois(y.sight.marked.cand[swapped[1],],K2D.M[swapped[1],]*lamd.sight.marked[swapped[1],],log=TRUE)
+              ll.y.sight.unmarked.cand[swapped[2],]= dpois(y.sight.unmarked.cand[swapped[2],],K2D.UM[swapped[2],]*lamd.sight.unmarked[swapped[2],],log=TRUE)
+            }
+            llysum=sum(ll.y.sight.marked[swapped[1],])+sum(ll.y.sight.unmarked[swapped[2],])
+            llycandsum=sum(ll.y.sight.marked.cand[swapped[1],])+sum(ll.y.sight.unmarked.cand[swapped[2],])
+            #proposal probabilities for selecting this sample to update
+            focalprob=(sum(ID[l,1]==ID[,1]&ID[l,2]==ID[,2])/n.samp.latent)*(y.sight.marked.true[ID[l,1],nj]/sum(y.sight.marked.true[ID[l,1],]))
+            focalbackprob=(sum(newID[l,1]==newID[,1]&newID[l,2]==newID[,2])/n.samp.latent)*(y.sight.unmarked.cand[newID[l,1],nj]/sum(y.sight.unmarked.cand[newID[l,1],]))
+          }else if(samptype=="UM2M"){
+            
+            y.sight.unmarked.cand[ID[l,1],]=y.sight.unmarked.true[ID[l,1],]-y.sight.latent[l,]
+            y.sight.marked.cand[newID[l,1],]=y.sight.marked.true[newID[l,1],]+y.sight.latent[l,]
+            if(obstype=="bernoulli"){
+              ll.y.sight.marked.cand[swapped[2],]= dbinom(y.sight.marked.cand[swapped[2],],K2D.M[swapped[2],],pd.sight.marked[swapped[2],],log=TRUE)
+              ll.y.sight.unmarked.cand[swapped[1],]= dbinom(y.sight.unmarked.cand[swapped[1],],K2D.UM[swapped[1],],pd.sight.unmarked[swapped[1],],log=TRUE)
+            }else{
+              ll.y.sight.marked.cand[swapped[2],]= dpois(y.sight.marked.cand[swapped[2],],K2D.M[swapped[2],]*lamd.sight.marked[swapped[2],],log=TRUE)
+              ll.y.sight.unmarked.cand[swapped[1],]= dpois(y.sight.unmarked.cand[swapped[1],],K2D.UM[swapped[1],]*lamd.sight.unmarked[swapped[1],],log=TRUE)
+            }
+            llysum=sum(ll.y.sight.marked[swapped[2],])+sum(ll.y.sight.unmarked[swapped[1],])
+            llycandsum=sum(ll.y.sight.marked.cand[swapped[2],])+sum(ll.y.sight.unmarked.cand[swapped[1],])
+            #proposal probabilities for selecting this sample to update
+            focalprob=(sum(ID[l,1]==ID[,1]&ID[l,2]==ID[,2])/n.samp.latent)*(y.sight.unmarked.true[ID[l,1],nj]/sum(y.sight.unmarked.true[ID[l,1],]))
+            focalbackprob=(sum(newID[l,1]==newID[,1]&newID[l,2]==newID[,2])/n.samp.latent)*(y.sight.marked.cand[newID[l,1],nj]/sum(y.sight.marked.cand[newID[l,1],]))
+          }
+          
+          if(runif(1)<exp(llycandsum-llysum)*(backprob/propprob)*(focalbackprob/focalprob)){
+            if(samptype=="M2M"){#marked guy
+              y.sight.marked.true[swapped,]=y.sight.marked.cand[swapped,]
+              ll.y.sight.marked[swapped,]=ll.y.sight.marked.cand[swapped,]
+            }else if(samptype=="UM2UM"){#unmarked guy
+              y.sight.unmarked.true[swapped,]=y.sight.unmarked.cand[swapped,]
+              ll.y.sight.unmarked[swapped,]=ll.y.sight.unmarked.cand[swapped,]
+            }else if(samptype=="M2UM"){
+              y.sight.marked.true[ID[l,1],]=y.sight.marked.cand[ID[l,1],]
+              y.sight.unmarked.true[newID[l,1],]=y.sight.unmarked.cand[newID[l,1],]
+              ll.y.sight.marked[swapped[1],]=ll.y.sight.marked.cand[swapped[1],]
+              ll.y.sight.unmarked[swapped[2],]=ll.y.sight.unmarked.cand[swapped[2],]
+            }else if(samptype=="UM2M"){
+              y.sight.unmarked.true[ID[l,1],]=y.sight.unmarked.cand[ID[l,1],]
+              y.sight.marked.true[newID[l,1],]=y.sight.marked.cand[newID[l,1],]
+              ll.y.sight.marked[swapped[2],]= ll.y.sight.marked.cand[swapped[2],]
+              ll.y.sight.unmarked[swapped[1],]=ll.y.sight.unmarked.cand[swapped[1],]
+            }
+            ID[l,]=newID[l,]
+          }
+        }
       }
       #update known.vector
-      known.vector.marked=1*(rowSums(y.sight.marked.true>0))
-      known.vector.unmarked=1*(rowSums(y.sight.unmarked.true>0))
+      known.vector.marked=1*(rowSums(y.sight.marked.true)>0)
+      known.vector.unmarked=1*(rowSums(y.sight.unmarked.true)>0)
       
       #Update G.true.marked
       G.true.marked.tmp=matrix(0, nrow=M1,ncol=ncat)
