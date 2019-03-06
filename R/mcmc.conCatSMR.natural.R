@@ -540,7 +540,7 @@ mcmc.conCatSMR.natural <-
       ll.tel.cand=ll.tel
       #update starting locations using telemetry data
       for(i in telguys){
-          s[i,]<- c(mean(locs[i,,1]),mean(locs[i,,2]))
+          s1[i,]<- c(mean(locs[i,,1]),mean(locs[i,,2]))
       }
     }else{
       uselocs=FALSE
@@ -608,7 +608,7 @@ mcmc.conCatSMR.natural <-
           llysightcandsum=sum(ll.y.sight.marked.cand)+sum(ll.y.sight.unmarked.cand)
           if(uselocs){
             for(i in telguys){
-              ll.tel.cand[i,]=dnorm(locs[i,,1],s[i,1],sigma.cand,log=TRUE)+dnorm(locs[i,,2],s[i,2],sigma.cand,log=TRUE)
+              ll.tel.cand[i,]=dnorm(locs[i,,1],s1[i,1],sigma.cand,log=TRUE)+dnorm(locs[i,,2],s1[i,2],sigma.cand,log=TRUE)
             }
           }else{
             ll.tel.cand=ll.tel=0
@@ -653,7 +653,7 @@ mcmc.conCatSMR.natural <-
           llysightcandsum=sum(ll.y.sight.marked.cand)+sum(ll.y.sight.unmarked.cand)
           if(uselocs){
             for(i in telguys){
-              ll.tel.cand[i,]=dnorm(locs[i,,1],s[i,1],sigma.cand,log=TRUE)+dnorm(locs[i,,2],s[i,2],sigma.cand,log=TRUE)
+              ll.tel.cand[i,]=dnorm(locs[i,,1],s1[i,1],sigma.cand,log=TRUE)+dnorm(locs[i,,2],s1[i,2],sigma.cand,log=TRUE)
             }
           }else{
             ll.tel.cand=ll.tel=0
