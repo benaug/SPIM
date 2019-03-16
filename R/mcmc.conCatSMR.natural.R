@@ -452,7 +452,34 @@ mcmc.conCatSMR.natural <-
         s2[i,]<- trps
       }
     }
-    
+    if(useverts==TRUE){
+      inside=rep(NA,nrow(s1))
+      for(i in 1:nrow(s1)){
+        inside[i]=inout(s1[i,],vertices)
+      }
+      idx=which(inside==FALSE)
+      if(length(idx)>0){
+        for(i in 1:length(idx)){
+          while(inside[idx[i]]==FALSE){
+            s1[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+            inside[idx[i]]=inout(s1[idx[i],],vertices)
+          }
+        }
+      }
+      inside=rep(NA,nrow(s2))
+      for(i in 1:nrow(s2)){
+        inside[i]=inout(s2[i,],vertices)
+      }
+      idx=which(inside==FALSE)
+      if(length(idx)>0){
+        for(i in 1:length(idx)){
+          while(inside[idx[i]]==FALSE){
+            s2[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+            inside[idx[i]]=inout(s2[idx[i],],vertices)
+          }
+        }
+      }
+    }
     #Initialize G.true
     G.true.marked=matrix(0,nrow=M1,ncol=ncat)
     G.true.marked[marked.guys,]=G.marked

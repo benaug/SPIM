@@ -106,14 +106,14 @@ mcmc.2sideR <-
     if(useverts==TRUE){
       inside=rep(NA,nrow(s))
       for(i in 1:nrow(s)){
-        inside[i]=Rcpp::inout(s[i,],vertices)
+        inside[i]=inout(s[i,],vertices)
       }
       idx=which(inside==FALSE)
       if(length(idx)>0){
         for(i in 1:length(idx)){
           while(inside[idx[i]]==FALSE){
             s[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
-            inside[idx[i]]=Rcpp::inout(s[idx[i],],vertices)
+            inside[idx[i]]=inout(s[idx[i],],vertices)
           }
         }
       }

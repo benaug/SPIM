@@ -334,6 +334,21 @@ mcmc.genCatSMR.moveb <-
         s1[i,]<- trps
       }
     }
+    if(useverts==TRUE){
+      inside=rep(NA,nrow(s1))
+      for(i in 1:nrow(s1)){
+        inside[i]=inout(s1[i,],vertices)
+      }
+      idx=which(inside==FALSE)
+      if(length(idx)>0){
+        for(i in 1:length(idx)){
+          while(inside[idx[i]]==FALSE){
+            s1[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+            inside[idx[i]]=inout(s1[idx[i],],vertices)
+          }
+        }
+      }
+    }
     s2=s1
     
     #collapse unmarked data to 2D

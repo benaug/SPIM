@@ -319,6 +319,21 @@ mcmc.genCatSMRa <-
         s[i,]<- trps
       }
     }
+    if(useverts==TRUE){
+      inside=rep(NA,nrow(s))
+      for(i in 1:nrow(s)){
+        inside[i]=inout(s[i,],vertices)
+      }
+      idx=which(inside==FALSE)
+      if(length(idx)>0){
+        for(i in 1:length(idx)){
+          while(inside[idx[i]]==FALSE){
+            s[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+            inside[idx[i]]=inout(s[idx[i],],vertices)
+          }
+        }
+      }
+    }
     
     #collapse unmarked data to 2D
     y.sight.latent=apply(y.sight.latent,c(1,2),sum)
