@@ -541,8 +541,8 @@ mcmc.conCatSMR.natural <-
     if(nburn%%nthin!=0){
       nstore=nstore+1
     }
-    out<-matrix(NA,nrow=nstore,ncol=9)
-    dimnames(out)<-list(NULL,c("lam0","sigma","n.m","n.um","N.m","N.um","N.all","psi1","psi2"))
+    out<-matrix(NA,nrow=nstore,ncol=10)
+    dimnames(out)<-list(NULL,c("lam0","sigma","n.m","n.um","n.tot","N.m","N.um","N.all","psi1","psi2"))
     if(storeLatent){
       s1xout<- s1yout<- z1out<-matrix(NA,nrow=nstore,ncol=M1)
       s2xout<- s2yout<- z2out<-matrix(NA,nrow=nstore,ncol=M2)
@@ -1128,7 +1128,8 @@ mcmc.conCatSMR.natural <-
         NUM=sum(z2)
         nM=length(unique(ID[ID[,2]==1,1])  )
         nUM=length(unique(ID[ID[,2]==2,1]))
-        out[iteridx,]<- c(lam0,sigma,nM,nUM,NM,NUM,NM+NUM,psi1,psi2)
+        ntot=sum(rowSums(y.sight.marked.true)>0)+sum(rowSums(y.sight.unmarked.true)>0)
+        out[iteridx,]<- c(lam0,sigma,nM,nUM,ntot,NM,NUM,NM+NUM,psi1,psi2)
         iteridx=iteridx+1
       }
     }  # end of MCMC algorithm
