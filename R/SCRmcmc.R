@@ -8,9 +8,6 @@ SCRmcmc <-
     X<-as.matrix(data$X)
     J<-nrow(X)
     K<- data$K
-    buff<- data$buff
-    xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)
-    ylim<- c(min(X[,2]),max(X[,2]))+c(-buff, buff)
     n=dim(y)[1]
     #Reduce to 2D data
     if(length(dim(y))==3){
