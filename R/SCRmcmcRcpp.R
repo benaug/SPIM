@@ -6,9 +6,6 @@ SCRmcmcRcpp <-
     X<-as.matrix(data$X)
     J<-nrow(X)
     K<- data$K
-    buff<- data$buff
-    xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)
-    ylim<- c(min(X[,2]),max(X[,2]))+c(-buff, buff)
     n=dim(y)[1]
     #Reduce to 2D data
     if(length(dim(y))==3){
@@ -67,7 +64,21 @@ SCRmcmcRcpp <-
         s[i,]<- trps
       }
     }
-    
+    if(useverts==TRUE){
+      inside=rep(NA,nrow(s))
+      for(i in 1:nrow(s)){
+        inside[i]=inout(s[i,],vertices)
+      }
+      idx=which(inside==FALSE)
+      if(length(idx)>0){
+        for(i in 1:length(idx)){
+          while(inside[idx[i]]==FALSE){
+            s[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
+            inside[idx[i]]=inout(s[idx[i],],vertices)
+          }
+        }
+      }
+    }
     D=e2dist(s, X)
     lamd<- lam0*exp(-D*D/(2*sigma*sigma))
     ll.y=array(0,dim=c(M,J))
