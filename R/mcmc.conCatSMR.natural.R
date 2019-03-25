@@ -560,15 +560,15 @@ mcmc.conCatSMR.natural <-
       uselocs=TRUE
       locs=data$locs
       telguys=which(rowSums(!is.na(locs[,,1]))>0)
+      #update starting locations using telemetry data
+      for(i in telguys){
+        s1[i,]<- c(mean(locs[i,,1]),mean(locs[i,,2]))
+      }
       ll.tel=matrix(0,nrow=length(telguys),ncol=dim(locs)[2])
       for(i in telguys){
         ll.tel[i,]=dnorm(locs[i,,1],s1[i,1],sigma,log=TRUE)+dnorm(locs[i,,2],s1[i,2],sigma,log=TRUE)
       }
       ll.tel.cand=ll.tel
-      #update starting locations using telemetry data
-      for(i in telguys){
-          s1[i,]<- c(mean(locs[i,,1]),mean(locs[i,,2]))
-      }
     }else{
       uselocs=FALSE
       telguys=c()
@@ -1037,7 +1037,7 @@ mcmc.conCatSMR.natural <-
                                  (sum(ll.y.sight.marked[i,])+sum(ll.tel[i,])))) {
                 s1[i,]=Scand
                 D1[i,]=dtmp
-                lamd.sight.marked[i,]=lamd.sight.cand.marked[i,]
+                lamd.sight.marked[i,]=lamd.sight.marked.cand[i,]
                 pd.sight.marked[i,]=pd.sight.marked.cand[i,]
                 ll.y.sight.marked[i,]=ll.y.sight.marked.cand[i,]            
                 ll.tel[i,]=ll.tel.cand[i,]
