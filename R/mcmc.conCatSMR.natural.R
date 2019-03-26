@@ -137,7 +137,7 @@
 mcmc.conCatSMR.natural <-
   function(data,niter=2400,nburn=1200, nthin=5, M1 = 30,M2=200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
-           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf=NA){
+           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf=NA,priors=NA){
     ###
     library(abind)
     y.sight.marked=data$y.sight.marked
@@ -167,6 +167,15 @@ mcmc.conCatSMR.natural <-
     }
     if(ncol(G.unmarked)!=ncat){
       stop("G.unmarked needs ncat number of columns")
+    }
+    if(!all(is.na(priors))){
+      if(!is.list(priors))stop("priors must be a list" )
+      if(!all(names(priors)==c("sigma")))stop("priors list element name must be sigma")
+      warning("Using Gamma prior for sigma")
+      usePriors=TRUE
+    }else{
+      warning("No sigma prior entered, using uniform(0,infty).")
+      usePriors=FALSE
     }
     #Are there unknown marked status guys?
     useUnk=FALSE
@@ -640,7 +649,13 @@ mcmc.conCatSMR.natural <-
           }else{
             ll.tel.cand=ll.tel=0
           }
-          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand))-(llysightsum+sum(ll.tel)))){
+          if(usePriors){
+            prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
+            prior.cand=dgamma(sigma.cand,priors$sigma[1],priors$sigma[2],log=TRUE)
+          }else{
+            prior.curr=prior.cand=0
+          }
+          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand)+prior.cand)-(llysightsum+sum(ll.tel)+prior.curr))){
             sigma<- sigma.cand
             lamd.sight.marked=lamd.sight.marked.cand
             lamd.sight.unmarked=lamd.sight.unmarked.cand
@@ -685,7 +700,13 @@ mcmc.conCatSMR.natural <-
           }else{
             ll.tel.cand=ll.tel=0
           }
-          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand))-(llysightsum+sum(ll.tel)))){  
+          if(usePriors){
+            prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
+            prior.cand=dgamma(sigma.cand,priors$sigma[1],priors$sigma[2],log=TRUE)
+          }else{
+            prior.curr=prior.cand=0
+          }
+          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand)+prior.cand)-(llysightsum+sum(ll.tel)+prior.curr))){
             sigma<- sigma.cand
             lamd.sight.marked=lamd.sight.marked.cand
             lamd.sight.unmarked=lamd.sight.unmarked.cand
