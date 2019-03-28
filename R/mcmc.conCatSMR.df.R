@@ -864,7 +864,7 @@ mcmc.conCatSMR.df <-
       if(obstype=="poisson"){
         pd.sight=1-exp(-lamd.sight)
       }
-      pbar.sight=(1-pd.sight)^K
+      pbar.sight=(1-pd.sight)^K2D
       prob0.sight<- exp(rowSums(log(pbar.sight)))
       fc<- prob0.sight*psi/(prob0.sight*psi + 1-psi)
       z[known.vector==0]<- rbinom(sum(known.vector ==0), 1, fc[known.vector==0])

@@ -138,7 +138,7 @@
 mcmc.conCatSMR <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,s=0.2,st=0.2),
-           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf=NA){
+           storeLatent=TRUE,storeGamma=TRUE,IDup="Gibbs",tf=NA,priors=NA){
     ###
     library(abind)
     y.sight.marked=data$y.sight.marked
@@ -169,6 +169,15 @@ mcmc.conCatSMR <-
     }
     if(ncol(G.unmarked)!=ncat){
       stop("G.unmarked needs ncat number of columns")
+    }
+    if(!all(is.na(priors))){
+      if(!is.list(priors))stop("priors must be a list" )
+      if(!all(names(priors)==c("sigma")))stop("priors list element name must be sigma")
+      warning("Using Gamma prior for sigma")
+      usePriors=TRUE
+    }else{
+      warning("No sigma prior entered, using uniform(0,infty).")
+      usePriors=FALSE
     }
     #Are there unknown marked status guys?
     useUnk=FALSE
@@ -580,7 +589,14 @@ mcmc.conCatSMR <-
           }else{
             ll.tel.cand=ll.tel=0
           }
-          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand,na.rm=TRUE))-(llysightsum+sum(ll.tel,na.rm=TRUE)))){
+          if(usePriors){
+            prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
+            prior.cand=dgamma(sigma.cand,priors$sigma[1],priors$sigma[2],log=TRUE)
+          }else{
+            prior.curr=prior.cand=0
+          }
+          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand,na.rm=TRUE)+prior.cand)-
+                            (llysightsum+sum(ll.tel,na.rm=TRUE)+prior.curr))){
             sigma<- sigma.cand
             lamd.sight=lamd.sight.cand
             pd.sight=pd.sight.cand
@@ -616,7 +632,14 @@ mcmc.conCatSMR <-
           }else{
             ll.tel.cand=ll.tel=0
           }
-          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand,na.rm=TRUE))-(llysightsum+sum(ll.tel,na.rm=TRUE)))){  
+          if(usePriors){
+            prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
+            prior.cand=dgamma(sigma.cand,priors$sigma[1],priors$sigma[2],log=TRUE)
+          }else{
+            prior.curr=prior.cand=0
+          }
+          if(runif(1) < exp((llysightcandsum+sum(ll.tel.cand,na.rm=TRUE)+prior.cand)-
+                            (llysightsum+sum(ll.tel,na.rm=TRUE)+prior.curr))){  
             sigma<- sigma.cand
             lamd.sight=lamd.sight.cand
             ll.y.sight=ll.y.sight.cand
@@ -774,7 +797,7 @@ mcmc.conCatSMR <-
       if(obstype=="poisson"){
         pd.sight=1-exp(-lamd.sight)
       }
-      pbar.sight=(1-pd.sight)^K
+      pbar.sight=(1-pd.sight)^K2D
       prob0.sight<- exp(rowSums(log(pbar.sight)))
       fc<- prob0.sight*psi/(prob0.sight*psi + 1-psi)
       z[known.vector==0]<- rbinom(sum(known.vector ==0), 1, fc[known.vector==0])

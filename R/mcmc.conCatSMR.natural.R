@@ -1016,8 +1016,8 @@ mcmc.conCatSMR.natural <-
         pd.sight.marked=1-exp(-lamd.sight.marked)
         pd.sight.unmarked=1-exp(-lamd.sight.unmarked)
       }
-      pbar.sight.marked=(1-pd.sight.marked)^K
-      pbar.sight.unmarked=(1-pd.sight.unmarked)^K
+      pbar.sight.marked=(1-pd.sight.marked)^K2D
+      pbar.sight.unmarked=(1-pd.sight.unmarked)^K2D
       prob0.sight.marked= exp(rowSums(log(pbar.sight.marked)))
       prob0.sight.unmarked= exp(rowSums(log(pbar.sight.unmarked)))
       fc.marked<- prob0.sight.marked*psi1/(prob0.sight.marked*psi1 + 1-psi1)
