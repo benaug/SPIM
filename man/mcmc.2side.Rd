@@ -73,6 +73,7 @@ X[which(X[,2]\%in\%c(4,7)),3]=2 #switch the second and fifth row of traps to dou
 #Simulate some data
 data=sim2side(N=N,lam01=lam01,lam02=lam02,sigma=sigma,K=K,X=X,buff=buff)
 inits=list(psi=0.5,lam01=lam01,lam02=lam02,sigma=sigma)
+proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2) #will need to tune these for your dataset
 a=Sys.time()
 store=mcmc.2side(data,niter=niter,nburn=nburn,nthin=nthin, M = 100,inits=inits,swap=10)
 b=Sys.time()

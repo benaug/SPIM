@@ -8,7 +8,8 @@ the number of marked individuals is unknown}
 mcmc.conCatSMR.natural(data, niter = 2400, nburn = 1200, nthin = 5,
   M1 = 30, M2 = 200, inits = NA, obstype = "poisson", nswap = NA,
   proppars = list(lam0 = 0.05, sigma = 0.1, sx = 0.2, sy = 0.2),
-  storeLatent = TRUE, storeGamma = TRUE, IDup = "Gibbs", tf = NA)
+  storeLatent = TRUE, storeGamma = TRUE, IDup = "Gibbs", tf = NA,
+  priors = NA)
 }
 \arguments{
 \item{data}{a data list as formatted by sim.conCatSMR(). See description for more details.}
