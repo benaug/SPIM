@@ -82,11 +82,14 @@ SCRmcmcRcpp <-
     D=e2dist(s, X)
     lamd<- lam0*exp(-D*D/(2*sigma*sigma))
     ll.y=array(0,dim=c(M,J))
+    #check if ll finite
+    tf2D=matrix(rep(tf,M),ncol=J,nrow=M,byrow=TRUE)
+    
     if(obstype=="bernoulli"){
       pd=1-exp(-lamd)
-      ll.y=dbinom(y,tf,pd*z,log=TRUE)
+      ll.y=dbinom(y,tf2D,pd*z,log=TRUE)
     }else if(obstype=="poisson"){
-      ll.y=dpois(y,K*lamd*z,log=TRUE)
+      ll.y=dpois(y,tf2D*lamd*z,log=TRUE)
     }
     ll.y.cand=ll.y
     

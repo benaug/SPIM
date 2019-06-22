@@ -87,7 +87,7 @@ SCRmcmc <-
       pd=1-exp(-lamd)
       ll.y=dbinom(y,tf,pd*z,log=TRUE)
     }else if(obstype=="poisson"){
-      ll.y=dpois(y,K*lamd*z,log=TRUE)
+      ll.y=dpois(y,tf*lamd*z,log=TRUE)
     }
     ll.y.cand=ll.y
     
