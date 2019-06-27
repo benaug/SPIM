@@ -1,5 +1,6 @@
 mcmc.2sidetfFullRcpp <-
-  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,swap=10,swap.tol=1,proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=FALSE){
+  function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=inits,swap=10,swap.tol=1,
+           proppars=list(lam01=0.05,lam02=0.05,sigma=0.1,sx=0.2,sy=0.2),storeLatent=FALSE){
     library(abind)
     y.both<-data$both
     y.left.obs<-data$left
@@ -38,6 +39,8 @@ mcmc.2sidetfFullRcpp <-
     if("vertices"%in%names(data)){
       vertices=data$vertices
       useverts=TRUE
+      xlim=c(min(vertices[,1]),max(vertices[,1]))
+      ylim=c(min(vertices[,2]),max(vertices[,2]))
     }else if("buff"%in%names(data)){
       buff<- data$buff
       xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)
@@ -134,10 +137,11 @@ mcmc.2sidetfFullRcpp <-
                   z,X, tf1,tf2,D,Nfixed,known.vector,ID_L,ID_R,swap,swap.tol,
                   s,psi,xlim,ylim,useverts,vertices,proppars$lam01,proppars$lam02,proppars$sigma,proppars$sx,
                   proppars$sy,niter,nburn,nthin,updates,storeLatent=storeLatent)
-    
+    out=store[[1]]
+    colnames(out)=c("lam01","lam02","sigma","N","psi")
     if(storeLatent){
-      list(out=store[[1]], sxout=store[[2]], syout=store[[3]], ID_Lout=store[[4]],ID_Rout=store[[5]],zout=store[[6]])
+      list(out=out, sxout=store[[2]], syout=store[[3]], ID_Lout=store[[4]],ID_Rout=store[[5]],zout=store[[6]])
     }else{
-      list(out=store[[1]])
+      list(out=out)
     }
   }

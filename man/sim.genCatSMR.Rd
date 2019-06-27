@@ -5,10 +5,11 @@
 \title{Simulate data from the generalized categorical spatial mark resight model with or 
 without telemetry data}
 \usage{
-sim.genCatSMR(N = 50, lam0.mark = 0.25, lam0.sight = 0.25, sigma = 0.5,
-  K1 = 10, K2 = 10, Korder = NA, X1 = X1, X2 = X2, buff = 3,
-  obstype = "bernoulli", ncat = ncat, pIDcat = pIDcat, IDcovs = IDcovs,
-  gamma = gamma, pMarkID = c(1, 1), tlocs = 0, pID = 1)
+sim.genCatSMR(N = 50, lam0.mark = 0.25, lam0.sight = 0.25,
+  sigma = 0.5, K1 = 10, K2 = 10, Korder = NA, X1 = X1, X2 = X2,
+  buff = 3, obstype = "bernoulli", ncat = ncat, pIDcat = pIDcat,
+  IDcovs = IDcovs, gamma = gamma, pMarkID = c(1, 1), tlocs = 0,
+  pID = 1)
 }
 \arguments{
 \item{N}{abundance}

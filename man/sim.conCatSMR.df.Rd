@@ -8,8 +8,8 @@ identity covariate. See sim.conCatSMR() for the same function with a single dete
 \usage{
 sim.conCatSMR.df(N = 50, n.marked = 10, lam0 = 0.25, sigma = 0.5,
   K = 10, X = X, buff = 3, obstype = "bernoulli", ncat = ncat,
-  pIDcat = pIDcat, gamma = gamma, IDcovs = IDcovs, pMarkID = c(1, 1),
-  tlocs = 0, pID = 1, marktype = "premarked")
+  pIDcat = pIDcat, gamma = gamma, IDcovs = IDcovs, pMarkID = c(1,
+  1), tlocs = 0, pID = 1, marktype = "premarked")
 }
 \arguments{
 \item{N}{Abundance}

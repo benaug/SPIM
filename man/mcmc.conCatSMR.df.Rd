@@ -5,10 +5,10 @@
 \title{Fit the categorical spatial mark resight model with detection functions that vary by category level. Known
 number of marked individuals.}
 \usage{
-mcmc.conCatSMR.df(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
-  inits = NA, obstype = "poisson", nswap = NA, proppars = list(lam0 =
-  0.05, sigma = 0.1, sx = 0.2, sy = 0.2), storeLatent = TRUE,
-  storeGamma = TRUE, IDup = "Gibbs", tf = NA)
+mcmc.conCatSMR.df(data, niter = 2400, nburn = 1200, nthin = 5,
+  M = 200, inits = NA, obstype = "poisson", nswap = NA,
+  proppars = list(lam0 = 0.05, sigma = 0.1, sx = 0.2, sy = 0.2),
+  storeLatent = TRUE, storeGamma = TRUE, IDup = "Gibbs", tf = NA)
 }
 \arguments{
 \item{data}{a data list as formatted by sim.conCatSMR.df(). See description for more details.}

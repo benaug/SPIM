@@ -5,10 +5,10 @@
 \title{Simulate data from the conventional (no marking process) categorical spatial mark resight model with or 
 without telemetry data}
 \usage{
-sim.conCatSMR(N = 50, n.marked = 10, lam0 = 0.25, sigma = 0.5, K = 10,
-  X = X, buff = 3, obstype = "bernoulli", ncat = ncat,
-  pIDcat = pIDcat, IDcovs = IDcovs, gamma = gamma, pMarkID = c(1, 1),
-  tlocs = 0, pID = 1, marktype = "premarked")
+sim.conCatSMR(N = 50, n.marked = 10, lam0 = 0.25, sigma = 0.5,
+  K = 10, X = X, buff = 3, obstype = "bernoulli", ncat = ncat,
+  pIDcat = pIDcat, IDcovs = IDcovs, gamma = gamma, pMarkID = c(1,
+  1), tlocs = 0, pID = 1, marktype = "premarked")
 }
 \arguments{
 \item{N}{Abundance}

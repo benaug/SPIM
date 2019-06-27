@@ -5,11 +5,11 @@
 \title{Fit the generalized categorical spatial mark resight model with detection function parameters that vary
 by the category levels of one categorical identity covariate, e.g. sex}
 \usage{
-mcmc.genCatSMR.df(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
-  inits = NA, obstype = c("bernoulli", "poisson"), nswap = NA,
-  proppars = list(lam0 = 0.05, sigma = 0.1, sx = 0.2, sy = 0.2),
-  storeLatent = TRUE, storeGamma = TRUE, IDup = "Gibbs", tf1 = NA,
-  tf2 = NA)
+mcmc.genCatSMR.df(data, niter = 2400, nburn = 1200, nthin = 5,
+  M = 200, inits = NA, obstype = c("bernoulli", "poisson"),
+  nswap = NA, proppars = list(lam0 = 0.05, sigma = 0.1, sx = 0.2, sy =
+  0.2), storeLatent = TRUE, storeGamma = TRUE, IDup = "Gibbs",
+  tf1 = NA, tf2 = NA)
 }
 \arguments{
 \item{data}{a data list as formatted by sim.genCatSMR(). See description for more details.}

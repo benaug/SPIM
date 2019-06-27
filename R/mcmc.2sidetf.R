@@ -44,6 +44,8 @@ mcmc.2sidetf <-
     if("vertices"%in%names(data)){
       vertices=data$vertices
       useverts=TRUE
+      xlim=c(min(vertices[,1]),max(vertices[,1]))
+      ylim=c(min(vertices[,2]),max(vertices[,2]))
     }else if("buff"%in%names(data)){
       buff<- data$buff
       xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)

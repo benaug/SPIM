@@ -4,8 +4,9 @@
 \alias{simSCRtf}
 \title{Simulate data from a SCR study and simulate a random trap failure process}
 \usage{
-simSCRtf(N = 120, lam0 = 0.2, lam0b = 0, sigma = 0.7, K = 10, X = X,
-  buff = 3, failrate = 0.05, faildur = 2, obstype = "bernoulli")
+simSCRtf(N = 120, lam0 = 0.2, lam0b = 0, sigma = 0.7, K = 10,
+  X = X, buff = 3, failrate = 0.05, faildur = 2,
+  obstype = "bernoulli")
 }
 \arguments{
 \item{N}{a vector indicating the number of individuals to simulate}

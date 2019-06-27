@@ -5,10 +5,11 @@
 \title{Fit the conventional (marking process not modeled) categorical spatial mark resight model when number of marked
 individuals is known}
 \usage{
-mcmc.conCatSMR(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
-  inits = NA, obstype = "poisson", nswap = NA, proppars = list(lam0 =
-  0.05, sigma = 0.1, s = 0.2, st = 0.2), storeLatent = TRUE,
-  storeGamma = TRUE, IDup = "Gibbs", tf = NA)
+mcmc.conCatSMR(data, niter = 2400, nburn = 1200, nthin = 5,
+  M = 200, inits = NA, obstype = "poisson", nswap = NA,
+  proppars = list(lam0 = 0.05, sigma = 0.1, s = 0.2, st = 0.2),
+  storeLatent = TRUE, storeGamma = TRUE, IDup = "Gibbs", tf = NA,
+  priors = NA)
 }
 \arguments{
 \item{data}{a data list as formatted by sim.conCatSMR(). See description for more details.}

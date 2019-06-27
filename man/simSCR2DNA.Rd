@@ -5,7 +5,8 @@
 \title{Simulate data from a SCR study with DNA collected from scat and hair snares}
 \usage{
 simSCR2DNA(N = 120, lam01 = 0.2, lam01b = 0, lam02 = 0.2,
-  sigma = c(0.5, 0.5), K1 = 10, K2 = 10, X1 = X1, X2 = X2, buff = 2)
+  sigma = c(0.5, 0.5), K1 = 10, K2 = 10, X1 = X1, X2 = X2,
+  buff = 2)
 }
 \arguments{
 \item{N}{a vector indicating the number of individuals to simulate}

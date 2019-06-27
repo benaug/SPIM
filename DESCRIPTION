@@ -1,14 +1,14 @@
 Package: SPIM
 Type: Package
-Title: This package contains MCMC algorithms in R and Rcpp for various SCR models, including the spatial partial identification model.
+Title: This package contains MCMC algorithms in R and (some) Rcpp for various Spatial Partial Identity Models. Prospective users should email Ben before using.
 Version: 0.1
 Date: 2015-08-25
 Author: Ben Augustine and Andy Royle
 Maintainer: Ben Augustine <baugusti@vt.edu>
-Description: Models fit:  SPIM, Open population SPIM, SCR0, naive independence estimator for partial identity.  Rectangular or polygon continuous state space.  With or without a trap functionality file.  At the moment, this is my personal package containing models I'm working on, but may be of wider interest.
+Description: Models fit:  2-flank SPIM, categorical SPIM, categorical conventional and generalized Spatial Mark Resight
 License: GPL-2
 LazyData: TRUE
 Imports: Rcpp (>= 0.12.3), RcppArmadillo (>= 0.6.600.4.0)
 LinkingTo: Rcpp, RcppArmadillo
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0
 Depends: R (>= 3.4.0)

@@ -5,8 +5,8 @@
 \title{Run MCMC algorithm for basic SCR model with 2 observation processes that may or may not share sigma parameters}
 \usage{
 SCR2DNAmcmc(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
-  sharesig = TRUE, inits = inits, proppars = list(lam01 = 0.05, lam02 =
-  0.05, sigma = 0.1, sx = 0.2, sy = 0.2), keepACs = TRUE)
+  sharesig = TRUE, inits = inits, proppars = list(lam01 = 0.05, lam02
+  = 0.05, sigma = 0.1, sx = 0.2, sy = 0.2), keepACs = TRUE)
 }
 \arguments{
 \item{data}{a list produced by simSCR2DNA or in the same format}

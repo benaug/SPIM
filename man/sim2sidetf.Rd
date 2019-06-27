@@ -4,9 +4,9 @@
 \alias{sim2sidetf}
 \title{Simulate data from camera trap SCR study with partial identity and simulate a random trap failure process}
 \usage{
-sim2sidetf(N = 120, lam01 = 0.1, lam02 = 0.2, sigma = 0.5, K = 10,
-  X = X, buff = 3, failprob = 0.05, faildur = 2, failtype = 2,
-  obstype = "bernoulli")
+sim2sidetf(N = 120, lam01 = 0.1, lam02 = 0.2, sigma = 0.5,
+  K = 10, X = X, buff = 3, failprob = 0.05, faildur = 2,
+  failtype = 2, obstype = "bernoulli")
 }
 \arguments{
 \item{N}{a vector indicating the number of individuals to simulate}

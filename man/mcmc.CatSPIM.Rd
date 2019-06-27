@@ -5,8 +5,8 @@
 \title{Fit the categorical spatial partial identity model (catSPIM)}
 \usage{
 mcmc.CatSPIM(data, niter = 2400, nburn = 1200, nthin = 5, M = 200,
-  inits = NA, obstype = "poisson", nswap = NA, proppars = list(lam0 =
-  0.05, sigma = 0.1, sx = 0.2, sy = 0.2), keepACs = FALSE,
+  inits = NA, obstype = "poisson", nswap = NA, proppars = list(lam0
+  = 0.05, sigma = 0.1, sx = 0.2, sy = 0.2), keepACs = FALSE,
   keepGamma = FALSE, keepG = FALSE, IDup = "Gibbs")
 }
 \description{

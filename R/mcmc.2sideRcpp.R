@@ -39,6 +39,8 @@ mcmc.2sideRcpp <-
     if("vertices"%in%names(data)){
       vertices=data$vertices
       useverts=TRUE
+      xlim=c(min(vertices[,1]),max(vertices[,1]))
+      ylim=c(min(vertices[,2]),max(vertices[,2]))
     }else if("buff"%in%names(data)){
       buff<- data$buff
       xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)
@@ -110,14 +112,14 @@ mcmc.2sideRcpp <-
     if(useverts==TRUE){
       inside=rep(NA,nrow(s))
       for(i in 1:nrow(s)){
-        inside[i]=Rcpp::inout(s[i,],vertices)
+        inside[i]=inout(s[i,],vertices)
       }
       idx=which(inside==FALSE)
       if(length(idx)>0){
         for(i in 1:length(idx)){
           while(inside[idx[i]]==FALSE){
             s[idx[i],]=c(runif(1,xlim[1],xlim[2]), runif(1,ylim[1],ylim[2]))
-            inside[idx[i]]=Rcpp::inout(s[idx[i],],vertices)
+            inside[idx[i]]=inout(s[idx[i],],vertices)
           }
         }
       }
@@ -157,7 +159,7 @@ mcmc.2sideRcpp <-
                 s,psi,xlim,ylim,useverts,vertices,proppars$lam01,proppars$lam02,proppars$sigma,proppars$sx,
                    proppars$sy,niter,nburn,nthin,updates,storeLatent=storeLatent)
     out=store[[1]]
-    colnames(out)=c("lam01","lam02","sigma","N")
+    colnames(out)=c("lam01","lam02","sigma","N","psi")
     if(storeLatent){
       list(out=out, sxout=store[[2]], syout=store[[3]], ID_Lout=store[[4]],ID_Rout=store[[5]],zout=store[[6]])
     }else{

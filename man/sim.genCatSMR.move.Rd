@@ -7,10 +7,10 @@ without telemetry data where activity centers move between the marking and sight
 Marking and sighting may not be interspersed because activity center moves between the two processes.}
 \usage{
 sim.genCatSMR.move(N = 50, lam0.mark = 0.25, lam0.sight = 0.25,
-  sigma_d = 0.5, sigma_p = 0.5, K1 = 10, K2 = 10, X1 = X1, X2 = X2,
-  buff = 3, obstype = "bernoulli", ncat = ncat, pIDcat = pIDcat,
-  gamma = gamma, IDcovs = IDcovs, pMarkID = c(1, 1), tlocs = 0,
-  pID = 1)
+  sigma_d = 0.5, sigma_p = 0.5, K1 = 10, K2 = 10, X1 = X1,
+  X2 = X2, buff = 3, obstype = "bernoulli", ncat = ncat,
+  pIDcat = pIDcat, gamma = gamma, IDcovs = IDcovs, pMarkID = c(1,
+  1), tlocs = 0, pID = 1)
 }
 \arguments{
 \item{N}{abundance}
