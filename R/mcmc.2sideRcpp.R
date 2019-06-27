@@ -133,18 +133,14 @@ mcmc.2sideRcpp <-
     D<- e2dist(s, X)
     lamd1<- lam01*exp(-D*D/(2*sigma*sigma))
     lamd2<- lam02*exp(-D*D/(2*sigma*sigma))
+    #check if ll finite
     pd1=1-exp(-lamd1)
     pd1b=ones*pd1+twos*(2*pd1-pd1*pd1)
     pd2=1-exp(-lamd2)
-    lamd1.cand=lamd1
-    lamd2.cand=lamd2
-    pd1.cand=pd1
-    pd2.cand=pd2
-    pd1b.cand=pd1b
-    
-    ll.y.both <- dbinom(y.both,tf,z*pd2*twos,log=TRUE)
-    ll.y.left <-  dbinom(y.left.true,tf,z*pd1b,log=TRUE)
-    ll.y.right <-  dbinom(y.right.true,tf,z*pd1b,log=TRUE)
+    tf2D=matrix(rep(tf,M),nrow=M,byrow=TRUE)
+    ll.y.both <- dbinom(y.both,tf2D,z*pd2*twos,log=TRUE)
+    ll.y.left <-  dbinom(y.left.true,tf2D,z*pd1b,log=TRUE)
+    ll.y.right <-  dbinom(y.right.true,tf2D,z*pd1b,log=TRUE)
     ll.y.both.cand=ll.y.both
     ll.y.left.cand=ll.y.left
     ll.y.right.cand=ll.y.right
