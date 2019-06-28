@@ -262,6 +262,12 @@ sim.genCatSMR <-
         }
         y.sight.unk=y.sight.unmarked[unm2unk,,]
         y.sight.unmarked=y.sight.unmarked[-unm2unk,,]
+        if(length(dim(y.sight.unk))==2){
+          y.sight.unk=array(y.sight.unk,dim=c(1,J,K))
+        }
+        if(length(dim(y.sight.unmarked))==2){
+          y.sight.unmarked=array(y.sight.unmarked,dim=c(1,J,K))
+        }
         IDunk=IDum[unm2unk]
         IDum=IDum[-unm2unk]
       }else{
@@ -281,28 +287,44 @@ sim.genCatSMR <-
         if(!is.matrix(G.unmarked)){
           G.unmarked=matrix(G.unmarked,ncol=1)
         }
+        if(ncol(G.unmarked)!=ncat){
+          G.unmarked=t(G.unmarked)
+        }
+        if(ncol(G.unk)!=ncat){
+          G.unk=t(G.unk)
+        }
         y.sight.unk=y.sight.unmarked[unm2unk,,]
         y.sight.unmarked=y.sight.unmarked[-unm2unk,,]
+        if(length(dim(y.sight.unk))==2){
+          y.sight.unk=array(y.sight.unk,dim=c(1,J,K))
+        }
+        if(length(dim(y.sight.unmarked))==2){
+          y.sight.unmarked=array(y.sight.unmarked,dim=c(1,J,K))
+        }
         IDunk=IDum[unm2unk]
         IDum=IDum[-unm2unk]
       }else{#didn't lose any mark status info
-        G.unk=matrix(0,nrow=0,ncol=ncat)
-        y.sight.unmarked=array(0,dim=c(0,J2,K2))
-        IDunk=rep(0,0)
+        y.sight.unk=NA
+        G.unk=NA
+        IDunk=NA
       }
       #add marked guys
+      if(sum(y.sight.marked)==0)next
       idx1=which(y.sight.marked>0)#used to extract counts
       count=y.sight.marked[idx1]
       idx2=which(y.sight.marked>0,arr.ind=TRUE)#used to move counts
       idx3=rep(1:nrow(idx2),count)#repeat array indices for counts>1
       idx2=idx2[idx3,]
+      if(!is.matrix(idx2)){
+        idx2=matrix(idx2,ncol=3)
+      }
       rem=1-rbinom(nrow(idx2),1,pMarkID[1])#which counts can't we tell marked status
       if(sum(rem)>0){
         idx2=idx2[which(rem==1),]
         if(!is.matrix(idx2)){
           idx2=matrix(idx2,nrow=1)
         }
-        y.sight.unk2=array(0,dim=c(nrow(idx2),J2,K2))
+        y.sight.unk2=array(0,dim=c(nrow(idx2),J,K))
         G.unk2=matrix(NA,nrow=nrow(idx2),ncol=ncat)
         for(i in 1:nrow(idx2)){
           #remove unk guys from marked sightings
@@ -313,21 +335,18 @@ sim.genCatSMR <-
           G.unk2[i,]=G.marked[idx2[i,1],]
         }
         #paste new unk structures to old ones
-        y.sight.unk=abind(y.sight.unk,y.sight.unk2,along=1)
-        if(ncol(G.unk)!=ncat){
-          G.unk=matrix(G.unk,ncol=ncat)
-        }
         if(ncol(G.unk2)!=ncat){
-          G.unk2=matrix(G.unk2,ncol=ncat)
+          G.unk2=t(G.unk2)
         }
-        
-        G.unk=rbind(G.unk,G.unk2)
-        IDunk=c(IDunk,idx2[,1])
-      }
-      if(dim(G.unk)[1]==0){#didn't lose any mark status info
-        G.unk=NA
-        y.sight.unk=NA
-        IDunk=NA
+        if(all(!is.na(y.sight.unk))&all(!is.na(y.sight.unk2))){
+          y.sight.unk=abind(y.sight.unk,y.sight.unk2,along=1)
+          G.unk=rbind(G.unk,G.unk2)
+          IDunk=c(IDunk,idx2[,1])
+        }else if(!is.null(y.sight.unk2)){
+          y.sight.unk=y.sight.unk2
+          G.unk=G.unk2
+          IDunk=idx2[,1]
+        }
       }
     }else if(pMarkID[2]==1&pMarkID[1]<1){#Can't perfectly ID mark status of marked but can unmarked
       stop("It seems unrealistic that you can perfectly determine the marked status unmarked individuals, but not marked individuals. Did not program this possibility.")
@@ -337,20 +356,27 @@ sim.genCatSMR <-
       IDunk=NA
     }
     #Lose ID's of marked status guys
-    if(pID<1){
+    if(pID<1&sum(y.sight.marked>0)){
       idx1=which(y.sight.marked>0)#used to extract counts
       count=y.sight.marked[idx1]
       idx2=which(y.sight.marked>0,arr.ind=TRUE)#used to move counts
       idx3=rep(1:nrow(idx2),count)#repeat array indices for counts>1
       idx2=idx2[idx3,]
-      rem=1-rbinom(nrow(idx2),1,pID[1])#which counts can't we tell marked status
+      if(!is.matrix(idx2)){
+        idx2=matrix(idx2,ncol=3)
+      }
+      if(nrow(idx2)>0){
+        rem=1-rbinom(nrow(idx2),1,pID[1])#which counts can't we tell marked status
+      }else{
+        rem=0
+      }
       if(sum(rem)>0){
         idx2=idx2[which(rem==1),]
         if(!is.matrix(idx2)){
           idx2=matrix(idx2,nrow=1)
         }
         IDmnoID=idx2[,1]
-        y.sight.marked.noID=array(0,dim=c(nrow(idx2),J2,K2))
+        y.sight.marked.noID=array(0,dim=c(nrow(idx2),J,K))
         G.marked.noID=matrix(NA,nrow=nrow(idx2),ncol=ncat)
         for(i in 1:nrow(idx2)){
           #remove no ID guys from known ID marked sightings
@@ -373,16 +399,25 @@ sim.genCatSMR <-
     }
     #Amplification failure in unmarked, unknown, and marked no ID if present
     for(l in 1:ncat){
-      G.unmarked[which(rbinom(n.samples,1,pIDcat[l])==0),l]=0 #0 is dropout
+      drop=which(rbinom(n.samples,1,pIDcat[l])==0)
+      if(length(drop)>0){
+        G.unmarked[drop,l]=0 #0 is dropout
+      }
     }
     if(!is.na(G.unk[1])){
       for(l in 1:ncat){
-        G.unk[which(rbinom(nrow(G.unk),1,pIDcat[l])==0),l]=0 #0 is dropout
+        drop=which(rbinom(nrow(G.unk),1,pIDcat[l])==0)
+        if(length(drop)>0){
+          G.unk[drop,l]=0 #0 is dropout
+        }
       }
     }
     if(!is.na(G.marked.noID[1])){
       for(l in 1:ncat){
-        G.marked.noID[which(rbinom(nrow(G.marked.noID),1,pIDcat[l])==0),l]=0 #0 is dropout
+        drop=which(rbinom(nrow(G.marked.noID),1,pIDcat[l])==0)
+        if(length(drop)>0){
+          G.marked.noID[drop,l]=0 #0 is dropout
+        }
       }
     }
     #Telemetry observations
@@ -410,17 +445,21 @@ sim.genCatSMR <-
     for(i in 1:length(IDmarked)){
       y.sight.check[IDmarked[i],,]=y.sight.marked[i,,]
     }
-    for(i in 1:length(IDum)){
-      y.sight.check[IDum[i],,]=y.sight.check[IDum[i],,]+y.sight.unmarked[i,,]
+    if(length(IDum)>0){
+      for(i in 1:length(IDum)){
+        y.sight.check[IDum[i],,]=y.sight.check[IDum[i],,]+y.sight.unmarked[i,,]
+      }
     }
-    if(pMarkID[2]<1|pMarkID[1]<1){
+    if(all(!is.na(IDunk))){
       for(i in 1:length(IDunk)){
         y.sight.check[IDunk[i],,]=y.sight.check[IDunk[i],,]+y.sight.unk[i,,]
       }
     }
     if(pID<1){
-      for(i in 1:length(IDmnoID)){
-        y.sight.check[IDmnoID[i],,]=y.sight.check[IDmnoID[i],,]+y.sight.marked.noID[i,,]
+      if(all(is.finite(IDmnoID))){
+        for(i in 1:length(IDmnoID)){
+          y.sight.check[IDmnoID[i],,]=y.sight.check[IDmnoID[i],,]+y.sight.marked.noID[i,,]
+        }
       }
     }
     if(!all(y.sight==y.sight.check)){
