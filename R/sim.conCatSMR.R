@@ -324,7 +324,7 @@ sim.conCatSMR <-
     }
     #Amplification failure in unmarked, unknown, and marked no ID if present
     for(l in 1:ncat){
-      drop=which(rbinom(n.samples,1,pIDcat[l])==0)
+      drop=which(rbinom(nrow(G.unmarked),1,pIDcat[l])==0)
       if(length(drop)>0){
         G.unmarked[drop,l]=0 #0 is dropout
       }
