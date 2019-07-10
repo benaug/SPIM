@@ -121,7 +121,7 @@
 mcmc.CatSPIM <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
-           keepACs=FALSE,keepGamma=FALSE,keepG=FALSE,IDup="Gibbs"){
+           keepACs=FALSE,keepGamma=FALSE,keepG=FALSE,IDup="Gibbs",priors=NA){
     ###
     library(abind)
     y.obs<-data$y.obs
@@ -146,6 +146,15 @@ mcmc.CatSPIM <-
     nlevels=unlist(lapply(IDcovs,length))
     if(ncol(G.obs)!=ncat){
       stop("G.obs needs ncat number of columns")
+    }
+    if(!all(is.na(priors))){
+      if(!is.list(priors))stop("priors must be a list" )
+      if(!all(names(priors)==c("sigma")))stop("priors list element name must be sigma")
+      warning("Using Gamma prior for sigma")
+      usePriors=TRUE
+    }else{
+      warning("No sigma prior entered, using uniform(0,infty).")
+      usePriors=FALSE
     }
 
     
@@ -406,7 +415,13 @@ mcmc.CatSPIM <-
           pd.cand=1-exp(-lamd.cand)
           ll.y.cand= dbinom(y.true,K,pd.cand*z,log=TRUE)
           llycandsum=sum(ll.y.cand)
-          if(runif(1) < exp(llycandsum-llysum)){
+          if(usePriors){
+            prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
+            prior.cand=dgamma(sigma.cand,priors$sigma[1],priors$sigma[2],log=TRUE)
+          }else{
+            prior.curr=prior.cand=0
+          }
+          if(runif(1) < exp((llycandsum+prior.cand)-(llysum+prior.curr))){
             sigma<- sigma.cand
             lamd=lamd.cand
             pd=pd.cand
@@ -434,7 +449,13 @@ mcmc.CatSPIM <-
           lamd.cand<- lam0*exp(-D*D/(2*sigma.cand*sigma.cand))
           ll.y.cand= dpois(y.true,K*lamd.cand*z,log=TRUE)
           llycandsum=sum(ll.y.cand)
-          if(runif(1) < exp(llycandsum-llysum)){
+          if(usePriors){
+            prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
+            prior.cand=dgamma(sigma.cand,priors$sigma[1],priors$sigma[2],log=TRUE)
+          }else{
+            prior.curr=prior.cand=0
+          }
+          if(runif(1) < exp((llycandsum+prior.cand)-(llysum+prior.curr))){
             sigma<- sigma.cand
             lamd=lamd.cand
             ll.y=ll.y.cand
