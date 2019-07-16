@@ -732,8 +732,8 @@ mcmc.genCatSMRb <-
           #update y.true
           y.sight.cand[ID[l],]=y.sight.true[ID[l],]-y.sight.latent[l,]
           y.sight.cand[newID[l],]=y.sight.true[newID[l],]+y.sight.latent[l,]
-          focalprob=(sum(ID==ID[l])/n.samples)*(y.sight.true[ID[l],nj]/sum(y.sight.true[ID[l],]))
-          focalbackprob=(sum(newID==newID[l])/n.samples)*(y.sight.cand[newID[l],nj]/sum(y.sight.cand[newID[l],]))
+          focalprob=(sum(ID==ID[l])/n.samp.latent)*(y.sight.true[ID[l],nj]/sum(y.sight.true[ID[l],]))
+          focalbackprob=(sum(newID==newID[l])/n.samp.latent)*(y.sight.cand[newID[l],nj]/sum(y.sight.cand[newID[l],]))
           ##update ll.y
           if(obstype[2]=="poisson"){
             ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2D2[swapped,]*lamd.sight[swapped,],log=TRUE)
