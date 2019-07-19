@@ -341,6 +341,8 @@ mcmc.CatSPIM <-
       ll.y=dpois(y.true,K*lamd*z,log=TRUE)
     }
     ll.y.cand=ll.y
+    if(!is.finite(sum(ll.y)))stop("Starting likelihood not finite. 
+                                  Try raising lam0 and/or sigma inits.")
     
   
     
