@@ -606,7 +606,10 @@ mcmc.conCatSMR.natural <-
     ll.y.sight.unmarked.cand=ll.y.sight.unmarked
     y.sight.marked.cand=y.sight.marked.true
     y.sight.unmarked.cand=y.sight.unmarked.true
-    
+    if(!is.finite(sum(ll.y.sight.marked)))stop("Starting likelihood not finite. 
+                                  Try raising lam0 and/or sigma inits.")
+    if(!is.finite(sum(ll.y.sight.unmarked)))stop("Starting likelihood not finite. 
+                                  Try raising lam0 and/or sigma inits.")
     for(iter in 1:niter){
       #Update both observation models
       if(obstype=="bernoulli"){

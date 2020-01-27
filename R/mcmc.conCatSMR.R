@@ -559,7 +559,9 @@ mcmc.conCatSMR <-
     }
     lamd.sight.cand=lamd.sight
     ll.y.sight.cand=ll.y.sight
-    
+    if(!is.finite(sum(ll.y.sight)))stop("Starting likelihood not finite. 
+                                  Try raising lam0 and/or sigma inits.")
+
     for(iter in 1:niter){
       #Update both observation models
       if(obstype=="bernoulli"){

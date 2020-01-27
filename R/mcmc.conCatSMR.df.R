@@ -563,6 +563,8 @@ mcmc.conCatSMR.df <-
     }
     lamd.sight.cand=lamd.sight
     ll.y.sight.cand=ll.y.sight
+    if(!is.finite(sum(ll.y.sight)))stop("Starting likelihood not finite. 
+                                  Try raising lam0 and/or sigma inits.")
     ll.cat=rep(0,M)
     for(i in 1:M){
       mn=rep(0,ndf)
