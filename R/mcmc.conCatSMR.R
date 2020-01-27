@@ -348,6 +348,10 @@ mcmc.conCatSMR <-
     #Build y.sight.true
     y.sight.true=array(0,dim=c(M,J,K))
     y.sight.true[1:n.marked,,]=y.sight.marked
+    #keep marked only history for MH ID up probs
+    y.sight.marked.aug=y.sight.true
+    y.sight.marked.aug=apply(y.sight.marked.aug,c(1,2),sum)
+    
     ID=rep(NA,n.samp.latent)
     idx=n.marked+1
     for(i in 1:n.samp.latent){
@@ -744,8 +748,13 @@ mcmc.conCatSMR <-
           #update y.true
           y.sight.cand[ID[l],]=y.sight.true[ID[l],]-y.sight.latent[l,]
           y.sight.cand[newID[l],]=y.sight.true[newID[l],]+y.sight.latent[l,]
-          focalprob=(sum(ID==ID[l])/n.samp.latent)*(y.sight.true[ID[l],nj]/sum(y.sight.true[ID[l],]))
-          focalbackprob=(sum(newID==newID[l])/n.samp.latent)*(y.sight.cand[newID[l],nj]/sum(y.sight.cand[newID[l],]))
+          # focalprob=(sum(ID==ID[l])/n.samp.latent)*(y.sight.true[ID[l],nj]/sum(y.sight.true[ID[l],]))
+          # focalbackprob=(sum(newID==newID[l])/n.samp.latent)*(y.sight.cand[newID[l],nj]/sum(y.sight.cand[newID[l],]))
+          #subtract out the fixed indices for marked individuals
+          latent.i=y.sight.true[ID[l],]-y.sight.marked.aug[ID[l],]
+          latent.i.new=y.sight.cand[newID[l],]-y.sight.marked.aug[newID[l],]
+          focalprob=(sum(ID==ID[l])/n.samp.latent)*(latent.i[nj]/sum(latent.i))
+          focalbackprob=(sum(newID==newID[l])/n.samp.latent)*(latent.i.new[nj]/sum(latent.i.new))
           ##update ll.y
           if(obstype=="poisson"){
             ll.y.sight.cand[swapped,]=dpois(y.sight.cand[swapped,],K2D[swapped,]*lamd.sight[swapped,],log=TRUE)

@@ -808,10 +808,8 @@ mcmc.genCatSMR.dfb <-
           swap=G.latent[,j]
           G.true[swap,j]=sample(IDcovs[[j]],sum(swap),replace=TRUE,prob=gamma[[j]])
         }
-      }else{
-        swap=G.latent[,1]
-        G.true[swap,1]=sample(IDcovs[[1]],sum(swap),replace=TRUE,prob=gamma[[1]])
       }
+      
       #update df loci
       idx2=which(G.latent[,1])
       if(length(idx2)>nswap){
