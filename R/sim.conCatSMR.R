@@ -158,7 +158,7 @@ sim.conCatSMR <-
         for(k in 1:K){ #then occasions
           if(y.sight[umguys[i],j,k]>0){ #is there at least one sample here?
               for(l in 1:y.sight[umguys[i],j,k]){ #then samples
-                G.unmarked[idx,]=G.true[i,]
+                G.unmarked[idx,]=G.true[umguys[i],]
                 y.sight.unmarked[idx,j,k]=1
                 IDum[idx]=umguys[i]
                 idx=idx+1
