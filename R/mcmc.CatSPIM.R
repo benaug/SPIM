@@ -121,7 +121,7 @@
 mcmc.CatSPIM <-
   function(data,niter=2400,nburn=1200, nthin=5, M = 200, inits=NA,obstype="poisson",nswap=NA,
            proppars=list(lam0=0.05,sigma=0.1,sx=0.2,sy=0.2),
-           keepACs=FALSE,keepGamma=FALSE,keepG=FALSE,IDup="Gibbs",priors=NA){
+           keepACs=FALSE,keepGamma=FALSE,keepG=FALSE,IDup="Gibbs",priors=NA,tf=NA){
     ###
     library(abind)
     y.obs<-data$y.obs
@@ -131,9 +131,6 @@ mcmc.CatSPIM <-
     ncat=data$IDlist$ncat
     nallele=data$IDlist$nallele
     IDcovs=data$IDlist$IDcovs
-    buff<- data$buff
-    xlim<- c(min(X[,1]),max(X[,1]))+c(-buff, buff)
-    ylim<- c(min(X[,2]),max(X[,2]))+c(-buff, buff)
     n.samples=sum(y.obs)
     constraints=data$constraints
     G.obs=data$G.obs
@@ -156,7 +153,6 @@ mcmc.CatSPIM <-
       warning("No sigma prior entered, using uniform(0,infty).")
       usePriors=FALSE
     }
-
     
     #data checks
     if(length(dim(y.obs))!=3){
@@ -192,7 +188,23 @@ mcmc.CatSPIM <-
     }else{
       stop("user must supply either 'buff' or 'vertices' in data object")
     }
-    
+    if(!any(is.na(tf))){
+      if(any(tf>K)){
+        stop("Some entries in tf are greater than K.")
+      }
+      if(is.null(dim(tf))){
+        if(length(tf)!=J){
+          stop("tf vector must be of length J if summing k dimension over traps.")
+        }
+        K2D=matrix(rep(tf,M),nrow=M,ncol=J,byrow=TRUE)
+      }else{
+        K2D=rowSums(tf)
+        K2D=matrix(rep(K2D,M),nrow=M,ncol=J,byrow=TRUE)
+      }
+    }else{
+      tf=rep(K,J)
+      K2D=matrix(rep(tf,M),nrow=M,ncol=J,byrow=TRUE)
+    }
     ##pull out initial values
     psi<- inits$psi
     lam0<- inits$lam0
@@ -240,16 +252,18 @@ mcmc.CatSPIM <-
     
     #Build y.true
     y.true=array(0,dim=c(M,J,K))
-    y.true2D=matrix(0,nrow=M,ncol=J)
-    y.obs2D=apply(y.obs,c(1,2),sum)
     ID=rep(NA,n.samples)
     idx=1
     for(i in 1:n.samples){
       if(idx>M){
         stop("Need to raise M to initialize y.true")
       }
-      traps=which(y.obs2D[i,]>0)
-      # y.true2D=apply(y.true,c(1,2),sum)
+      if(K>1){
+        traps=which(rowSums(y.obs[i,,])>0)
+      }else{
+        traps=which(y.obs[i,,]>0)
+      }
+      y.true2D=apply(y.true,c(1,2),sum)
       if(length(traps)==1){
         cand=which(y.true2D[,traps]>0)#guys caught at same traps
       }else{
@@ -266,21 +280,14 @@ mcmc.CatSPIM <-
           ID[i]=cand
         }else{#focal not consistent
           y.true[idx,,]=y.obs[i,,]
-          y.true2D[idx,traps]=y.true2D[idx,traps]+1
           ID[i]=idx
           idx=idx+1
         }
       }else{#no assigned samples at this trap
         y.true[idx,,]=y.obs[i,,]
-        y.true2D[idx,traps]=y.true2D[idx,traps]+1
         ID[i]=idx
         idx=idx+1
       }
-    }
-    y.true2D=apply(y.true,c(1,2),sum)
-    known.vector=c(rep(1,max(ID)),rep(0,M-max(ID)))
-    if(binconstraints){
-      if(any(y.true>1))stop("bernoulli data not initialized correctly")
     }
     #Check assignment consistency with constraints
     checkID=unique(ID)
@@ -336,13 +343,11 @@ mcmc.CatSPIM <-
     ll.y=array(0,dim=c(M,J))
     if(obstype=="bernoulli"){
       pd=1-exp(-lamd)
-      ll.y=dbinom(y.true,K,pd*z,log=TRUE)
+      ll.y=dbinom(y.true,K2D,pd*z,log=TRUE)
     }else if(obstype=="poisson"){
-      ll.y=dpois(y.true,K*lamd*z,log=TRUE)
+      ll.y=dpois(y.true,K2D*lamd*z,log=TRUE)
     }
     ll.y.cand=ll.y
-    if(!is.finite(sum(ll.y)))stop("Starting likelihood not finite. 
-                                  Try raising lam0 and/or sigma inits.")
     
   
     
@@ -400,7 +405,7 @@ mcmc.CatSPIM <-
         if(lam0.cand > 0){
           lamd.cand<- lam0.cand*exp(-D*D/(2*sigma*sigma))
           pd.cand=1-exp(-lamd.cand)
-          ll.y.cand= dbinom(y.true,K,pd.cand*z,log=TRUE)
+          ll.y.cand= dbinom(y.true,K2D,pd.cand*z,log=TRUE)
           llycandsum=sum(ll.y.cand)
           if(runif(1) < exp(llycandsum-llysum)){
             lam0<- lam0.cand
@@ -415,7 +420,7 @@ mcmc.CatSPIM <-
         if(sigma.cand > 0){
           lamd.cand<- lam0*exp(-D*D/(2*sigma.cand*sigma.cand))
           pd.cand=1-exp(-lamd.cand)
-          ll.y.cand= dbinom(y.true,K,pd.cand*z,log=TRUE)
+          ll.y.cand= dbinom(y.true,K2D,pd.cand*z,log=TRUE)
           llycandsum=sum(ll.y.cand)
           if(usePriors){
             prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
@@ -436,7 +441,7 @@ mcmc.CatSPIM <-
         lam0.cand<- rnorm(1,lam0,proppars$lam0)
         if(lam0.cand > 0){
           lamd.cand<- lam0.cand*exp(-D*D/(2*sigma*sigma))
-          ll.y.cand= dpois(y.true,K*lamd.cand*z,log=TRUE)
+          ll.y.cand= dpois(y.true,K2D*lamd.cand*z,log=TRUE)
           llycandsum=sum(ll.y.cand)
           if(runif(1) < exp(llycandsum-llysum)){
             lam0<- lam0.cand
@@ -449,7 +454,7 @@ mcmc.CatSPIM <-
         sigma.cand<- rnorm(1,sigma,proppars$sigma)
         if(sigma.cand > 0){
           lamd.cand<- lam0*exp(-D*D/(2*sigma.cand*sigma.cand))
-          ll.y.cand= dpois(y.true,K*lamd.cand*z,log=TRUE)
+          ll.y.cand= dpois(y.true,K2D*lamd.cand*z,log=TRUE)
           llycandsum=sum(ll.y.cand)
           if(usePriors){
             prior.curr=dgamma(sigma,priors$sigma[1],priors$sigma[2],log=TRUE)
@@ -490,7 +495,7 @@ mcmc.CatSPIM <-
             y.true[ID[l],]=y.true[ID[l],]-y.obs[l,]
             y.true[newID,]=y.true[newID,]+y.obs[l,]
             ID[l]=newID
-            ll.y[swapped,]= dpois(y.true[swapped,],K*lamd[swapped,],log=TRUE)
+            ll.y[swapped,]= dpois(y.true[swapped,],K2D[swapped,]*lamd[swapped,],log=TRUE)
           }
         }
       }else{
@@ -537,9 +542,9 @@ mcmc.CatSPIM <-
           focalbackprob=(sum(newID==newID[l])/n.samples)*(y.cand[newID[l],nj]/sum(y.cand[newID[l],]))
           ##update ll.y
           if(obstype=="poisson"){
-            ll.y.cand[swapped,]=dpois(y.cand[swapped,],K*lamd[swapped,],log=TRUE)
+            ll.y.cand[swapped,]=dpois(y.cand[swapped,],K2D[swapped,]*lamd[swapped,],log=TRUE)
           }else{
-            ll.y.cand[swapped,]=dbinom(y.cand[swapped,],K,pd[swapped,],log=TRUE)
+            ll.y.cand[swapped,]=dbinom(y.cand[swapped,],K2D[swapped,],pd[swapped,],log=TRUE)
           }
           if(runif(1)<exp(sum(ll.y.cand[swapped,])-sum(ll.y[swapped,]))*
              (backprob/propprob)*(focalbackprob/focalprob)){
@@ -586,14 +591,14 @@ mcmc.CatSPIM <-
       if(obstype=="poisson"){
         pd=1-exp(-lamd)
       }
-      pbar=(1-pd)^K
+      pbar=(1-pd)^K2D
       prob0<- exp(rowSums(log(pbar)))
       fc<- prob0*psi/(prob0*psi + 1-psi)
       z[known.vector==0]<- rbinom(sum(known.vector ==0), 1, fc[known.vector==0])
       if(obstype=="bernoulli"){
-        ll.y= dbinom(y.true,K,pd*z,log=TRUE)
+        ll.y= dbinom(y.true,K2D,pd*z,log=TRUE)
       }else{
-        ll.y= dpois(y.true,K*lamd*z,log=TRUE)
+        ll.y= dpois(y.true,K2D*lamd*z,log=TRUE)
       }
       
       
@@ -612,7 +617,7 @@ mcmc.CatSPIM <-
           lamd.cand[i,]<- lam0*exp(-dtmp*dtmp/(2*sigma*sigma))
           if(obstype=="bernoulli"){
             pd.cand[i,]=1-exp(-lamd.cand[i,])
-            ll.y.cand[i,]= dbinom(y.true[i,],K,pd.cand[i,]*z[i],log=TRUE)
+            ll.y.cand[i,]= dbinom(y.true[i,],K2D[i,],pd.cand[i,]*z[i],log=TRUE)
             if (runif(1) < exp(sum(ll.y.cand[i,]) - sum(ll.y[i,]))) {
               s[i,]=Scand
               D[i,]=dtmp
@@ -621,7 +626,7 @@ mcmc.CatSPIM <-
               ll.y[i,]=ll.y.cand[i,]
             }
           }else{#poisson
-            ll.y.cand[i,]= dpois(y.true[i,],K*lamd.cand[i,]*z[i],log=TRUE)
+            ll.y.cand[i,]= dpois(y.true[i,],K2D[i,]*lamd.cand[i,]*z[i],log=TRUE)
             if (runif(1) < exp(sum(ll.y.cand[i,]) - sum(ll.y[i,]))) {
               s[i,]=Scand
               D[i,]=dtmp
