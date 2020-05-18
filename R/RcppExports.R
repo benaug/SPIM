@@ -73,3 +73,11 @@ typeCountSamptype <- function(ncat, nrep, nlevels, locustype, ptype, G_obs_true,
     .Call('_SPIM_typeCountSamptype', PACKAGE = 'SPIM', ncat, nrep, nlevels, locustype, ptype, G_obs_true, G_obs, samptype, samplevels)
 }
 
+BenMultinom <- function(data, size, probs) {
+    .Call('_SPIM_BenMultinom', PACKAGE = 'SPIM', data, size, probs)
+}
+
+thetacalcsMN <- function(possible, y_sight_true, y_sight_knownStatus, y_sight_unknownStatus, y_sight_mnoID, theta_marked, theta_unmarked, ll_theta, IDl, M, MarkObs, nMarked) {
+    .Call('_SPIM_thetacalcsMN', PACKAGE = 'SPIM', possible, y_sight_true, y_sight_knownStatus, y_sight_unknownStatus, y_sight_mnoID, theta_marked, theta_unmarked, ll_theta, IDl, M, MarkObs, nMarked)
+}
+

@@ -162,6 +162,10 @@ mcmc.2sidetf <-
       dbinom(y.left.true*twos,twos,z*pd12,log=TRUE)
     ll.y.right=dbinom(y.right.true*ones,ones,z*pd1,log=TRUE)+
       dbinom(y.right.true*twos,twos,z*pd12,log=TRUE)
+    if(!is.finite(sum(ll.y.both)))stop("Both side likelihood not finite. Make sure all camera stations recording both side captures have 2 cameras. Then try changing lam02 or sigma inits.")
+    if(!is.finite(sum(ll.y.left)))stop("Left side likelihood not finite. Try changing lam01 or sigma inits.")
+    if(!is.finite(sum(ll.y.right)))stop("right side likelihood not finite. Try changing lam01 or sigma inits.")
+    
     ll.y.both.cand=ll.y.both
     ll.y.left.cand=ll.y.left
     ll.y.right.cand=ll.y.right
