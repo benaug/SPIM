@@ -151,6 +151,7 @@ mcmc.conCatSMR.natural <-
     marked.guys=1:dim(y.sight.marked)[1]
     G.marked=data$G.marked
     G.unmarked=data$G.unmarked
+    n.marked=data$n.marked
   
     if(!is.matrix(G.marked)){
       G.marked=matrix(G.marked)
