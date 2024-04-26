@@ -1,3 +1,5 @@
+#4/26/24 Disclaimer: Do not use bernoulli observation model, the y/ID update isn't correct.
+
 source("sim.conCatSMR.ID.R")
 source("mcmc.conCatSMR.ID.R")
 library(coda)

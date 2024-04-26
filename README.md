@@ -3,6 +3,6 @@
  
  No longer maintained, here for reproducibility reasons. Use nimble samplers also on github.
 
-Note, the spatial mark-resight samplers in this package do not correctly handle "marked but not identfied" and "unknown mark status" samples.
+Note, the spatial mark-resight samplers in this package do not correctly handle "marked but not identified" and "unknown mark status" samples. Samplers on github are correct.
 
-I will upload nimble samplers that handle all sample types in SMR at some point.
+#4/26/24 Disclaimer: Do not use bernoulli observation model for catSPIM or SMR, the y/ID update isn't correct. (The bernoulli obsmod is correct in 2-flank SPIM). A correct version for catSPIM is available in nimble here: https://github.com/benaug/categorical-SPIM.
